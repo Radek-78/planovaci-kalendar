@@ -1,0 +1,137 @@
+<!--
+  ══════════════════════════════════════════════════════════════════════════
+   view_app.html — obrazovka aplikace
+  ══════════════════════════════════════════════════════════════════════════
+
+  FÁZE 1: přechodová obrazovka. Ověřuje, že celý řetězec funguje —
+  přihlášení → guard_ → oprávnění → načtení nastavení z databáze — a ukazuje,
+  koho aplikace vidí a co smí. Zároveň slouží jako obrazovka „bez přístupu"
+  pro uživatele, který v tabulce `_users` není.
+
+  FÁZE 2 tento soubor nahradí skutečným rozhraním (sidebar Kalendář /
+  Uživatelé / Nastavení) a obrazovka bez přístupu se osamostatní
+  do ui/view_noaccess.html.
+-->
+<div class="app-shell">
+
+  <main class="app-main">
+
+    <!-- Uživatel má přístup -->
+    <div class="app-card is-hidden" id="appWelcome">
+      <div>
+        <p class="kicker">Aplikace je připravena</p>
+        <h1 id="appTitle">Plánovací kalendář</h1>
+        <p class="gate-note" id="appSubtitle"></p>
+      </div>
+
+      <div class="info-row">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-user"></use></svg>
+        <div>
+          <span>Přihlášen jako</span>
+          <strong id="appUserName">–</strong>
+        </div>
+      </div>
+
+      <div class="info-row">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield"></use></svg>
+        <div>
+          <span>Role a oprávnění</span>
+          <strong id="appUserRole">–</strong>
+        </div>
+      </div>
+
+      <div class="info-row">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"></use></svg>
+        <div>
+          <span>Co s kalendářem smíte</span>
+          <strong id="appUserRights">–</strong>
+        </div>
+      </div>
+
+      <p class="gate-note">
+        Databáze je založená a oprávnění fungují. Kalendář, správa uživatelů
+        a nastavení přibudou v dalších fázích vývoje.
+      </p>
+    </div>
+
+    <!-- Uživatel nemá přístup -->
+    <div class="app-card is-hidden" id="appNoAccess">
+      <div>
+        <p class="kicker">Přístup zamítnut</p>
+        <h1>Nemáte přístup</h1>
+      </div>
+      <div class="gate-warning" id="appNoAccessMessage"></div>
+      <p class="gate-note">
+        O přístup do aplikace požádejte správce. Přihlaste se prosím firemním
+        účtem — pod jiným účtem vás aplikace nepozná.
+      </p>
+    </div>
+
+  </main>
+
+  <footer class="app-footer">
+    <span id="appFooterName">Plánovací kalendář</span>
+    <span>Verze <strong id="appFooterVersion">–</strong></span>
+  </footer>
+
+</div>
+
+<script>
+  /**
+   * Obrazovka aplikace (fáze 1).
+   *
+   * Jediné, co dělá: zavolá apiGetBootstrap a podle výsledku zobrazí buď
+   * uvítání s přehledem oprávnění, nebo obrazovku bez přístupu. Rozhodnutí
+   * o právech přichází ze serveru — klient si ho nikdy nepočítá sám.
+   */
+  const App = {
+    /** Popisky rolí pro zobrazení. Klíče odpovídají ROLES v server/00_config.js. */
+    ROLE_LABELS: {
+      SUPERADMIN: 'Správce aplikace',
+      ADMIN: 'Administrátor',
+      USER: 'Uživatel',
+    },
+
+    init() {
+      const boot = window.APP_BOOTSTRAP || {};
+
+      // Verze a název ve footeru se ukážou hned — nezávisí na volání serveru.
+      Ui.setText('#appFooterVersion', boot.version || '–');
+      Ui.setText('#appFooterName', boot.appName || 'Plánovací kalendář');
+
+      Ui.call('apiGetBootstrap')
+        .then((data) => this.showWelcome(data))
+        .catch((error) => this.showNoAccess(error.message));
+    },
+
+    showWelcome(data) {
+      Ui.setText('#appTitle', data.settings.appName);
+      Ui.setText('#appSubtitle', data.settings.appSubtitle);
+      Ui.setText('#appFooterName', data.settings.appName);
+      Ui.setText('#appFooterVersion', data.version);
+
+      Ui.setText('#appUserName', data.user.fullName + ' · ' + data.user.email);
+
+      const roleLabel = this.ROLE_LABELS[data.user.role] || data.user.role;
+      const permissionLabel = data.user.role === 'USER'
+        ? (data.user.permission === 'EDITOR' ? 'zápis' : 'jen čtení')
+        : 'plný zápis';
+      Ui.setText('#appUserRole', roleLabel + ' · ' + permissionLabel);
+
+      // Srozumitelný výčet toho, co uživatel smí — přesně podle práv ze serveru.
+      const rights = ['čtení kalendáře'];
+      if (data.permissions.canWrite) rights.push('vytváření vlastních událostí');
+      if (data.permissions.canManageForeignEvents) rights.push('úpravy cizích událostí');
+      if (data.permissions.canManageUsers) rights.push('správa uživatelů');
+      if (data.permissions.canManageSettings) rights.push('nastavení aplikace');
+      Ui.setText('#appUserRights', rights.join(', '));
+
+      document.querySelector('#appWelcome').classList.remove('is-hidden');
+    },
+
+    showNoAccess(message) {
+      Ui.setText('#appNoAccessMessage', message);
+      document.querySelector('#appNoAccess').classList.remove('is-hidden');
+    },
+  };
+</script>

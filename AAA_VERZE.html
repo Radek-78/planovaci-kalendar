@@ -1,0 +1,20 @@
+<!--
+███████████████████████████████████████████████████████
+█                                                     █
+█   NASAZENÁ VERZE:   v0.1.0                          █
+█   DATUM NASAZENÍ:   01.09.2026 14:34                █
+█                                                     █
+███████████████████████████████████████████████████████
+
+Plánovací kalendář — indikátor nasazené verze.
+
+Soubor je díky prefixu "AAA" první v abecedním pořadí v editoru Apps Script,
+takže po `clasp push` hned vidíš, jaká verze je v projektu. Pokud zde verze
+nesouhlasí s tím, cos nasazoval, push neproběhl (nebo přepsal starší checkout).
+
+Soubor NENÍ nikde v aplikaci použit — slouží jen jako vizuální kontrola.
+
+Číslo verze se sem zapisuje VÝHRADNĚ skriptem tools/release.ps1, nikdy ručně.
+Verze musí souhlasit na třech místech: zde, v CONFIG.version (server/00_config.js,
+odkud se bere footer aplikace) a v CHANGELOG.md.
+-->

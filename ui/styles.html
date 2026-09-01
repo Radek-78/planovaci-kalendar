@@ -1,0 +1,856 @@
+<style>
+  /* ══════════════════════════════════════════════════════════════════════
+     styles.html — design systém aplikace
+
+     Vychází z firemního stylu použitého v Planung Dashboardu a ve Výchozí
+     aplikaci 2.0, aby na sebe aplikace vzhledově navazovaly.
+
+     Pravidla:
+       - barvy VŽDY přes proměnné z :root, nikdy natvrdo v pravidlech,
+       - žlutá jen jako akcent, červená jen pro chyby a nebezpečné akce,
+       - hodnoty barev musí souhlasit s CONFIG.theme v server/00_config.js.
+
+     Fáze 1 obsahuje jen to, co potřebuje wizard a přechodová obrazovka.
+     Styly kalendáře přibudou ve fázi 3.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  :root {
+    /* Firemní paleta */
+    --lidl-blue: #0050aa;
+    --lidl-dark-blue: #002466;
+    --lidl-light-blue: #008cd2;
+    --lidl-yellow: #fff000;
+    --lidl-red: #e60a14;
+
+    /* Neutrální plochy a text */
+    --white: #ffffff;
+    --page: #f0f4fa;
+    --panel: #ffffff;
+    --line: #dce5f0;
+    --line-soft: #eaeff7;
+    --text: #0d1b3e;
+    --muted: #5e6e8a;
+    --green: #007a45;
+
+    --radius: 6px;
+    --shadow: 0 2px 12px rgba(0, 36, 102, 0.08);
+
+    /* Firemní font s náhradami pro počítače, kde nainstalovaný není. */
+    --font: "Lidl Font Cond Pro", "Lidl Font Pro", "Aptos", "Segoe UI", sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    margin: 0;
+    min-height: 100%;
+  }
+
+  body {
+    background: var(--page);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Skryté SVG s definicemi ikon (sprite) — nesmí zabírat místo v layoutu. */
+  .sprite {
+    height: 0;
+    position: absolute;
+    width: 0;
+  }
+
+  /* Univerzální třída pro skrytí prvku. */
+  .is-hidden {
+    display: none !important;
+  }
+
+  /* ── Typografie ─────────────────────────────────────────────────────── */
+
+  h1,
+  h2,
+  p {
+    margin-top: 0;
+  }
+
+  h1 {
+    color: var(--lidl-dark-blue);
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 6px;
+  }
+
+  h2 {
+    color: var(--lidl-dark-blue);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 0;
+  }
+
+  /* Malý nadpis nad blokem — modrý, verzálky, výrazné prostrkání. */
+  .kicker {
+    color: var(--lidl-blue);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    margin: 0 0 5px;
+    text-transform: uppercase;
+  }
+
+  /* ── Tlačítka ───────────────────────────────────────────────────────── */
+
+  .button {
+    align-items: center;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 13px;
+    font-weight: 700;
+    gap: 7px;
+    justify-content: center;
+    min-height: 36px;
+    padding: 7px 14px;
+    transition: opacity 0.1s;
+  }
+
+  .button svg {
+    height: 15px;
+    width: 15px;
+  }
+
+  .button-primary {
+    background: var(--lidl-blue);
+    color: var(--white);
+  }
+
+  .button-primary:hover {
+    background: var(--lidl-dark-blue);
+  }
+
+  .button-secondary {
+    background: var(--white);
+    border-color: var(--line);
+    color: var(--lidl-dark-blue);
+  }
+
+  .button-secondary:hover {
+    background: var(--page);
+  }
+
+  .button:active {
+    opacity: 0.8;
+    transform: translateY(1px);
+  }
+
+  .button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+  }
+
+  /* Viditelné zaostření pro ovládání klávesnicí — nikdy nerušit bez náhrady. */
+  .button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible {
+    box-shadow: 0 0 0 3px rgba(0, 83, 179, 0.2);
+    outline: none;
+  }
+
+  /* ── Formulářové prvky ──────────────────────────────────────────────── */
+
+  label {
+    color: var(--muted);
+    display: grid;
+    font-size: 11px;
+    font-weight: 700;
+    gap: 6px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  input,
+  textarea {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 14px;
+    min-height: 38px;
+    padding: 9px 12px;
+    transition: border-color 0.15s;
+  }
+
+  input:focus,
+  textarea:focus {
+    border-color: var(--lidl-blue);
+    outline: none;
+  }
+
+  input::placeholder {
+    color: #c8cdd6;
+  }
+
+  input:disabled {
+    background: var(--page);
+    color: var(--muted);
+  }
+
+  /* Chybný vstup: červený rámeček + krátké zatřesení, aby si toho šlo všimnout. */
+  input.is-invalid,
+  input.is-invalid:focus {
+    animation: shake 0.35s ease;
+    border-color: var(--lidl-red);
+  }
+
+  input.is-invalid-placeholder::placeholder {
+    color: var(--lidl-red);
+    opacity: 1;
+  }
+
+  @keyframes shake {
+    0%   { transform: translateX(0); }
+    20%  { transform: translateX(-6px); }
+    40%  { transform: translateX(6px); }
+    60%  { transform: translateX(-4px); }
+    80%  { transform: translateX(4px); }
+    100% { transform: translateX(0); }
+  }
+
+  .form-row-2 {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Skupina souvisejících polí ve vlastním boxu s kickerem. */
+  .field-group {
+    background: var(--page);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    display: grid;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  .field-group .kicker {
+    margin-bottom: 0;
+  }
+
+  /* ── Brána (wizard a obrazovka bez přístupu) ────────────────────────── */
+
+  .gate {
+    align-items: center;
+    background-color: var(--lidl-blue);
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+    background-size: 28px 28px;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 48px 24px;
+  }
+
+  .gate-card {
+    background: var(--panel);
+    border-radius: var(--radius);
+    box-shadow: 0 24px 80px rgba(0, 20, 80, 0.28), 0 4px 16px rgba(0, 20, 80, 0.12);
+    max-width: 560px;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .gate-header {
+    align-items: center;
+    background-color: var(--lidl-dark-blue);
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 15px, rgba(255, 255, 255, 0.035) 15px, rgba(255, 255, 255, 0.035) 16px),
+      repeating-linear-gradient(90deg, transparent, transparent 15px, rgba(255, 255, 255, 0.035) 15px, rgba(255, 255, 255, 0.035) 16px);
+    display: flex;
+    gap: 14px;
+    overflow: hidden;
+    padding: 16px 22px;
+    position: relative;
+  }
+
+  /* Jemné světlo v rohu hlavičky — čistě dekorace, nesmí chytat kliknutí. */
+  .gate-header::before {
+    background:
+      radial-gradient(circle at 105% 120%, rgba(255, 240, 0, 0.18) 0%, transparent 45%),
+      radial-gradient(circle at 92% -20%, rgba(255, 255, 255, 0.06) 0%, transparent 40%);
+    content: "";
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+  }
+
+  .gate-header .gate-logo {
+    background: var(--white);
+    border-radius: var(--radius);
+    flex-shrink: 0;
+    height: 44px;
+    padding: 3px;
+    position: relative;
+    width: 44px;
+    z-index: 1;
+  }
+
+  .gate-header-text {
+    min-width: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .gate-header .kicker {
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 2px;
+  }
+
+  .gate-header h1 {
+    color: var(--white);
+    font-size: 18px;
+    margin: 0;
+  }
+
+  .gate-actions {
+    align-items: center;
+    background: #f5f8fc;
+    border-top: 1px solid var(--line-soft);
+    display: flex;
+    gap: 10px;
+    padding: 14px 22px;
+  }
+
+  .gate-actions #wizNext {
+    margin-left: auto;
+  }
+
+  /* Ve wizardu se tlačítko „Zpět" jen zneviditelní — kdyby zmizelo úplně,
+     poskočilo by tlačítko „Pokračovat" doleva. */
+  .gate-actions .is-invisible {
+    visibility: hidden;
+  }
+
+  .gate-note {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  .gate-warning {
+    background: #fde8e8;
+    border-left: 4px solid var(--lidl-red);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 10px 14px;
+  }
+
+  /* Řádek s ikonou, popiskem a hodnotou (e-mail, složka). */
+  .info-row {
+    align-items: center;
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    display: flex;
+    gap: 14px;
+    padding: 10px 14px;
+  }
+
+  .info-row svg {
+    color: var(--lidl-blue);
+    flex-shrink: 0;
+    height: 18px;
+    width: 18px;
+  }
+
+  .info-row > div {
+    min-width: 0;
+  }
+
+  .info-row > div > span {
+    color: var(--muted);
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+  }
+
+  .info-row strong {
+    display: block;
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── Wizard ─────────────────────────────────────────────────────────── */
+
+  .wizard-steps {
+    border-bottom: 1px solid var(--line-soft);
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 14px 22px;
+    transition: opacity 0.2s ease;
+  }
+
+  /* Během inicializace a na obrazovce úspěchu už kroky nedávají smysl. */
+  .gate-card[data-state="progress"] .wizard-steps,
+  .gate-card[data-state="success"] .wizard-steps {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .wizard-steps li {
+    align-items: center;
+    color: var(--muted);
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    font-size: 10px;
+    font-weight: 700;
+    gap: 5px;
+    letter-spacing: 0.04em;
+    position: relative;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  /* Spojnice mezi kroky — zmodrá, jakmile je předchozí krok hotový. */
+  .wizard-steps li + li::before {
+    background: var(--line-soft);
+    content: "";
+    height: 1px;
+    left: calc(-50% + 13px);
+    position: absolute;
+    right: calc(50% + 13px);
+    top: 12px;
+    transition: background 0.3s ease;
+  }
+
+  .wizard-steps li.is-done + li::before {
+    background: var(--lidl-blue);
+  }
+
+  .wizard-steps i {
+    align-items: center;
+    background: var(--line-soft);
+    border-radius: 50%;
+    color: var(--muted);
+    display: inline-flex;
+    flex-shrink: 0;
+    font-size: 11px;
+    font-style: normal;
+    height: 24px;
+    justify-content: center;
+    position: relative;
+    transition: background 0.2s ease, color 0.2s ease;
+    width: 24px;
+    z-index: 1;
+  }
+
+  .wizard-steps li.is-active {
+    color: var(--lidl-dark-blue);
+  }
+
+  .wizard-steps li.is-active i {
+    background: var(--lidl-yellow);
+    color: var(--lidl-dark-blue);
+  }
+
+  .wizard-steps li.is-done i {
+    background: var(--lidl-blue);
+    color: var(--white);
+  }
+
+  /* Pevná výška těla — karta pak mezi kroky „neposkakuje". */
+  .wizard-body {
+    height: 320px;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .wizard-panel {
+    display: none;
+  }
+
+  .wizard-panel.is-active {
+    display: grid;
+    gap: 16px;
+    padding: 20px 22px;
+  }
+
+  .wizard-panel label {
+    gap: 4px;
+  }
+
+  @keyframes wizSlideForward {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes wizSlideBack {
+    from { opacity: 0; transform: translateX(-20px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .wizard-body[data-dir="forward"] .wizard-panel.is-active {
+    animation: wizSlideForward 0.25s ease;
+  }
+
+  .wizard-body[data-dir="back"] .wizard-panel.is-active {
+    animation: wizSlideBack 0.25s ease;
+  }
+
+  /* Souhrn před dokončením. */
+  .summary-list {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+  }
+
+  .summary-list div {
+    align-items: baseline;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    padding-bottom: 8px;
+  }
+
+  .summary-list dt {
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .summary-list dd {
+    font-size: 13px;
+    font-weight: 700;
+    margin: 0;
+    text-align: right;
+    word-break: break-word;
+  }
+
+  /* Průběh inicializace — jednotlivé kroky s kolečkem a fajfkou. */
+  .wizard-progress {
+    display: grid;
+    gap: 6px;
+    justify-items: start;
+    padding: 4px 0;
+  }
+
+  .wizard-progress-title {
+    color: var(--muted);
+    font-size: 12px;
+    margin: 0 0 6px;
+  }
+
+  .wiz-step {
+    align-items: center;
+    color: var(--muted);
+    display: flex;
+    font-size: 13px;
+    gap: 12px;
+    padding: 6px 0;
+    transition: color 0.2s ease;
+    width: 100%;
+  }
+
+  .wiz-step.is-active,
+  .wiz-step.is-done {
+    color: var(--text);
+  }
+
+  .wiz-step-icon {
+    align-items: center;
+    border-radius: 50%;
+    display: inline-flex;
+    flex-shrink: 0;
+    height: 22px;
+    justify-content: center;
+    width: 22px;
+  }
+
+  .wiz-step .wiz-step-icon::after {
+    border: 2px solid var(--line-soft);
+    border-radius: 50%;
+    content: "";
+    display: block;
+    height: 14px;
+    transition: border-color 0.2s ease;
+    width: 14px;
+  }
+
+  .wiz-step.is-active .wiz-step-icon::after {
+    animation: spin 0.7s linear infinite;
+    border-color: var(--lidl-blue);
+    border-top-color: transparent;
+  }
+
+  .wiz-step.is-done .wiz-step-icon {
+    background: var(--lidl-blue);
+    color: var(--white);
+  }
+
+  .wiz-step.is-done .wiz-step-icon::after {
+    border: none;
+    color: var(--white);
+    content: "✓";
+    font-size: 11px;
+    font-weight: 700;
+    height: auto;
+    width: auto;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Obrazovka úspěchu. */
+  .wizard-success {
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+    padding: 10px 0 4px;
+    text-align: center;
+  }
+
+  .wizard-success .success-icon {
+    align-items: center;
+    background: var(--lidl-yellow);
+    border-radius: 50%;
+    color: var(--lidl-dark-blue);
+    display: inline-flex;
+    height: 52px;
+    justify-content: center;
+    margin-bottom: 4px;
+    width: 52px;
+  }
+
+  .wizard-success .success-icon svg {
+    height: 24px;
+    width: 24px;
+  }
+
+  .wizard-success h2 {
+    margin: 0;
+  }
+
+  .wizard-success a {
+    color: var(--lidl-blue);
+    font-weight: 700;
+  }
+
+  /* ── Přechodová obrazovka aplikace (fáze 1) ─────────────────────────── */
+
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  .app-main {
+    display: flex;
+    flex: 1;
+    justify-content: center;
+    padding: 48px 24px;
+  }
+
+  .app-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    display: grid;
+    gap: 14px;
+    height: fit-content;
+    max-width: 560px;
+    padding: 26px 28px;
+    width: 100%;
+  }
+
+  .app-card .info-row {
+    background: var(--white);
+  }
+
+  .app-footer {
+    align-items: center;
+    background: var(--white);
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    display: flex;
+    font-size: 11px;
+    gap: 10px;
+    justify-content: space-between;
+    padding: 10px 20px;
+  }
+
+  .app-footer strong {
+    color: var(--lidl-dark-blue);
+  }
+
+  /* ── Úvodní překryv při načítání ────────────────────────────────────── */
+
+  .loader {
+    align-items: center;
+    background: var(--lidl-blue);
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 24px 24px;
+    color: var(--white);
+    display: none;
+    inset: 0;
+    justify-content: center;
+    position: fixed;
+    z-index: 50;
+  }
+
+  .loader.is-visible {
+    display: flex;
+  }
+
+  .loader-inner {
+    align-items: center;
+    display: grid;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .loader-inner .loader-logo {
+    background: var(--white);
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    height: 110px;
+    margin-bottom: 28px;
+    padding: 6px;
+    width: 110px;
+  }
+
+  .loader-inner strong {
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .loader-inner span {
+    color: rgba(255, 255, 255, 0.7);
+    display: block;
+    font-size: 14px;
+    letter-spacing: 0.22em;
+    margin-top: 8px;
+  }
+
+  .loader-inner p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    margin: 44px 0 14px;
+    text-transform: uppercase;
+  }
+
+  .loader-dots {
+    display: flex;
+    gap: 10px;
+  }
+
+  .loader-dots i {
+    animation: dot 0.9s ease-in-out infinite;
+    background: var(--lidl-yellow);
+    border-radius: 50%;
+    display: block;
+    height: 10px;
+    width: 10px;
+  }
+
+  .loader-dots i:nth-child(2) { animation-delay: 0.15s; }
+  .loader-dots i:nth-child(3) { animation-delay: 0.3s; }
+
+  @keyframes dot {
+    0%, 100% { opacity: 0.35; transform: translateY(0); }
+    50%      { opacity: 1; transform: translateY(-6px); }
+  }
+
+  .loader-version {
+    bottom: 20px;
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 10px;
+    left: 0;
+    letter-spacing: 0.06em;
+    position: absolute;
+    right: 0;
+    text-align: center;
+  }
+
+  /* ── Hlášky (toasty) ────────────────────────────────────────────────── */
+
+  .toast-region {
+    bottom: 20px;
+    display: grid;
+    gap: 8px;
+    max-width: min(400px, calc(100vw - 32px));
+    position: fixed;
+    right: 20px;
+    z-index: 60;
+  }
+
+  .toast {
+    animation: toastIn 0.18s ease-out both;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--lidl-blue);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 28px rgba(0, 36, 102, 0.16);
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.45;
+    padding: 12px 16px;
+  }
+
+  .toast.is-error {
+    border-left-color: var(--lidl-red);
+  }
+
+  .toast.is-success {
+    border-left-color: var(--green);
+  }
+
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(10px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* ── Menší displeje ─────────────────────────────────────────────────── */
+
+  @media (max-width: 620px) {
+    .form-row-2 {
+      grid-template-columns: 1fr;
+    }
+
+    .gate {
+      padding: 20px 12px;
+    }
+  }
+</style>

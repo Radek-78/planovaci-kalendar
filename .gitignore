@@ -1,0 +1,17 @@
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Claude Code
+.claude/
+
+# Clasp / Apps Script — přihlašovací údaje, nikdy necommitovat
+.clasprc.json
+
+# Dočasné / OS
+thumbs.db
+desktop.ini
+*.tmp
+*.log
+node_modules/

@@ -1,0 +1,415 @@
+<!--
+  ══════════════════════════════════════════════════════════════════════════
+   view_wizard.html — úvodní průvodce prvním spuštěním
+  ══════════════════════════════════════════════════════════════════════════
+
+  Zobrazí se, dokud aplikace nemá databázi. Průvodce smí dokončit pouze
+  vlastník skriptu — UI to jen napoví, skutečnou kontrolu dělá server
+  v setupInitialize() (server/40_setup.js).
+
+  Kroky: 1 Uvítání → 2 Aplikace → 3 Správce → 4 Souhrn → průběh → hotovo
+-->
+<div class="gate">
+  <div class="gate-card">
+
+    <header class="gate-header">
+      <svg class="gate-logo" viewBox="0 0 115 115" aria-hidden="true"><use href="#i-lidl"></use></svg>
+      <div class="gate-header-text">
+        <p class="kicker">Průvodce nastavením</p>
+        <h1 id="wizTitle">Plánovací kalendář</h1>
+      </div>
+    </header>
+
+    <ol class="wizard-steps" id="wizSteps">
+      <li data-step="1" class="is-active"><i>1</i><span>Uvítání</span></li>
+      <li data-step="2"><i>2</i><span>Aplikace</span></li>
+      <li data-step="3"><i>3</i><span>Správce</span></li>
+      <li data-step="4"><i>4</i><span>Souhrn</span></li>
+    </ol>
+
+    <div class="wizard-body" id="wizBody">
+
+      <!-- Krok 1: uvítání a kontrola prostředí -->
+      <section class="wizard-panel is-active" data-panel="1">
+        <p class="gate-note">
+          Vítejte. Průvodce provede prvním spuštěním: ve složce, kde leží tento skript,
+          založí databázi (tabulku Google Sheets) a vytvoří účet správce aplikace.
+          Spustit ho může pouze vlastník skriptu.
+        </p>
+
+        <div class="info-row">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-user"></use></svg>
+          <div>
+            <span>Přihlášený účet</span>
+            <strong id="wizEmail">Zjišťuji…</strong>
+          </div>
+        </div>
+
+        <div class="info-row">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-folder"></use></svg>
+          <div>
+            <span>Databáze vznikne ve složce</span>
+            <strong id="wizFolder">Zjišťuji…</strong>
+          </div>
+        </div>
+
+        <div class="gate-warning is-hidden" id="wizWarning"></div>
+      </section>
+
+      <!-- Krok 2: název aplikace -->
+      <section class="wizard-panel" data-panel="2">
+        <div class="field-group">
+          <p class="kicker">Aplikace</p>
+          <label>
+            <span>Název aplikace *</span>
+            <input id="wizAppName" type="text" maxlength="60" placeholder="Plánovací kalendář" required>
+          </label>
+          <label>
+            <span>Podtitul</span>
+            <input id="wizAppSubtitle" type="text" maxlength="120" placeholder="Sdílený plánovací kalendář">
+          </label>
+        </div>
+        <p class="gate-note">
+          Název se zobrazuje v hlavičce aplikace a použije se i pro pojmenování databáze.
+          Později ho lze změnit v nastavení, název databáze v Drive ale zůstane původní.
+        </p>
+      </section>
+
+      <!-- Krok 3: správce aplikace -->
+      <section class="wizard-panel" data-panel="3">
+        <div class="field-group">
+          <p class="kicker">Správce aplikace</p>
+          <div class="form-row-2">
+            <label>
+              <span>Jméno *</span>
+              <input id="wizFirstName" type="text" maxlength="60" placeholder="Jan" required>
+            </label>
+            <label>
+              <span>Příjmení *</span>
+              <input id="wizLastName" type="text" maxlength="60" placeholder="Novák" required>
+            </label>
+          </div>
+          <label>
+            <span>E-mail</span>
+            <input id="wizEmailReadonly" type="text" disabled>
+          </label>
+        </div>
+        <p class="gate-note">
+          E-mail se přebírá z vašeho přihlášení a nelze ho změnit — účet, pod kterým
+          průvodce dokončíte, se stane správcem s plnými právy. Další uživatele
+          přidáte v aplikaci v sekci Uživatelé.
+        </p>
+      </section>
+
+      <!-- Krok 4: souhrn před dokončením -->
+      <section class="wizard-panel" data-panel="4">
+        <dl class="summary-list">
+          <div><dt>Název aplikace</dt><dd id="sumAppName">–</dd></div>
+          <div><dt>Podtitul</dt><dd id="sumAppSubtitle">–</dd></div>
+          <div><dt>Správce</dt><dd id="sumUser">–</dd></div>
+          <div><dt>E-mail správce</dt><dd id="sumEmail">–</dd></div>
+          <div><dt>Složka databáze</dt><dd id="sumFolder">–</dd></div>
+        </dl>
+        <p class="gate-note">
+          Po potvrzení vznikne databáze, zapíše se účet správce a aplikace bude
+          připravena k použití. Průvodce se už znovu nespustí.
+        </p>
+      </section>
+
+      <!-- Průběh inicializace -->
+      <section class="wizard-panel" data-panel="progress">
+        <div class="wizard-progress">
+          <p class="wizard-progress-title">Inicializuji aplikaci, chvíli to potrvá…</p>
+          <div class="wiz-step" data-wiz-step="db">
+            <span class="wiz-step-icon"></span><span>Vytvářím databázi…</span>
+          </div>
+          <div class="wiz-step" data-wiz-step="schema">
+            <span class="wiz-step-icon"></span><span>Zakládám listy a formátuji je…</span>
+          </div>
+          <div class="wiz-step" data-wiz-step="user">
+            <span class="wiz-step-icon"></span><span>Registruji správce…</span>
+          </div>
+          <div class="wiz-step" data-wiz-step="done">
+            <span class="wiz-step-icon"></span><span>Dokončuji…</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Hotovo -->
+      <section class="wizard-panel" data-panel="5">
+        <div class="wizard-success">
+          <span class="success-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"></use></svg></span>
+          <h2>Aplikace je připravena</h2>
+          <p class="gate-note">
+            Databáze byla vytvořena —
+            <a id="wizDbLink" href="#" target="_blank" rel="noopener">otevřít tabulku v Drive</a>.
+          </p>
+        </div>
+      </section>
+
+    </div>
+
+    <footer class="gate-actions">
+      <button class="button button-secondary is-invisible" type="button" id="wizBack">Zpět</button>
+      <button class="button button-primary" type="button" id="wizNext" disabled>Pokračovat</button>
+    </footer>
+
+  </div>
+</div>
+
+<script>
+  /**
+   * Průvodce prvním spuštěním.
+   *
+   * Stav drží v `step` (1–5). Krok 5 je obrazovka úspěchu, mezikrok „progress"
+   * se zobrazuje jen po dobu inicializace a nemá vlastní číslo.
+   */
+  const Wizard = {
+    /** Aktuální krok (1–5). */
+    step: 1,
+    /** URL aplikace, kam se po dokončení přesměruje. */
+    appUrl: null,
+    /** Je přihlášený uživatel vlastníkem skriptu? Dokud nevíme, nesmí se pokračovat. */
+    isOwner: false,
+    /** Údaje předané ze serveru v doGet (složka, výchozí názvy). */
+    info: (window.APP_BOOTSTRAP && window.APP_BOOTSTRAP.setup) || {},
+    /** Časovač animace kroků během inicializace. */
+    progressTimer: null,
+
+    init() {
+      Ui.setText('#wizFolder', this.info.folderName || 'Kořen „Můj disk"');
+
+      // Předvyplnění výchozími hodnotami z konfigurace.
+      document.querySelector('#wizAppName').value = this.info.defaultAppName || '';
+      document.querySelector('#wizAppSubtitle').value = this.info.defaultAppSubtitle || '';
+
+      document.querySelector('#wizBack').addEventListener('click', () => this.goTo(this.step - 1));
+      document.querySelector('#wizNext').addEventListener('click', () => this.next());
+
+      this.goTo(1);
+      this.loadAccount();
+    },
+
+    /**
+     * Dotáhne e-mail přihlášeného uživatele a cílovou složku.
+     *
+     * Nejde to udělat už v doGet — u nasazení „Execute as me" tam Apps Script
+     * přihlášeného uživatele nezná. Proto samostatné volání z prohlížeče.
+     */
+    loadAccount() {
+      Ui.call('wizardGetOwnerEmail', null, { silent: true })
+        .then((data) => this.onAccountLoaded(data))
+        .catch((error) => {
+          this.showWarning('Nepodařilo se ověřit váš účet: ' + error.message);
+        });
+    },
+
+    onAccountLoaded(data) {
+      this.info.email = data.email;
+      this.info.folderName = data.folderName;
+      this.isOwner = data.isOwner === true;
+
+      Ui.setText('#wizEmail', data.email || 'E-mail se nepodařilo zjistit');
+      Ui.setText('#wizFolder', data.folderName || 'Kořen „Můj disk"');
+      document.querySelector('#wizEmailReadonly').value = data.email || '';
+
+      if (!data.email) {
+        this.showWarning(
+          'Nepodařilo se zjistit váš e-mail. Otevřete aplikaci přihlášení firemním účtem, ' +
+          'pod kterým byl skript vytvořen.'
+        );
+        return;
+      }
+
+      if (!this.isOwner) {
+        this.showWarning(
+          'Aplikace zatím není připravena k použití. Prvotní nastavení může dokončit ' +
+          'pouze vlastník skriptu — obraťte se prosím na správce.'
+        );
+        return;
+      }
+
+      // Vše v pořádku, uživatel může pokračovat.
+      document.querySelector('#wizNext').disabled = false;
+    },
+
+    showWarning(message) {
+      const warning = document.querySelector('#wizWarning');
+      warning.textContent = message;
+      warning.classList.remove('is-hidden');
+      // Tlačítko zůstává zablokované — bez vlastníka nemá smysl pokračovat.
+      document.querySelector('#wizNext').disabled = true;
+    },
+
+    /** Tlačítko „Pokračovat" — validace aktuálního kroku a posun dál. */
+    next() {
+      // Krok 2: název aplikace je povinný.
+      if (this.step === 2) {
+        const appName = document.querySelector('#wizAppName');
+        if (!appName.value.trim()) {
+          this.markInvalid(appName, 'Název aplikace je povinný.');
+          return;
+        }
+      }
+
+      // Krok 3: jméno i příjmení jsou povinné.
+      if (this.step === 3) {
+        const firstName = document.querySelector('#wizFirstName');
+        const lastName = document.querySelector('#wizLastName');
+        if (!firstName.value.trim()) {
+          this.markInvalid(firstName, 'Jméno je povinné.');
+          return;
+        }
+        if (!lastName.value.trim()) {
+          this.markInvalid(lastName, 'Příjmení je povinné.');
+          return;
+        }
+        this.fillSummary();
+      }
+
+      // Krok 4: potvrzení → spuštění inicializace.
+      if (this.step === 4) {
+        this.initialize();
+        return;
+      }
+
+      // Krok 5: hotovo → přechod do aplikace.
+      if (this.step === 5) {
+        window.location.href = this.appUrl || window.location.href;
+        return;
+      }
+
+      this.goTo(this.step + 1);
+    },
+
+    /** Naplní souhrn hodnotami z formulářů. */
+    fillSummary() {
+      const subtitle = document.querySelector('#wizAppSubtitle').value.trim();
+      const firstName = document.querySelector('#wizFirstName').value.trim();
+      const lastName = document.querySelector('#wizLastName').value.trim();
+
+      Ui.setText('#sumAppName', document.querySelector('#wizAppName').value.trim());
+      Ui.setText('#sumAppSubtitle', subtitle || '–');
+      Ui.setText('#sumUser', (firstName + ' ' + lastName).trim());
+      Ui.setText('#sumEmail', this.info.email || '–');
+      Ui.setText('#sumFolder', this.info.folderName || 'Kořen „Můj disk"');
+    },
+
+    /** Přepne na daný krok a upraví ovládací tlačítka. */
+    goTo(step, direction) {
+      const previous = this.step;
+      this.step = Math.min(Math.max(step, 1), 5);
+
+      const body = document.querySelector('#wizBody');
+      body.dataset.dir = direction || (this.step >= previous ? 'forward' : 'back');
+
+      document.querySelectorAll('.wizard-panel').forEach((panel) => {
+        panel.classList.toggle('is-active', Number(panel.dataset.panel) === this.step);
+      });
+
+      document.querySelectorAll('#wizSteps li').forEach((item) => {
+        const index = Number(item.dataset.step);
+        item.classList.toggle('is-active', index === this.step);
+        item.classList.toggle('is-done', index < this.step);
+      });
+
+      document.querySelector('.gate-card').dataset.state = this.step === 5 ? 'success' : '';
+
+      // „Zpět" nedává smysl na prvním kroku ani po dokončení.
+      const back = document.querySelector('#wizBack');
+      back.classList.toggle('is-invisible', this.step === 1 || this.step === 5);
+
+      const next = document.querySelector('#wizNext');
+      Ui.setButtonLoading(next, false);
+      next.disabled = this.step === 1 && !this.isOwner;
+      next.textContent =
+        this.step === 4 ? 'Vytvořit aplikaci' :
+        this.step === 5 ? 'Spustit aplikaci' : 'Pokračovat';
+    },
+
+    /** Zobrazí panel s průběhem inicializace. */
+    showProgress() {
+      document.querySelector('#wizBody').dataset.dir = 'forward';
+      document.querySelectorAll('.wizard-panel').forEach((panel) => {
+        panel.classList.toggle('is-active', panel.dataset.panel === 'progress');
+      });
+      document.querySelector('.gate-card').dataset.state = 'progress';
+      document.querySelector('#wizBack').classList.add('is-invisible');
+    },
+
+    /**
+     * Odešle data na server a vytvoří aplikaci.
+     *
+     * Kroky v panelu průběhu jsou jen vizuální — server je jedno volání
+     * a nehlásí dílčí postup. Animace proto běží na časovači a všechny kroky
+     * se dokončí, jakmile dorazí odpověď.
+     */
+    initialize() {
+      const next = document.querySelector('#wizNext');
+      Ui.setButtonLoading(next, true, 'Vytvářím…');
+      this.showProgress();
+
+      const steps = Array.from(document.querySelectorAll('.wiz-step'));
+      const animated = steps.filter((step) => step.dataset.wizStep !== 'done');
+      const doneStep = steps[steps.length - 1];
+
+      let index = 0;
+      animated[0].classList.add('is-active');
+      this.progressTimer = setInterval(() => {
+        if (index >= animated.length - 1) return;
+        animated[index].classList.remove('is-active');
+        animated[index].classList.add('is-done');
+        index += 1;
+        animated[index].classList.add('is-active');
+      }, 1500);
+
+      Ui.call('setupInitialize', {
+        appName: document.querySelector('#wizAppName').value.trim(),
+        appSubtitle: document.querySelector('#wizAppSubtitle').value.trim(),
+        firstName: document.querySelector('#wizFirstName').value.trim(),
+        lastName: document.querySelector('#wizLastName').value.trim(),
+      }, { silent: true })
+        .then((result) => {
+          clearInterval(this.progressTimer);
+          animated.forEach((step) => {
+            step.classList.remove('is-active');
+            step.classList.add('is-done');
+          });
+
+          this.appUrl = result.appUrl;
+          document.querySelector('#wizDbLink').href = result.spreadsheetUrl;
+
+          doneStep.classList.add('is-done');
+          setTimeout(() => this.goTo(5), 500);
+        })
+        .catch((error) => {
+          clearInterval(this.progressTimer);
+          steps.forEach((step) => step.classList.remove('is-active', 'is-done'));
+          // Návrat na souhrn, ať může uživatel opravit vstupy a zkusit znovu.
+          this.goTo(4, 'back');
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    /**
+     * Označí pole jako chybné: červený rámeček, zatřesení a hláška
+     * dočasně v placeholderu — uživatel ji vidí přímo u pole, kterého se týká.
+     */
+    markInvalid(input, message) {
+      const original = input.placeholder;
+
+      input.classList.remove('is-invalid');
+      void input.offsetWidth; // vynutí restart animace i při opakované chybě
+      input.classList.add('is-invalid', 'is-invalid-placeholder');
+      input.placeholder = message;
+      input.focus();
+
+      const restore = () => {
+        input.classList.remove('is-invalid', 'is-invalid-placeholder');
+        input.placeholder = original;
+      };
+      input.addEventListener('input', restore, { once: true });
+      setTimeout(restore, 4000);
+    },
+  };
+</script>

@@ -1,0 +1,159 @@
+<script>
+  /**
+   * ════════════════════════════════════════════════════════════════════════
+   *  core.html — sdílené jádro frontendu
+   * ════════════════════════════════════════════════════════════════════════
+   *
+   * Volání serveru, překryv při načítání, hlášky a drobné pomocné funkce.
+   * Žádná aplikační logika — ta patří do view_* souborů.
+   */
+  const Ui = {
+    loader: null,
+    toastRegion: null,
+
+    /** Najde sdílené prvky stránky. Volá se jednou po načtení DOM. */
+    init() {
+      this.loader = document.querySelector('#appLoader');
+      this.toastRegion = document.querySelector('#toastRegion');
+    },
+
+    /* ────────────────────────────────────────────────────────────────────
+       VOLÁNÍ SERVERU
+
+       Server vrací obálku { ok, data, error } (viz server/10_util.js).
+       Ui.call ji rozbalí: při úspěchu vrátí `data`, při chybě vyhodí Error
+       s textem, který server označil za bezpečný pro uživatele.
+
+       Volání se tedy dá řetězit obvyklým způsobem:
+         Ui.call('apiGetBootstrap')
+           .then((data) => ...)
+           .catch((error) => Ui.toast(error.message, 'error'));
+       ──────────────────────────────────────────────────────────────────── */
+
+    /**
+     * @param {string} functionName název serverové funkce
+     * @param {*} [payload]         jediný argument předaný funkci
+     * @param {Object} [options]    { silent: true } = nezobrazovat překryv
+     * @returns {Promise<*>}
+     */
+    call(functionName, payload, options) {
+      const settings = options || {};
+      if (!settings.silent) this.showLoader();
+
+      return new Promise((resolve, reject) => {
+        const runner = google.script.run
+          .withSuccessHandler((result) => {
+            if (!settings.silent) this.hideLoader();
+
+            if (result && result.ok) {
+              resolve(result.data);
+            } else {
+              reject(new Error((result && result.error) || 'Neznámá chyba serveru.'));
+            }
+          })
+          .withFailureHandler((error) => {
+            if (!settings.silent) this.hideLoader();
+            // Sem se dostane jen selhání samotného přenosu (výpadek sítě,
+            // vypršelé přihlášení) — aplikační chyby chodí v obálce výše.
+            reject(new Error(
+              (error && error.message) ||
+              'Spojení se serverem selhalo. Zkontrolujte připojení a zkuste to znovu.'
+            ));
+          });
+
+        // Funkci bez parametrů je nutné volat opravdu bez argumentu.
+        // google.script.run odmítá předané `undefined` chybou
+        // „The parameters (undefined) don't match the method signature".
+        if (payload === undefined || payload === null) {
+          runner[functionName]();
+        } else {
+          runner[functionName](payload);
+        }
+      });
+    },
+
+    /* ── Překryv při načítání ──────────────────────────────────────────── */
+
+    showLoader() {
+      if (this.loader) this.loader.classList.add('is-visible');
+    },
+
+    hideLoader() {
+      if (this.loader) this.loader.classList.remove('is-visible');
+    },
+
+    /* ── Hlášky ────────────────────────────────────────────────────────── */
+
+    /**
+     * Krátká hláška v pravém dolním rohu.
+     * @param {string} message text hlášky
+     * @param {string} [type]  'error' | 'success' | jinak neutrální
+     */
+    toast(message, type) {
+      if (!this.toastRegion) return;
+
+      const node = document.createElement('div');
+      node.className = 'toast' + (type ? ' is-' + type : '');
+      // textContent, ne innerHTML — text může pocházet z chybové hlášky
+      // serveru a nesmí se interpretovat jako HTML.
+      node.textContent = message;
+      this.toastRegion.appendChild(node);
+
+      // Chybu necháme na obrazovce déle — uživatel si ji má stihnout přečíst.
+      setTimeout(() => node.remove(), type === 'error' ? 7000 : 3600);
+    },
+
+    /* ── Drobné pomůcky ────────────────────────────────────────────────── */
+
+    /** Nastaví textový obsah prvku (bezpečně, bez interpretace HTML). */
+    setText(selector, value) {
+      const node = document.querySelector(selector);
+      if (node) node.textContent = value === null || value === undefined ? '' : String(value);
+    },
+
+    /**
+     * Přepne tlačítko do stavu „pracuji" a zpět.
+     * Zablokované tlačítko zároveň brání dvojímu odeslání formuláře.
+     */
+    setButtonLoading(button, isLoading, label) {
+      if (!button) return;
+
+      if (isLoading) {
+        button.dataset.originalText = button.textContent;
+        button.textContent = label || 'Pracuji…';
+        button.disabled = true;
+      } else {
+        if (button.dataset.originalText) button.textContent = button.dataset.originalText;
+        button.disabled = false;
+      }
+    },
+
+    /**
+     * Escapuje text před vložením do HTML.
+     *
+     * Používat VŽDY, když se uživatelský text skládá do innerHTML. Kde to jde,
+     * je lepší textContent — ten escapuje sám a nedá se na něj zapomenout.
+     */
+    escape(value) {
+      return String(value === null || value === undefined ? '' : value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    },
+  };
+
+  /**
+   * Spuštění stránky. Podle atributu data-page na <body> se nastartuje
+   * buď průvodce, nebo aplikace — každý si svůj objekt definuje ve svém
+   * view_* souboru.
+   */
+  document.addEventListener('DOMContentLoaded', () => {
+    Ui.init();
+
+    const page = document.body.dataset.page;
+    if (page === 'wizard' && typeof Wizard !== 'undefined') Wizard.init();
+    if (page === 'app' && typeof App !== 'undefined') App.init();
+  });
+</script>

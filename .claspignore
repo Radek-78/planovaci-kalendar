@@ -1,0 +1,6 @@
+tools/**
+.claude/**
+.git/**
+*.md
+.gitignore
+.claspignore
