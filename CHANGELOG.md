@@ -6,8 +6,8 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.3 - 01.09.2026 15:11
-- Automaticky presmerovani po wizardu nefungovalo spolehlive (prohlizec odmita i location.reload spusteny casovacem bez kliknuti)
-- vraceno na overeny vzor z Vychozi aplikace 2.0 - prechod do aplikace vyhradne na klik uzivatele
+- Automatické přesměrování po wizardu nefungovalo spolehlivě (prohlížeč odmítá i location.reload spuštěný časovačem bez kliknutí)
+- Vráceno na ověřený vzor z Výchozí aplikace 2.0 — přechod do aplikace výhradně na klik uživatele
 
 ## v0.1.2 - 01.09.2026 15:07
 - Oprava: přesměrování z wizardu do aplikace po dokončení selhávalo chybou „script.google.com odmítl připojení", protože běželo z časovače bez kliknutí uživatele
