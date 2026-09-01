@@ -3,53 +3,101 @@
    view_app.html — obrazovka aplikace
   ══════════════════════════════════════════════════════════════════════════
 
-  FÁZE 1: přechodová obrazovka. Ověřuje, že celý řetězec funguje —
-  přihlášení → guard_ → oprávnění → načtení nastavení z databáze — a ukazuje,
-  koho aplikace vidí a co smí. Zároveň slouží jako obrazovka „bez přístupu"
-  pro uživatele, který v tabulce `_users` není.
+  Skutečný shell aplikace: postranní menu (Kalendář / Uživatelé / Nastavení
+  podle oprávnění) + hlavní obsah. Zároveň obsahuje obrazovku „bez přístupu"
+  pro uživatele, který v tabulce `_users` není nebo je neaktivní.
 
-  FÁZE 2 tento soubor nahradí skutečným rozhraním (sidebar Kalendář /
-  Uživatelé / Nastavení) a obrazovka bez přístupu se osamostatní
-  do ui/view_noaccess.html.
+  ROZSAH TOHOTO KROKU — jen základní vzhled, bez napojení na data:
+    - sidebar: funkční přepínání panelů, karta přihlášeného uživatele
+    - kalendář: skutečná měsíční mřížka (data, čísla týdnů, dnešek/víkend/
+      jiný měsíc/minulost), navigace mezi měsíci
+    - Uživatelé a Nastavení: zatím jen prázdný placeholder
+
+  Co v tomto kroku ZÁMĚRNĚ chybí (přijde v dalším kroku spolu s apiGetEvents):
+    - načtení a vykreslení událostí (chipy v mřížce)
+    - klik na den → modal s detailem dne
+    - zvýraznění státních svátků — čeká na editovatelný seznam v Nastavení
+      (viz SPECIFIKACE.md, žádný dočasný hardcoded seznam)
+    - souhrn počtu událostí v hlavičce
 -->
-<div class="app-shell">
 
-  <main class="app-main">
+<!-- ══ Aplikace (přístup povolen) ══ -->
+<div class="app is-hidden" id="appShell">
 
-    <!-- Uživatel má přístup -->
-    <div class="app-card is-hidden" id="appWelcome">
-      <div>
-        <p class="kicker">Aplikace je připravena</p>
-        <h1 id="appTitle">Plánovací kalendář</h1>
-        <p class="gate-note" id="appSubtitle"></p>
-      </div>
-
-      <!-- Profil přihlášeného uživatele: avatar s iniciálami, jméno, barevný
-           odznak role a e-mail — nahrazuje tři samostatné ploché boxy z fáze 1. -->
-      <div class="app-profile">
-        <div class="app-avatar" id="appAvatar" aria-hidden="true">–</div>
-        <div class="app-profile-text">
-          <div class="app-profile-name-row">
-            <strong id="appUserName">–</strong>
-            <span class="role-badge" id="appUserRoleBadge">–</span>
-          </div>
-          <span class="app-profile-email" id="appUserEmail">–</span>
-        </div>
-      </div>
-
-      <div>
-        <p class="kicker">Vaše oprávnění</p>
-        <ul class="rights-list" id="appUserRights"></ul>
-      </div>
-
-      <p class="gate-note">
-        Databáze je založená a oprávnění fungují. Kalendář, správa uživatelů
-        a nastavení přibudou v dalších fázích vývoje.
-      </p>
+  <aside class="sidebar">
+    <div class="brand">
+      <svg class="brand-logo" viewBox="0 0 115 115" aria-hidden="true"><use href="#i-lidl"></use></svg>
+      <span class="brand-text">
+        <strong id="sidebarAppName">Plánovací kalendář</strong>
+        <small id="sidebarAppSubtitle"></small>
+      </span>
     </div>
 
-    <!-- Uživatel nemá přístup -->
-    <div class="app-card is-hidden" id="appNoAccess">
+    <nav class="navigation" aria-label="Hlavní navigace">
+      <button class="nav-link is-active" type="button" data-section="calendar">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"></use></svg><span>Kalendář</span>
+      </button>
+      <button class="nav-link" type="button" data-section="users" id="navUsers">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-users"></use></svg><span>Uživatelé</span>
+      </button>
+      <button class="nav-link" type="button" data-section="settings" id="navSettings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-settings"></use></svg><span>Nastavení</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-user">
+      <span class="avatar" id="sidebarAvatar">–</span>
+      <span>
+        <strong id="sidebarUserName">–</strong>
+        <small id="sidebarUserRole">–</small>
+      </span>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- Panel: Kalendář -->
+    <section class="view-panel is-active" data-page-section="calendar">
+      <div class="cal-header">
+        <div class="cal-nav">
+          <button class="cal-nav-btn" type="button" id="calPrev" aria-label="Předchozí měsíc">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-left"></use></svg>
+          </button>
+          <button class="cal-nav-today" type="button" id="calToday">Dnes</button>
+          <button class="cal-nav-btn" type="button" id="calNext" aria-label="Následující měsíc">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+          </button>
+          <span class="cal-month-label" id="calMonthLabel"></span>
+        </div>
+      </div>
+      <div class="cal-grid-wrap">
+        <div class="cal-grid" id="calGrid"><!-- vykresleno JS --></div>
+      </div>
+    </section>
+
+    <!-- Panel: Uživatelé (placeholder — plná funkce ve fázi 5) -->
+    <section class="view-panel" data-page-section="users">
+      <div class="view-placeholder">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-users"></use></svg>
+        <p>Tato sekce bude dostupná v další fázi vývoje.</p>
+      </div>
+    </section>
+
+    <!-- Panel: Nastavení (placeholder — plná funkce ve fázi 5) -->
+    <section class="view-panel" data-page-section="settings">
+      <div class="view-placeholder">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-settings"></use></svg>
+        <p>Tato sekce bude dostupná v další fázi vývoje.</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ══ Uživatel nemá přístup ══ -->
+<div class="app-shell is-hidden" id="appNoAccessShell">
+  <main class="app-main">
+    <div class="app-card" id="appNoAccess">
       <div>
         <p class="kicker">Přístup zamítnut</p>
         <h1>Nemáte přístup</h1>
@@ -60,23 +108,22 @@
         účtem — pod jiným účtem vás aplikace nepozná.
       </p>
     </div>
-
   </main>
 
   <footer class="app-footer">
     <span id="appFooterName">Plánovací kalendář</span>
     <span>Verze <strong id="appFooterVersion">–</strong></span>
   </footer>
-
 </div>
 
 <script>
   /**
-   * Obrazovka aplikace (fáze 1).
+   * Obrazovka aplikace.
    *
-   * Jediné, co dělá: zavolá apiGetBootstrap a podle výsledku zobrazí buď
-   * uvítání s přehledem oprávnění, nebo obrazovku bez přístupu. Rozhodnutí
-   * o právech přichází ze serveru — klient si ho nikdy nepočítá sám.
+   * init() zavolá apiGetBootstrap a podle výsledku zobrazí buď celý shell
+   * (sidebar + kalendář), nebo obrazovku bez přístupu. Oprávnění vždy
+   * přichází ze serveru — klient si je nikdy nepočítá sám, jen podle nich
+   * skrývá položky menu (viz onBootstrap).
    */
   const App = {
     /** Popisky rolí pro zobrazení. Klíče odpovídají ROLES v server/00_config.js. */
@@ -86,57 +133,134 @@
       USER: 'Uživatel',
     },
 
+    /** Názvy měsíců a dnů pro vykreslení mřížky (český kalendář, pondělí první). */
+    MONTH_NAMES: ['leden', 'únor', 'březen', 'duben', 'květen', 'červen',
+      'červenec', 'srpen', 'září', 'říjen', 'listopad', 'prosinec'],
+    DAY_NAMES: ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'],
+
+    /** Měsíc aktuálně zobrazený v mřížce (den se nepoužívá, jen měsíc/rok). */
+    calDate: new Date(),
+
     init() {
       const boot = window.APP_BOOTSTRAP || {};
-
-      // Verze a název ve footeru se ukážou hned — nezávisí na volání serveru.
-      Ui.setText('#appFooterVersion', boot.version || '–');
-      Ui.setText('#appFooterName', boot.appName || 'Plánovací kalendář');
-
       Ui.call('apiGetBootstrap')
-        .then((data) => this.showWelcome(data))
-        .catch((error) => this.showNoAccess(error.message));
+        .then((data) => this.onBootstrap(data))
+        .catch((error) => this.showNoAccess(error.message, boot));
     },
 
-    showWelcome(data) {
-      Ui.setText('#appTitle', data.settings.appName);
-      Ui.setText('#appSubtitle', data.settings.appSubtitle);
-      Ui.setText('#appFooterName', data.settings.appName);
-      Ui.setText('#appFooterVersion', data.version);
-
-      Ui.setText('#appUserName', data.user.fullName);
-      Ui.setText('#appUserEmail', data.user.email);
-      Ui.setText('#appAvatar', this.initials(data.user.fullName || data.user.email));
+    onBootstrap(data) {
+      Ui.setText('#sidebarAppName', data.settings.appName);
+      Ui.setText('#sidebarAppSubtitle', data.settings.appSubtitle);
+      Ui.setText('#sidebarAvatar', this.initials(data.user.fullName || data.user.email));
+      Ui.setText('#sidebarUserName', data.user.fullName);
 
       const roleLabel = this.ROLE_LABELS[data.user.role] || data.user.role;
       const permissionLabel = data.user.role === 'USER'
         ? (data.user.permission === 'EDITOR' ? 'zápis' : 'jen čtení')
         : null; // ADMIN/SUPERADMIN mají vždy plný zápis — netřeba zvlášť vypisovat.
+      Ui.setText('#sidebarUserRole', permissionLabel ? roleLabel + ' · ' + permissionLabel : roleLabel);
 
-      const badge = document.querySelector('#appUserRoleBadge');
-      badge.textContent = permissionLabel ? roleLabel + ' · ' + permissionLabel : roleLabel;
-      badge.className = 'role-badge' +
-        (data.user.role === 'ADMIN' ? ' is-admin' : data.user.role === 'USER' ? ' is-user' : '');
+      // Položky menu, na které uživatel nemá právo, se v sidebaru vůbec
+      // nezobrazí — server o právu už rozhodl, klient jen skrývá odkaz na
+      // sekci, kterou by stejně nesměl otevřít.
+      if (!data.permissions.canManageUsers) document.querySelector('#navUsers').classList.add('is-hidden');
+      if (!data.permissions.canManageSettings) document.querySelector('#navSettings').classList.add('is-hidden');
 
-      // Srozumitelný výčet toho, co uživatel smí — přesně podle práv ze serveru,
-      // vykreslený jako seznam s fajfkou u každé položky.
-      const rights = ['čtení kalendáře'];
-      if (data.permissions.canWrite) rights.push('vytváření vlastních událostí');
-      if (data.permissions.canManageForeignEvents) rights.push('úpravy cizích událostí');
-      if (data.permissions.canManageUsers) rights.push('správa uživatelů');
-      if (data.permissions.canManageSettings) rights.push('nastavení aplikace');
+      this.bindNav();
+      this.renderCalendar();
 
-      document.querySelector('#appUserRights').innerHTML = rights
-        .map((right) => '<li><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"></use></svg>' +
-          Ui.escape(right) + '</li>')
-        .join('');
-
-      document.querySelector('#appWelcome').classList.remove('is-hidden');
+      document.querySelector('#appShell').classList.remove('is-hidden');
     },
 
-    showNoAccess(message) {
+    /** Přepínání panelů kliknutím v postranním menu a navigace v kalendáři. */
+    bindNav() {
+      document.querySelectorAll('.nav-link').forEach((button) => {
+        button.addEventListener('click', () => this.showSection(button.dataset.section));
+      });
+      document.querySelector('#calPrev').addEventListener('click', () => this.navigateMonth(-1));
+      document.querySelector('#calNext').addEventListener('click', () => this.navigateMonth(1));
+      document.querySelector('#calToday').addEventListener('click', () => {
+        this.calDate = new Date();
+        this.renderCalendar();
+      });
+    },
+
+    showSection(name) {
+      document.querySelectorAll('.nav-link').forEach((item) => {
+        item.classList.toggle('is-active', item.dataset.section === name);
+      });
+      document.querySelectorAll('[data-page-section]').forEach((section) => {
+        section.classList.toggle('is-active', section.dataset.pageSection === name);
+      });
+    },
+
+    navigateMonth(delta) {
+      this.calDate = new Date(this.calDate.getFullYear(), this.calDate.getMonth() + delta, 1);
+      this.renderCalendar();
+    },
+
+    /**
+     * Vykreslí měsíční mřížku — zatím jen vizuální kostra (viz komentář
+     * v hlavičce souboru). Mřížka je vždy 6 týdnů × 7 dní, pondělí první,
+     * se sloupcem čísel kalendářních týdnů vlevo.
+     */
+    renderCalendar() {
+      const year = this.calDate.getFullYear();
+      const month = this.calDate.getMonth();
+      Ui.setText('#calMonthLabel', this.MONTH_NAMES[month] + ' ' + year);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const first = new Date(year, month, 1);
+      const startOffset = (first.getDay() + 6) % 7; // pondělí = 0
+      const gridStart = new Date(year, month, 1 - startOffset);
+      const todayWeek = this.isoWeek(today);
+
+      let html = '<div class="cal-weekhead"></div>';
+      this.DAY_NAMES.forEach((day) => { html += '<div class="cal-dayhead">' + day + '</div>'; });
+
+      for (let row = 0; row < 6; row++) {
+        const rowStart = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + row * 7);
+        const weekNum = this.isoWeek(rowStart);
+        const isCurrentWeek = weekNum === todayWeek && rowStart.getFullYear() === today.getFullYear();
+        html += '<div class="cal-weeknum-cell"><span class="cal-weeknum-chip' +
+          (isCurrentWeek ? ' is-current-week' : '') + '">KT<b>' + weekNum + '</b></span></div>';
+
+        for (let col = 0; col < 7; col++) {
+          const cellDate = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + row * 7 + col);
+          const isOtherMonth = cellDate.getMonth() !== month;
+          const isWeekend = col >= 5;
+          const isToday = cellDate.getTime() === today.getTime();
+          const isPast = cellDate.getTime() < today.getTime();
+
+          const cls = 'cal-cell' +
+            (isOtherMonth ? ' is-other-month' : '') +
+            (isWeekend ? ' is-weekend' : '') +
+            (isToday ? ' is-today' : '') +
+            (isPast ? ' is-past' : '');
+
+          html += '<div class="' + cls + '"><span class="cal-daynum">' + cellDate.getDate() + '</span></div>';
+        }
+      }
+
+      document.querySelector('#calGrid').innerHTML = html;
+    },
+
+    /** Číslo ISO kalendářního týdne pro dané datum. */
+    isoWeek(date) {
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    },
+
+    showNoAccess(message, boot) {
+      Ui.setText('#appFooterName', boot.appName || 'Plánovací kalendář');
+      Ui.setText('#appFooterVersion', boot.version || '–');
       Ui.setText('#appNoAccessMessage', message);
-      document.querySelector('#appNoAccess').classList.remove('is-hidden');
+      document.querySelector('#appNoAccessShell').classList.remove('is-hidden');
     },
 
     /** Iniciály pro avatar — ze jména, nebo z e-mailu, když jméno chybí. */

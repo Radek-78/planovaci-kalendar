@@ -189,6 +189,14 @@ existující databáze — oprava tedy nevyžaduje zakládat databázi znovu.
 | `holidaysEnabled` | zvýrazňovat státní svátky | `true` |
 | `pastEditAdminOnly` | proběhlou událost smí měnit jen admin | `true` |
 
+> **Rozhodnutí (1. 9. 2026):** svátky NEBUDOU pevný seznam v kódu. Uživatel
+> chce vlastní editovatelný seznam v sekci Nastavení — přibude samostatná
+> tabulka (např. `holidays`: `id, date, name, movable, offset, active`) a
+> dvojice endpointů `apiGetHolidays` / `apiSaveHolidays`. Řeší se až ve
+> fázi 5 (Nastavení) spolu s `holidaysEnabled` — do té doby kalendář
+> zvýraznění svátků vůbec nezobrazuje (žádný hardcoded seznam jako dočasná
+> náhrada, aby nevznikla data, která se pak musí rušit).
+
 ---
 
 ## 6. Role a oprávnění

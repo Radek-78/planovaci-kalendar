@@ -34,6 +34,7 @@
 
     --radius: 6px;
     --shadow: 0 2px 12px rgba(0, 36, 102, 0.08);
+    --sidebar-width: 220px;
 
     /* Firemní font s náhradami pro počítače, kde nainstalovaný není. */
     --font: "Lidl Font Cond Pro", "Lidl Font Pro", "Aptos", "Segoe UI", sans-serif;
@@ -663,7 +664,7 @@
     font-weight: 700;
   }
 
-  /* ── Přechodová obrazovka aplikace (fáze 1) ─────────────────────────── */
+  /* ── Obrazovka „bez přístupu" — centrovaná karta ─────────────────────── */
 
   .app-shell {
     display: flex;
@@ -691,107 +692,6 @@
     width: 100%;
   }
 
-  /* Profil přihlášeného uživatele — avatar s iniciálami, jméno, odznak role, e-mail. */
-  .app-profile {
-    align-items: center;
-    display: flex;
-    gap: 14px;
-  }
-
-  .app-avatar {
-    align-items: center;
-    background: var(--lidl-blue);
-    border-radius: 50%;
-    color: var(--white);
-    display: flex;
-    flex-shrink: 0;
-    font-size: 15px;
-    font-weight: 700;
-    height: 46px;
-    justify-content: center;
-    letter-spacing: 0.02em;
-    width: 46px;
-  }
-
-  .app-profile-text {
-    min-width: 0;
-  }
-
-  .app-profile-name-row {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .app-profile-name-row strong {
-    color: var(--lidl-dark-blue);
-    font-size: 15px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .app-profile-email {
-    color: var(--muted);
-    display: block;
-    font-size: 12px;
-    margin-top: 2px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* Barevný odznak role — žlutá pro superadmina (stejně jako aktivní položka
-     v postranním menu ve Výchozí aplikaci 2.0), modrá pro admina, neutrální
-     pro běžného uživatele. */
-  .role-badge {
-    background: var(--lidl-yellow);
-    border-radius: 999px;
-    color: var(--lidl-dark-blue);
-    flex-shrink: 0;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    padding: 3px 10px;
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
-
-  .role-badge.is-admin {
-    background: var(--lidl-blue);
-    color: var(--white);
-  }
-
-  .role-badge.is-user {
-    background: var(--line-soft);
-    color: var(--lidl-dark-blue);
-  }
-
-  /* Výčet oprávnění jako seznam s fajfkou — čitelnější než věta se čárkami. */
-  .rights-list {
-    display: grid;
-    gap: 8px;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .rights-list li {
-    align-items: center;
-    color: var(--text);
-    display: flex;
-    font-size: 13px;
-    gap: 9px;
-  }
-
-  .rights-list li svg {
-    color: var(--green);
-    flex-shrink: 0;
-    height: 15px;
-    width: 15px;
-  }
-
   .app-footer {
     align-items: center;
     background: var(--white);
@@ -806,6 +706,376 @@
 
   .app-footer strong {
     color: var(--lidl-dark-blue);
+  }
+
+  /* ── Aplikace (přístup povolen) — sidebar + hlavní obsah ─────────────
+     Vzhled portován z Výchozí aplikace 2.0 (ui/styles.html), aby si obě
+     aplikace vizuálně odpovídaly. Rozdíl oproti šabloně: bez sbalitelného
+     sidebaru (sidebar-toggle) — se třemi položkami menu nemá smysl. ── */
+
+  .app {
+    display: grid;
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    background: var(--lidl-dark-blue);
+    color: var(--white);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow-y: auto;
+    position: sticky;
+    top: 0;
+  }
+
+  .brand {
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 36px minmax(0, 1fr);
+    min-height: 58px;
+    padding: 10px 11px;
+  }
+
+  .brand-logo {
+    display: block;
+    height: 36px;
+    width: 36px;
+  }
+
+  .brand-text {
+    min-width: 0;
+  }
+
+  .brand-text strong {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .brand-text small {
+    color: rgba(255, 255, 255, 0.55);
+    display: block;
+    font-size: 11px;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .navigation {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 10px;
+  }
+
+  .nav-link {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius);
+    color: rgba(255, 255, 255, 0.72);
+    cursor: pointer;
+    display: flex;
+    font-size: 14px;
+    gap: 10px;
+    min-height: 40px;
+    padding: 9px 10px;
+    text-align: left;
+    transition: background 0.12s, color 0.12s;
+    width: 100%;
+  }
+
+  .nav-link:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--white);
+  }
+
+  .nav-link svg {
+    flex-shrink: 0;
+    height: 18px;
+    width: 18px;
+  }
+
+  .nav-link span {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .nav-link.is-active {
+    background: var(--lidl-yellow);
+    color: var(--lidl-dark-blue);
+    font-weight: 700;
+  }
+
+  .nav-link.is-active:hover {
+    background: var(--lidl-yellow);
+    color: var(--lidl-dark-blue);
+  }
+
+  .sidebar-user {
+    align-items: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  .sidebar-user > span:not(.avatar) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sidebar-user strong {
+    display: block;
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sidebar-user small {
+    color: var(--lidl-yellow);
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .avatar {
+    align-items: center;
+    background: var(--lidl-yellow);
+    border-radius: var(--radius);
+    color: var(--lidl-dark-blue);
+    display: inline-flex;
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 700;
+    height: 34px;
+    justify-content: center;
+    width: 34px;
+  }
+
+  .main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* ── Panely hlavního obsahu ──────────────────────────────────────────── */
+
+  .view-panel {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .view-panel.is-active {
+    display: flex;
+  }
+
+  /* Prázdný stav pro sekce, které ještě nemají obsah (Uživatelé, Nastavení). */
+  .view-placeholder {
+    align-items: center;
+    color: var(--muted);
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 10px;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+  }
+
+  .view-placeholder svg {
+    color: var(--line);
+    height: 40px;
+    width: 40px;
+  }
+
+  .view-placeholder p {
+    font-size: 13px;
+    margin: 0;
+    max-width: 320px;
+  }
+
+  /* ── Kalendář — hlavička s navigací měsíců ────────────────────────────
+     Rozvržení mřížky vychází z Planung Dashboard → PMS → Plánovací kalendář,
+     barvy a proporce upravené na paletu této aplikace. ── */
+
+  .cal-header {
+    padding: 16px 20px 0;
+  }
+
+  .cal-nav {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+  }
+
+  .cal-nav-btn {
+    align-items: center;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--lidl-blue);
+    cursor: pointer;
+    display: inline-flex;
+    height: 32px;
+    justify-content: center;
+    width: 32px;
+  }
+
+  .cal-nav-btn:hover {
+    background: var(--page);
+  }
+
+  .cal-nav-btn svg {
+    height: 15px;
+    width: 15px;
+  }
+
+  .cal-nav-today {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--lidl-dark-blue);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    height: 32px;
+    padding: 0 12px;
+  }
+
+  .cal-nav-today:hover {
+    background: var(--page);
+  }
+
+  .cal-month-label {
+    color: var(--lidl-dark-blue);
+    font-size: 15px;
+    font-weight: 700;
+    margin-left: 6px;
+    text-transform: capitalize;
+  }
+
+  /* ── Kalendář — mřížka ─────────────────────────────────────────────── */
+
+  .cal-grid-wrap {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    flex: 1;
+    margin: 16px 20px 20px;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .cal-grid {
+    background: var(--line-soft);
+    display: grid;
+    gap: 1px;
+    grid-template-columns: 44px repeat(7, 1fr);
+    grid-template-rows: 34px repeat(6, 1fr);
+    height: 100%;
+  }
+
+  .cal-weekhead,
+  .cal-dayhead {
+    align-items: center;
+    background: var(--white);
+    color: var(--muted);
+    display: flex;
+    font-size: 11px;
+    font-weight: 700;
+    justify-content: center;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .cal-weeknum-cell {
+    align-items: center;
+    background: var(--white);
+    display: flex;
+    justify-content: center;
+    padding: 4px;
+  }
+
+  .cal-weeknum-chip {
+    border: 1px solid var(--line-soft);
+    border-radius: 6px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 0;
+    text-align: center;
+    width: 100%;
+  }
+
+  .cal-weeknum-chip b {
+    color: var(--text);
+    display: block;
+    font-size: 12px;
+  }
+
+  /* Aktuální kalendářní týden — zelená stejně jako v PMS plánovači. */
+  .cal-weeknum-chip.is-current-week {
+    background: #ecfdf5;
+    border-color: #86efac;
+    color: #16a34a;
+  }
+
+  .cal-weeknum-chip.is-current-week b {
+    color: #16a34a;
+  }
+
+  .cal-cell {
+    background: var(--white);
+    min-width: 0;
+    overflow: hidden;
+    padding: 5px 6px;
+    position: relative;
+  }
+
+  .cal-cell.is-weekend {
+    background: var(--page);
+  }
+
+  .cal-cell.is-other-month {
+    background: #fbfbfc;
+  }
+
+  .cal-cell.is-other-month .cal-daynum {
+    color: #c8cdd6;
+  }
+
+  .cal-cell.is-today {
+    box-shadow: inset 0 0 0 2px var(--lidl-blue);
+  }
+
+  .cal-cell.is-past .cal-daynum {
+    color: var(--muted);
+  }
+
+  .cal-daynum {
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 700;
   }
 
   /* ── Úvodní překryv při načítání ────────────────────────────────────── */
