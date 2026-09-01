@@ -168,8 +168,6 @@
   const Wizard = {
     /** Aktuální krok (1–5). */
     step: 1,
-    /** URL aplikace, kam se po dokončení přesměruje. */
-    appUrl: null,
     /** Je přihlášený uživatel vlastníkem skriptu? Dokud nevíme, nesmí se pokračovat. */
     isOwner: false,
     /** Údaje předané ze serveru v doGet (složka, výchozí názvy). */
@@ -278,8 +276,7 @@
 
       // Krok 5: hotovo → okamžitý přechod do aplikace (obchází čekání na časovač).
       if (this.step === 5) {
-        if (this.autoRedirectTimer) clearTimeout(this.autoRedirectTimer);
-        window.location.href = this.appUrl || window.location.href;
+        this.enterApp();
         return;
       }
 
@@ -343,9 +340,26 @@
      */
     scheduleAutoRedirect() {
       if (this.autoRedirectTimer) clearTimeout(this.autoRedirectTimer);
-      this.autoRedirectTimer = setTimeout(() => {
-        window.location.href = this.appUrl || window.location.href;
-      }, 1800);
+      this.autoRedirectTimer = setTimeout(() => this.enterApp(), 1800);
+    },
+
+    /**
+     * Přechod z wizardu do aplikace.
+     *
+     * ZÁMĚRNĚ znovunačtení stejné stránky (`location.reload()`), NE navigace
+     * na jinou adresu (`ScriptApp.getService().getUrl()`). Apps Script
+     * servíruje obsah uvnitř vnořeného rámce (script.google.com jen obaluje
+     * skutečný obsah z script.googleusercontent.com) a prohlížeč z
+     * bezpečnostních důvodů odmítne, aby tento rámec sám navigoval na jinou
+     * adresu bez ČERSTVÉ interakce uživatele — proto by přesměrování spuštěné
+     * časovačem (bez kliknutí) skončilo chybou „Web […] odmítl připojení".
+     * Znovunačtení stejné stránky zůstává ve stejném rámci, takže se toto
+     * omezení neuplatní: server (doGet v server/99_main.js) při novém
+     * požadavku už vidí dokončenou inicializaci a rovnou vrátí aplikaci.
+     */
+    enterApp() {
+      if (this.autoRedirectTimer) clearTimeout(this.autoRedirectTimer);
+      window.location.reload();
     },
 
     /** Zobrazí panel s průběhem inicializace. */
@@ -397,7 +411,6 @@
             step.classList.add('is-done');
           });
 
-          this.appUrl = result.appUrl;
           document.querySelector('#wizDbLink').href = result.spreadsheetUrl;
 
           doneStep.classList.add('is-done');
