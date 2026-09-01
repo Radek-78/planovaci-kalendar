@@ -684,15 +684,112 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     display: grid;
-    gap: 14px;
+    gap: 20px;
     height: fit-content;
     max-width: 560px;
-    padding: 26px 28px;
+    padding: 28px 30px;
     width: 100%;
   }
 
-  .app-card .info-row {
-    background: var(--white);
+  /* Profil přihlášeného uživatele — avatar s iniciálami, jméno, odznak role, e-mail. */
+  .app-profile {
+    align-items: center;
+    display: flex;
+    gap: 14px;
+  }
+
+  .app-avatar {
+    align-items: center;
+    background: var(--lidl-blue);
+    border-radius: 50%;
+    color: var(--white);
+    display: flex;
+    flex-shrink: 0;
+    font-size: 15px;
+    font-weight: 700;
+    height: 46px;
+    justify-content: center;
+    letter-spacing: 0.02em;
+    width: 46px;
+  }
+
+  .app-profile-text {
+    min-width: 0;
+  }
+
+  .app-profile-name-row {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .app-profile-name-row strong {
+    color: var(--lidl-dark-blue);
+    font-size: 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-profile-email {
+    color: var(--muted);
+    display: block;
+    font-size: 12px;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Barevný odznak role — žlutá pro superadmina (stejně jako aktivní položka
+     v postranním menu ve Výchozí aplikaci 2.0), modrá pro admina, neutrální
+     pro běžného uživatele. */
+  .role-badge {
+    background: var(--lidl-yellow);
+    border-radius: 999px;
+    color: var(--lidl-dark-blue);
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 3px 10px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .role-badge.is-admin {
+    background: var(--lidl-blue);
+    color: var(--white);
+  }
+
+  .role-badge.is-user {
+    background: var(--line-soft);
+    color: var(--lidl-dark-blue);
+  }
+
+  /* Výčet oprávnění jako seznam s fajfkou — čitelnější než věta se čárkami. */
+  .rights-list {
+    display: grid;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .rights-list li {
+    align-items: center;
+    color: var(--text);
+    display: flex;
+    font-size: 13px;
+    gap: 9px;
+  }
+
+  .rights-list li svg {
+    color: var(--green);
+    flex-shrink: 0;
+    height: 15px;
+    width: 15px;
   }
 
   .app-footer {

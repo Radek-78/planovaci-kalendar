@@ -144,6 +144,7 @@
             Databáze byla vytvořena —
             <a id="wizDbLink" href="#" target="_blank" rel="noopener">otevřít tabulku v Drive</a>.
           </p>
+          <p class="gate-note">Za chvíli vás automaticky přesměrujeme do aplikace…</p>
         </div>
       </section>
 
@@ -175,6 +176,8 @@
     info: (window.APP_BOOTSTRAP && window.APP_BOOTSTRAP.setup) || {},
     /** Časovač animace kroků během inicializace. */
     progressTimer: null,
+    /** Časovač automatického přesměrování z obrazovky „hotovo" do aplikace. */
+    autoRedirectTimer: null,
 
     init() {
       Ui.setText('#wizFolder', this.info.folderName || 'Kořen „Můj disk"');
@@ -273,8 +276,9 @@
         return;
       }
 
-      // Krok 5: hotovo → přechod do aplikace.
+      // Krok 5: hotovo → okamžitý přechod do aplikace (obchází čekání na časovač).
       if (this.step === 5) {
+        if (this.autoRedirectTimer) clearTimeout(this.autoRedirectTimer);
         window.location.href = this.appUrl || window.location.href;
         return;
       }
@@ -324,7 +328,24 @@
       next.disabled = this.step === 1 && !this.isOwner;
       next.textContent =
         this.step === 4 ? 'Vytvořit aplikaci' :
-        this.step === 5 ? 'Spustit aplikaci' : 'Pokračovat';
+        this.step === 5 ? 'Spustit aplikaci hned' : 'Pokračovat';
+
+      // Na obrazovce „hotovo" se aplikace spustí sama — tlačítko zůstává
+      // jen jako možnost nečekat na časovač.
+      if (this.step === 5) this.scheduleAutoRedirect();
+    },
+
+    /**
+     * Naplánuje automatický přechod do aplikace z obrazovky „hotovo".
+     * Krátké zpoždění dá uživateli čas si přečíst potvrzení; odkaz na
+     * databázi se otevírá do nové karty (target="_blank"), takže
+     * přesměrování hlavního okna mu ho nezavře.
+     */
+    scheduleAutoRedirect() {
+      if (this.autoRedirectTimer) clearTimeout(this.autoRedirectTimer);
+      this.autoRedirectTimer = setTimeout(() => {
+        window.location.href = this.appUrl || window.location.href;
+      }, 1800);
     },
 
     /** Zobrazí panel s průběhem inicializace. */

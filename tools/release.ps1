@@ -7,16 +7,21 @@
     1. zmeni cislo verze a datum v server/00_config.js (odtud se bere footer),
     2. prepise AAA_VERZE.html (prvni soubor v editoru Apps Scriptu),
     3. zapise zaznam do CHANGELOG.md,
-    4. git pull (jen kdyz vzdalena vetev uz existuje),
-    5. git commit + tag + push na GitHub,
-    6. clasp push do Apps Scriptu.
+    4. git commit (vsechny zmeny - verze i pripadne dalsi upravy kodu),
+    5. git pull --rebase (jen kdyz vzdalena vetev uz existuje),
+    6. git tag + push na GitHub,
+    7. clasp push do Apps Scriptu.
 
   Verze zije na trech mistech (AAA_VERZE.html, CONFIG.version, CHANGELOG.md)
   a musi vsude souhlasit - proto se nikdy nepise rucne, jen timto skriptem.
 
-  Poznamka k poradi: git jde pred clasp push podle dohodnuteho postupu.
-  Kdyby clasp push selhal, commit uz v gitu je - skript na to upozorni
-  a staci pak spustit "npx clasp push -f" rucne.
+  Poznamka k poradi: commit jde pred pullem zamerne - v okamziku spusteni
+  skriptu je strom vzdy "spinavy" (cerstva uprava verze), takze pull na
+  spinavem stromu by vzdy selhal. Rebase po commitu je bezpecny, protoze
+  prehrava jen tento jeden novy commit nad pripadnymi cizimi zmenami.
+  Git jde pred clasp push podle dohodnuteho postupu - kdyby clasp push
+  selhal, commit uz je v gitu, skript na to upozorni a staci pak spustit
+  "npx clasp push -f" rucne.
 
 .PARAMETER Version
   Cislo verze ve tvaru vX.Y.Z, napriklad v0.1.0.
@@ -121,18 +126,13 @@ Write-Host "Verze nastavena na $Version ($stamp)." -ForegroundColor Green
 
 Push-Location $root
 try {
-  # ── 4) git pull (jen kdyz vzdalena vetev main uz existuje) ─────────────
-  $remoteMain = git ls-remote --heads origin main
-  if ($LASTEXITCODE -ne 0) { throw "Spojeni s GitHubem selhalo - release prerusen." }
-
-  if ($remoteMain) {
-    git pull --rebase origin main
-    if ($LASTEXITCODE -ne 0) { throw "git pull selhal - vyres konflikt a spust release znovu." }
-  } else {
-    Write-Host "Vzdalena vetev main jeste neexistuje - pull se preskakuje (prvni vydani)." -ForegroundColor Yellow
-  }
-
-  # ── 5) git commit + tag + push ─────────────────────────────────────────
+  # ── 4) git commit ───────────────────────────────────────────────────────
+  # Commit MUSI byt pred pullem: v okamziku spusteni release.ps1 je strom
+  # vzdy "spinavy" (prave doslo k uprave verze v krocich 1-3, casto i
+  # k dalsim zmenam v kodu) - "git pull --rebase" na spinavem stromu vzdy
+  # selze. Radne poradi je: nejdriv vlastni zmeny zacommitovat, teprve pak
+  # rebase na aktualni vzdalenou vetev - rebase pak jen prehraje tento jeden
+  # commit nad pripadnymi cizimi commity, coz je bezpecne.
   git add -A
 
   $commitMessage = @"
@@ -144,6 +144,20 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
   git commit -m $commitMessage
   if ($LASTEXITCODE -ne 0) { throw "git commit selhal - zkontroluj, jestli jsou vubec nejake zmeny." }
 
+  # ── 5) git pull --rebase (jen kdyz vzdalena vetev main uz existuje) ────
+  # Strom je od commitu cisty, takze rebase nemuze narazit na lokalni
+  # nezacommitovane zmeny - jen na pripadne cizi commity na vzdalene vetvi.
+  $remoteMain = git ls-remote --heads origin main
+  if ($LASTEXITCODE -ne 0) { throw "Spojeni s GitHubem selhalo - commit je hotovy lokalne, push zopakuj rucne az bude spojeni funkcni." }
+
+  if ($remoteMain) {
+    git pull --rebase origin main
+    if ($LASTEXITCODE -ne 0) { throw "git pull selhal (nejspis konflikt) - commit je hotovy lokalne, vyres konflikt a dokonci push rucne." }
+  } else {
+    Write-Host "Vzdalena vetev main jeste neexistuje - pull se preskakuje (prvni vydani)." -ForegroundColor Yellow
+  }
+
+  # ── 6) git tag + push ────────────────────────────────────────────────────
   git tag $Version
   if ($LASTEXITCODE -ne 0) { throw "Vytvoreni tagu $Version selhalo - tag uz nejspis existuje." }
 

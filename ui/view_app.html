@@ -24,28 +24,22 @@
         <p class="gate-note" id="appSubtitle"></p>
       </div>
 
-      <div class="info-row">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-user"></use></svg>
-        <div>
-          <span>Přihlášen jako</span>
-          <strong id="appUserName">–</strong>
+      <!-- Profil přihlášeného uživatele: avatar s iniciálami, jméno, barevný
+           odznak role a e-mail — nahrazuje tři samostatné ploché boxy z fáze 1. -->
+      <div class="app-profile">
+        <div class="app-avatar" id="appAvatar" aria-hidden="true">–</div>
+        <div class="app-profile-text">
+          <div class="app-profile-name-row">
+            <strong id="appUserName">–</strong>
+            <span class="role-badge" id="appUserRoleBadge">–</span>
+          </div>
+          <span class="app-profile-email" id="appUserEmail">–</span>
         </div>
       </div>
 
-      <div class="info-row">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield"></use></svg>
-        <div>
-          <span>Role a oprávnění</span>
-          <strong id="appUserRole">–</strong>
-        </div>
-      </div>
-
-      <div class="info-row">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"></use></svg>
-        <div>
-          <span>Co s kalendářem smíte</span>
-          <strong id="appUserRights">–</strong>
-        </div>
+      <div>
+        <p class="kicker">Vaše oprávnění</p>
+        <ul class="rights-list" id="appUserRights"></ul>
       </div>
 
       <p class="gate-note">
@@ -110,21 +104,32 @@
       Ui.setText('#appFooterName', data.settings.appName);
       Ui.setText('#appFooterVersion', data.version);
 
-      Ui.setText('#appUserName', data.user.fullName + ' · ' + data.user.email);
+      Ui.setText('#appUserName', data.user.fullName);
+      Ui.setText('#appUserEmail', data.user.email);
+      Ui.setText('#appAvatar', this.initials(data.user.fullName || data.user.email));
 
       const roleLabel = this.ROLE_LABELS[data.user.role] || data.user.role;
       const permissionLabel = data.user.role === 'USER'
         ? (data.user.permission === 'EDITOR' ? 'zápis' : 'jen čtení')
-        : 'plný zápis';
-      Ui.setText('#appUserRole', roleLabel + ' · ' + permissionLabel);
+        : null; // ADMIN/SUPERADMIN mají vždy plný zápis — netřeba zvlášť vypisovat.
 
-      // Srozumitelný výčet toho, co uživatel smí — přesně podle práv ze serveru.
+      const badge = document.querySelector('#appUserRoleBadge');
+      badge.textContent = permissionLabel ? roleLabel + ' · ' + permissionLabel : roleLabel;
+      badge.className = 'role-badge' +
+        (data.user.role === 'ADMIN' ? ' is-admin' : data.user.role === 'USER' ? ' is-user' : '');
+
+      // Srozumitelný výčet toho, co uživatel smí — přesně podle práv ze serveru,
+      // vykreslený jako seznam s fajfkou u každé položky.
       const rights = ['čtení kalendáře'];
       if (data.permissions.canWrite) rights.push('vytváření vlastních událostí');
       if (data.permissions.canManageForeignEvents) rights.push('úpravy cizích událostí');
       if (data.permissions.canManageUsers) rights.push('správa uživatelů');
       if (data.permissions.canManageSettings) rights.push('nastavení aplikace');
-      Ui.setText('#appUserRights', rights.join(', '));
+
+      document.querySelector('#appUserRights').innerHTML = rights
+        .map((right) => '<li><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"></use></svg>' +
+          Ui.escape(right) + '</li>')
+        .join('');
 
       document.querySelector('#appWelcome').classList.remove('is-hidden');
     },
@@ -132,6 +137,19 @@
     showNoAccess(message) {
       Ui.setText('#appNoAccessMessage', message);
       document.querySelector('#appNoAccess').classList.remove('is-hidden');
+    },
+
+    /** Iniciály pro avatar — ze jména, nebo z e-mailu, když jméno chybí. */
+    initials(value) {
+      const clean = String(value || '').trim();
+      if (!clean) return '?';
+      const source = clean.includes('@') ? clean.split('@')[0] : clean;
+      return source
+        .split(/[.\s_-]+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part.charAt(0).toUpperCase())
+        .join('') || '?';
     },
   };
 </script>
