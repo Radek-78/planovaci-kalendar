@@ -144,7 +144,6 @@
             Databáze byla vytvořena —
             <a id="wizDbLink" href="#" target="_blank" rel="noopener">otevřít tabulku v Drive</a>.
           </p>
-          <p class="gate-note">Za chvíli vás automaticky přesměrujeme do aplikace…</p>
         </div>
       </section>
 
@@ -174,8 +173,6 @@
     info: (window.APP_BOOTSTRAP && window.APP_BOOTSTRAP.setup) || {},
     /** Časovač animace kroků během inicializace. */
     progressTimer: null,
-    /** Časovač automatického přesměrování z obrazovky „hotovo" do aplikace. */
-    autoRedirectTimer: null,
 
     init() {
       Ui.setText('#wizFolder', this.info.folderName || 'Kořen „Můj disk"');
@@ -274,7 +271,7 @@
         return;
       }
 
-      // Krok 5: hotovo → okamžitý přechod do aplikace (obchází čekání na časovač).
+      // Krok 5: hotovo → přechod do aplikace (výhradně na klik, viz enterApp).
       if (this.step === 5) {
         this.enterApp();
         return;
@@ -325,40 +322,25 @@
       next.disabled = this.step === 1 && !this.isOwner;
       next.textContent =
         this.step === 4 ? 'Vytvořit aplikaci' :
-        this.step === 5 ? 'Spustit aplikaci hned' : 'Pokračovat';
-
-      // Na obrazovce „hotovo" se aplikace spustí sama — tlačítko zůstává
-      // jen jako možnost nečekat na časovač.
-      if (this.step === 5) this.scheduleAutoRedirect();
+        this.step === 5 ? 'Spustit aplikaci' : 'Pokračovat';
     },
 
     /**
-     * Naplánuje automatický přechod do aplikace z obrazovky „hotovo".
-     * Krátké zpoždění dá uživateli čas si přečíst potvrzení; odkaz na
-     * databázi se otevírá do nové karty (target="_blank"), takže
-     * přesměrování hlavního okna mu ho nezavře.
-     */
-    scheduleAutoRedirect() {
-      if (this.autoRedirectTimer) clearTimeout(this.autoRedirectTimer);
-      this.autoRedirectTimer = setTimeout(() => this.enterApp(), 1800);
-    },
-
-    /**
-     * Přechod z wizardu do aplikace.
+     * Přechod z wizardu do aplikace — VÝHRADNĚ na klik uživatele (viz volání
+     * v next()), nikdy automaticky.
      *
-     * ZÁMĚRNĚ znovunačtení stejné stránky (`location.reload()`), NE navigace
-     * na jinou adresu (`ScriptApp.getService().getUrl()`). Apps Script
-     * servíruje obsah uvnitř vnořeného rámce (script.google.com jen obaluje
-     * skutečný obsah z script.googleusercontent.com) a prohlížeč z
-     * bezpečnostních důvodů odmítne, aby tento rámec sám navigoval na jinou
-     * adresu bez ČERSTVÉ interakce uživatele — proto by přesměrování spuštěné
-     * časovačem (bez kliknutí) skončilo chybou „Web […] odmítl připojení".
-     * Znovunačtení stejné stránky zůstává ve stejném rámci, takže se toto
-     * omezení neuplatní: server (doGet v server/99_main.js) při novém
-     * požadavku už vidí dokončenou inicializaci a rovnou vrátí aplikaci.
+     * Apps Script servíruje obsah uvnitř vnořeného rámce (script.google.com
+     * jen obaluje skutečný obsah z script.googleusercontent.com) a prohlížeč
+     * z bezpečnostních důvodů odmítne, aby tento rámec navigoval — ať už na
+     * jinou adresu, nebo i jen znovunačtením sebe sama — bez ČERSTVÉ interakce
+     * uživatele. Zkoušeli jsme jak navigaci na ScriptApp.getService().getUrl(),
+     * tak location.reload() spuštěné časovačem bez kliknutí — obojí skončilo
+     * chybou „Web […] odmítl připojení". Funguje spolehlivě jen varianta
+     * shodná s Výchozí aplikací 2.0: reload spuštěný přímo z click handleru
+     * tlačítka. Server (doGet v server/99_main.js) při novém požadavku už
+     * vidí dokončenou inicializaci a rovnou vrátí aplikaci.
      */
     enterApp() {
-      if (this.autoRedirectTimer) clearTimeout(this.autoRedirectTimer);
       window.location.reload();
     },
 
