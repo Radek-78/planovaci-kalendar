@@ -6,9 +6,9 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.22 - 02.09.2026 14:26
-- Kalendar - navrat na max 3 udalosti v jedne draze na den, zbytek nahrazuje skutecny odznak +N primo v mrizce (ne jen roh bunky) - klik na nej otevre detail dne se vsim
-- modal okno uzivatele dale zvetseno - uzsi mezery a odsazeni jen v tomto formulari (bez zasahu do wizardu), opravena chyba CSS presahu (overflow-y bez explicitniho overflow-x umoznoval i vodorovny scroll), zmenseny horni okraj modalu (vic dostupne vysky na vsech oknech)
-- modal detailu dne zvetsen na 430px - presne na 5 udalosti po 3 radcich, popis udalosti se ted orizne na jeden radek (misto lamani na vice radku)
+- Kalendář — návrat na max 3 události v jedné dráze na den, zbytek nahrazuje skutečný odznak +N přímo v mřížce (ne jen roh buňky) — klik na něj otevře detail dne se vším
+- Modal okno uživatele dále zvětšeno — užší mezery a odsazení jen v tomto formuláři (bez zásahu do wizardu), opravena chyba CSS přesahu (overflow-y bez explicitního overflow-x umožňoval i vodorovný scroll), zmenšený horní okraj modalu (víc dostupné výšky na všech oknech)
+- Modal detailu dne zvětšen na 430px — přesně na 5 událostí po 3 řádcích, popis události se teď ořízne na jeden řádek (místo lámání na víc řádků)
 
 ## v0.1.21 - 02.09.2026 13:48
 - Modal okno uživatele zvětšeno a bez zbytečného scrollování — široký formát rozšířen na 720px, pevná výška formuláře nahrazena přirozenou (jen skutečný obsah, žádné prázdné místo navíc)
