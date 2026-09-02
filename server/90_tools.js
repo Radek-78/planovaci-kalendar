@@ -87,3 +87,61 @@ function TOOLS_zkontrolujSchema() {
   console.log('Schéma zkontrolováno. Listy v databázi: ' +
     spreadsheet.getSheets().map((s) => s.getName()).join(', '));
 }
+
+/**
+ * Vloží sadu testovacích událostí pro ruční ověření kalendáře — pokrývá
+ * všechny stavy, které mřížka umí zobrazit: událost v minulosti, událost
+ * přesahující přes hranici měsíce, dnešek, celodenní i časovou událost,
+ * vícedenní událost (časovou i celodenní) a všech sedm typů.
+ *
+ * Data jsou napevno u víkendu 1.–2. 9. 2026 (dnešek v době psaní) — pokud
+ * se spouští později, dny už nebudou sedět na "dnešek", ale mřížka zůstane
+ * použitelná k prohlédnutí chipů a modalu.
+ *
+ * POZOR: spustit jen JEDNOU. Opětovné spuštění vytvoří duplicity — testovací
+ * řádky jde smazat ručně přímo v listu `events`.
+ */
+function TOOLS_vlozTestovaciUdalosti() {
+  const events = [
+    {
+      start: '2026-08-28T14:00', end: '2026-08-28T15:00', all_day: false, type: 'default',
+      title: 'Týdenní report', description: 'Shrnutí uplynulého týdne.',
+    },
+    {
+      start: '2026-08-31T00:00', end: '2026-09-01T23:59', all_day: true, type: 'trip',
+      title: 'Přesun do Ostravy', description: 'Přesah přes hranici měsíce — test spojitého chipu.',
+    },
+    {
+      start: '2026-09-02T09:00', end: '2026-09-02T09:30', all_day: false, type: 'meeting',
+      title: 'Denní standup', description: '',
+    },
+    {
+      start: '2026-09-03T00:00', end: '2026-09-03T23:59', all_day: true, type: 'homeoffice',
+      title: 'Home office', description: '',
+    },
+    {
+      start: '2026-09-07T08:00', end: '2026-09-09T17:00', all_day: false, type: 'trip',
+      title: 'Školení Praha', description: 'Vícedenní časová událost — test značky pokračování.',
+    },
+    {
+      start: '2026-09-15T11:30', end: '2026-09-15T12:00', all_day: false, type: 'deadline',
+      title: 'Odevzdání reportu', description: '',
+    },
+    {
+      start: '2026-09-18T00:00', end: '2026-09-18T23:59', all_day: true, type: 'party',
+      title: 'Teambuilding', description: 'Celodenní akce.',
+    },
+    {
+      start: '2026-09-22T10:00', end: '2026-09-22T11:00', all_day: false, type: 'important',
+      title: 'Kontrola kvality', description: '',
+    },
+  ];
+
+  const ownerEmail = currentEmail_() || 'test@example.com';
+  events.forEach((event) => {
+    dbInsert_(SHEETS.EVENTS, Object.assign({}, event, { owner_email: ownerEmail }));
+    console.log('Vloženo: ' + event.title + ' (' + event.start + ' – ' + event.end + ')');
+  });
+
+  console.log('Hotovo — vloženo ' + events.length + ' testovacích událostí jako ' + ownerEmail + '.');
+}
