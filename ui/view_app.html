@@ -123,8 +123,8 @@
   </main>
 </div>
 
-<!-- ══ Modal: detail dne (zatím jen čtení — viz komentář v hlavičce souboru) ══ -->
-<dialog class="modal" id="dayModal">
+<!-- ══ Modal: detail dne (seznam událostí, klik na položku otevře její detail) ══ -->
+<dialog class="modal modal-grow" id="dayModal">
   <div class="modal-header">
     <span class="modal-icon"><i class="ph ph-calendar-blank" aria-hidden="true"></i></span>
     <div class="modal-header-text">
@@ -136,6 +136,35 @@
     </button>
   </div>
   <div class="modal-body" id="dayModalBody"><!-- vykresleno JS --></div>
+</dialog>
+
+<!-- ══ Modal: detail JEDNÉ události — info vlevo, komentáře vpravo ══
+     Info o události je zatím jen ke čtení (úprava/mazání události samotné
+     je až další krok); komentáře jsou plně funkční — přidat i smazat
+     vlastní (nebo kterýkoli, když má uživatel právo spravovat cizí události). -->
+<dialog class="modal modal-wide modal-grow" id="eventModal">
+  <div class="modal-header">
+    <span class="modal-icon is-event-color" id="eventModalIcon"><i class="ph ph-calendar-blank" aria-hidden="true"></i></span>
+    <div class="modal-header-text">
+      <p class="kicker" id="eventModalKicker">Typ</p>
+      <h2 id="eventModalTitle"></h2>
+    </div>
+    <button class="modal-close" type="button" id="eventModalClose" aria-label="Zavřít">
+      <i class="ph ph-x" aria-hidden="true"></i>
+    </button>
+  </div>
+  <div class="modal-body">
+    <div class="event-modal-info" id="eventModalInfo"><!-- vykresleno JS --></div>
+    <div class="event-modal-comments">
+      <div class="event-comments-list" id="eventCommentsList"><!-- vykresleno JS --></div>
+      <form class="event-comment-form" id="eventCommentForm">
+        <textarea id="eventCommentInput" placeholder="Napište komentář…" maxlength="500" rows="1"></textarea>
+        <button type="submit" class="button-icon" id="eventCommentSubmit" aria-label="Odeslat komentář">
+          <i class="ph ph-paper-plane-tilt" aria-hidden="true"></i>
+        </button>
+      </form>
+    </div>
+  </div>
 </dialog>
 
 <!-- Sdílený tooltip pro najetí na chip události v mřížce — jeden prvek pro
@@ -232,6 +261,7 @@
       this.bindNav();
       this.bindMonthPicker();
       this.bindDayModal();
+      this.bindEventModal();
       this.bindChipTooltip();
       this.renderCalendar();
 
@@ -252,7 +282,14 @@
 
       // Delegovaný listener — přežije opakované přepisování innerHTML mřížky
       // při každém překreslení měsíce (stejný vzor jako v PMS plánovači).
+      // Klik na konkrétní chip má přednost před klikem na buňku — otevírá
+      // detail TÉ události, ne seznam celého dne.
       document.querySelector('#calGrid').addEventListener('click', (e) => {
+        const chip = e.target.closest('.cal-chip');
+        if (chip && chip.dataset.eventId) {
+          this.openEventModal(chip.dataset.eventId, chip);
+          return;
+        }
         const cell = e.target.closest('.cal-cell');
         if (cell && cell.dataset.date) this.openDayModal(cell.dataset.date, cell);
       });
@@ -325,7 +362,11 @@
       });
     },
 
-    /** Zavírání modalu detailu dne — křížkem, klikem na pozadí, klávesou Esc. */
+    /**
+     * Zavírání modalu detailu dne — křížkem, klikem na pozadí, klávesou Esc.
+     * Klik na konkrétní událost v seznamu zavře tento modal a otevře detail
+     * té události (viz openEventModal) — dva modaly přes sebe by jen matly.
+     */
     bindDayModal() {
       const dialog = document.querySelector('#dayModal');
       document.querySelector('#dayModalClose').addEventListener('click', () => Ui.closeModal(dialog));
@@ -335,6 +376,40 @@
       dialog.addEventListener('cancel', (e) => {
         e.preventDefault();
         Ui.closeModal(dialog);
+      });
+
+      document.querySelector('#dayModalBody').addEventListener('click', (e) => {
+        const item = e.target.closest('.day-event-item');
+        if (!item || !item.dataset.eventId) return;
+        Ui.closeModal(dialog);
+        this.openEventModal(item.dataset.eventId, item);
+      });
+    },
+
+    /**
+     * Zavírání modalu detailu události, odeslání komentáře a jeho smazání.
+     */
+    bindEventModal() {
+      const dialog = document.querySelector('#eventModal');
+      document.querySelector('#eventModalClose').addEventListener('click', () => Ui.closeModal(dialog));
+      dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) Ui.closeModal(dialog);
+      });
+      dialog.addEventListener('cancel', (e) => {
+        e.preventDefault();
+        Ui.closeModal(dialog);
+      });
+
+      document.querySelector('#eventCommentForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.submitComment();
+      });
+
+      // Delegovaný listener na seznamu komentářů — tlačítko smazat existuje
+      // jen u komentářů, které smí smazat přihlášený uživatel (viz canDelete).
+      document.querySelector('#eventCommentsList').addEventListener('click', (e) => {
+        const button = e.target.closest('.comment-item-delete');
+        if (button && button.dataset.commentId) this.deleteComment(button.dataset.commentId);
       });
     },
 
@@ -488,10 +563,9 @@
     },
 
     /**
-     * Otevře modal se seznamem událostí daného dne (jen čtení — viz hlavička
-     * souboru). `originEl` je kliknutá buňka — z jejího umístění na obrazovce
-     * se spočítá, odkud modal "vyjede" (viz CSS #dayModal[open], proměnné
-     * --modal-dx/--modal-dy).
+     * Otevře modal se seznamem událostí daného dne. `originEl` je kliknutý
+     * prvek na obrazovce, ze kterého modal vizuálně "vyjede" (viz
+     * setModalOrigin a CSS třída .modal-grow).
      */
     openDayModal(dateIso, originEl) {
       this.hideChipTooltip(); // ať tu nezůstane viset nad podložkou modalu
@@ -510,22 +584,15 @@
         : '<p class="day-empty">Žádné události tento den.</p>';
 
       const dialog = document.querySelector('#dayModal');
-      if (originEl) {
-        const rect = originEl.getBoundingClientRect();
-        const dx = (rect.left + rect.width / 2) - window.innerWidth / 2;
-        const dy = (rect.top + rect.height / 2) - window.innerHeight / 2;
-        dialog.style.setProperty('--modal-dx', dx + 'px');
-        dialog.style.setProperty('--modal-dy', dy + 'px');
-      }
-
+      this.setModalOrigin(dialog, originEl);
       Ui.openModal(dialog);
     },
 
-    /** Jedna položka v seznamu událostí dne — ikona typu, čas, popis, zadavatel. */
+    /** Jedna položka v seznamu událostí dne — klikatelná, otevře detail té události. */
     renderDayEventItem(event) {
       const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a' };
 
-      return '<div class="day-event-item">' +
+      return '<div class="day-event-item" data-event-id="' + Ui.escape(event.id) + '">' +
         '<span class="day-event-icon" style="--chip-color:' + Ui.escape(type.color) + '">' +
           '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i></span>' +
         '<div class="day-event-text">' +
@@ -534,6 +601,145 @@
           (event.description ? '<p class="day-event-desc">' + Ui.escape(event.description) + '</p>' : '') +
           '<span class="day-event-owner">' + Ui.escape(event.ownerName) + '</span>' +
         '</div></div>';
+    },
+
+    /**
+     * Otevře detail JEDNÉ události — info vlevo (jen čtení), komentáře
+     * vpravo (viz hlavička modalu v HTML). Událost bere z už načtených dat
+     * pro zobrazený měsíc (this.currentEvents); komentáře se dotahují zvlášť,
+     * až když se modal otevře — zbytečné je stahovat je pro každou událost
+     * v mřížce dopředu.
+     */
+    openEventModal(eventId, originEl) {
+      const event = this.currentEvents.find((e) => e.id === eventId);
+      if (!event) return; // mezitím zmizela z načteného rozsahu (např. změna měsíce)
+
+      this.hideChipTooltip();
+
+      const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a' };
+      const icon = document.querySelector('#eventModalIcon');
+      icon.style.setProperty('--chip-color', type.color);
+      icon.innerHTML = '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i>';
+
+      Ui.setText('#eventModalKicker', type.label);
+      Ui.setText('#eventModalTitle', event.title);
+
+      document.querySelector('#eventModalInfo').innerHTML =
+        '<div class="event-info-row"><i class="ph ph-clock" aria-hidden="true"></i><span>' +
+          Ui.escape(this.eventTimeLabel(event)) + '</span></div>' +
+        '<div class="event-info-row"><i class="ph ph-user" aria-hidden="true"></i><span>' +
+          Ui.escape(event.ownerName) + '</span></div>' +
+        (event.description
+          ? '<p class="event-info-desc">' + Ui.escape(event.description) + '</p>'
+          : '<p class="event-info-desc event-info-desc--empty">Bez popisu.</p>');
+
+      const form = document.querySelector('#eventCommentForm');
+      form.dataset.eventId = eventId;
+      document.querySelector('#eventCommentInput').value = '';
+
+      this.loadEventComments(eventId);
+
+      const dialog = document.querySelector('#eventModal');
+      this.setModalOrigin(dialog, originEl);
+      Ui.openModal(dialog);
+    },
+
+    /** Spočítá z umístění klikaného prvku, odkud má modal vizuálně "vyjet". */
+    setModalOrigin(dialog, originEl) {
+      if (!originEl) return;
+      const rect = originEl.getBoundingClientRect();
+      const dx = (rect.left + rect.width / 2) - window.innerWidth / 2;
+      const dy = (rect.top + rect.height / 2) - window.innerHeight / 2;
+      dialog.style.setProperty('--modal-dx', dx + 'px');
+      dialog.style.setProperty('--modal-dy', dy + 'px');
+    },
+
+    /* ── Komentáře k události ──────────────────────────────────────────── */
+
+    loadEventComments(eventId) {
+      const list = document.querySelector('#eventCommentsList');
+      list.innerHTML = '<p class="comments-loading">Načítám komentáře…</p>';
+
+      Ui.call('apiGetEventComments', { eventId: eventId }, { silent: true })
+        .then((comments) => this.renderComments(comments))
+        .catch((error) => {
+          list.innerHTML = '<p class="comments-empty">Komentáře se nepodařilo načíst.</p>';
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    renderComments(comments) {
+      const list = document.querySelector('#eventCommentsList');
+      list.innerHTML = comments.length
+        ? comments.map((comment) => this.renderCommentItem(comment)).join('')
+        : '<p class="comments-empty">Zatím žádné komentáře. Buďte první.</p>';
+      list.scrollTop = list.scrollHeight;
+    },
+
+    renderCommentItem(comment) {
+      return '<div class="comment-item" data-comment-id="' + Ui.escape(comment.id) + '">' +
+        '<div class="comment-item-header">' +
+          '<strong>' + Ui.escape(comment.authorName) + '</strong>' +
+          '<span class="comment-item-meta">' +
+            '<span class="comment-item-time">' + Ui.escape(this.formatCommentTime(comment.createdAt)) + '</span>' +
+            (comment.canDelete
+              ? '<button type="button" class="comment-item-delete" data-comment-id="' + Ui.escape(comment.id) +
+                '" aria-label="Smazat komentář"><i class="ph ph-trash" aria-hidden="true"></i></button>'
+              : '') +
+          '</span>' +
+        '</div>' +
+        '<p class="comment-item-text">' + Ui.escape(comment.text) + '</p>' +
+      '</div>';
+    },
+
+    /** „D.M. HH:mm" v místním čase prohlížeče — createdAt ze serveru je vždy UTC ISO řetězec. */
+    formatCommentTime(iso) {
+      const date = new Date(iso);
+      if (isNaN(date.getTime())) return '';
+      const time = String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+      return date.getDate() + '.' + (date.getMonth() + 1) + '. ' + time;
+    },
+
+    submitComment() {
+      const input = document.querySelector('#eventCommentInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const eventId = document.querySelector('#eventCommentForm').dataset.eventId;
+      const submitButton = document.querySelector('#eventCommentSubmit');
+      submitButton.disabled = true;
+
+      Ui.call('apiAddEventComment', { eventId: eventId, text: text }, { silent: true })
+        .then((comment) => {
+          submitButton.disabled = false;
+          input.value = '';
+          input.focus();
+
+          const list = document.querySelector('#eventCommentsList');
+          const empty = list.querySelector('.comments-empty');
+          if (empty) list.innerHTML = '';
+          list.insertAdjacentHTML('beforeend', this.renderCommentItem(comment));
+          list.scrollTop = list.scrollHeight;
+        })
+        .catch((error) => {
+          submitButton.disabled = false;
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    /** Bez potvrzovacího dialogu — tlačítko smazat se stejně zobrazuje jen u vlastních (nebo spravovatelných) komentářů. */
+    deleteComment(commentId) {
+      Ui.call('apiDeleteEventComment', { id: commentId }, { silent: true })
+        .then(() => {
+          const item = document.querySelector('.comment-item[data-comment-id="' + CSS.escape(commentId) + '"]');
+          if (item) item.remove();
+
+          const list = document.querySelector('#eventCommentsList');
+          if (!list.children.length) {
+            list.innerHTML = '<p class="comments-empty">Zatím žádné komentáře. Buďte první.</p>';
+          }
+        })
+        .catch((error) => Ui.toast(error.message, 'error'));
     },
 
     /**

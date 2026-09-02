@@ -26,7 +26,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.1.12',
+  version: 'v0.1.13',
   releaseDate: '2.9.2026',
 
   /**
@@ -86,6 +86,7 @@ const SHEETS = {
   SETTINGS: '_settings',
   AUDIT: '_audit_log',
   EVENTS: 'events',
+  EVENT_COMMENTS: 'event_comments',
 };
 
 /**
@@ -128,6 +129,8 @@ const LIMITS = {
   DESCRIPTION_MAX: 2000,
   /** Nejdelší povolená událost ve dnech — pojistka proti záznamu, který by zaplavil celou mřížku. */
   EVENT_MAX_DAYS: 31,
+  /** Komentář k události — chatová zpráva, ne článek. */
+  COMMENT_MAX: 500,
 };
 
 /**

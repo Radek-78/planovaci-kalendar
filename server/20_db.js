@@ -30,6 +30,7 @@ const DB_SCHEMA = {
     'id', 'start', 'end', 'all_day', 'type', 'title', 'description',
     'owner_email', 'created_at', 'created_by', 'updated_at', 'updated_by',
   ],
+  event_comments: ['id', 'event_id', 'author_email', 'text', 'created_at'],
 };
 
 /**
@@ -48,6 +49,7 @@ const TEXT_COLUMNS = {
   _settings: ['updated_at'],
   _audit_log: ['timestamp'],
   events: ['start', 'end', 'created_at', 'updated_at'],
+  event_comments: ['created_at'],
 };
 
 /**

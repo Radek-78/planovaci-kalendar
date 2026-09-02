@@ -1293,6 +1293,11 @@
     flex-direction: column;
   }
 
+  /* Širší varianta pro dvousloupcový modal detailu události. */
+  .modal-wide {
+    max-width: min(680px, calc(100vw - 32px));
+  }
+
   .modal::backdrop {
     background: rgba(0, 24, 70, 0.5);
     backdrop-filter: blur(3px);
@@ -1338,6 +1343,13 @@
 
   .modal-icon i {
     font-size: 18px;
+  }
+
+  /* V modalu detailu události je ikona barevná podle typu (--chip-color),
+     ne pevně žlutá jako jinde — stejný jazyk barev jako chipy v mřížce. */
+  .modal-icon.is-event-color {
+    background: color-mix(in srgb, var(--chip-color) 18%, white);
+    color: var(--chip-color);
   }
 
   .modal-header-text {
@@ -1421,12 +1433,13 @@
     animation: backdrop-leave 0.22s ease both;
   }
 
-  /* Modal detailu dne "vyjede" přesně z buňky dne, na kterou se kliklo —
-     JS (openDayModal) před otevřením nastaví --modal-dx/--modal-dy na
-     posun mezi středem té buňky a středem obrazovky, kam prohlížeč dialog
-     sám vycentruje. Animace pak jede OPAČNÝM směrem: od bodu kliknutí (malý,
-     průhledný) do finální vycentrované podoby — vizuálně to vypadá, že okno
-     vyrostlo přesně z toho dne. Zavření udělá stejnou cestu pozpátku. */
+  /* Modal se třídou "modal-grow" vyjede přesně z prvku (buňky dne nebo
+     chipu), na který se kliklo — JS (setModalOrigin) před otevřením nastaví
+     --modal-dx/--modal-dy na posun mezi středem toho prvku a středem
+     obrazovky, kam prohlížeč dialog sám vycentruje. Animace jede OPAČNÝM
+     směrem: od bodu kliknutí (malý, průhledný) do finální vycentrované
+     podoby — vizuálně to vypadá, že okno vyrostlo přesně odtud. Zavření
+     udělá stejnou cestu pozpátku. Sdíleno mezi #dayModal a #eventModal. */
   @keyframes modal-grow-from-cell {
     from { opacity: 0; transform: translate(var(--modal-dx, 0px), var(--modal-dy, 0px)) scale(0.15); }
     to   { opacity: 1; transform: translate(0, 0) scale(1); }
@@ -1437,21 +1450,30 @@
     to   { opacity: 0; transform: translate(var(--modal-dx, 0px), var(--modal-dy, 0px)) scale(0.15); }
   }
 
-  #dayModal[open] {
+  .modal-grow[open] {
     animation: modal-grow-from-cell 0.38s cubic-bezier(0.22, 1.4, 0.36, 1) both;
   }
 
-  #dayModal[open].is-closing {
+  .modal-grow[open].is-closing {
     animation: modal-shrink-to-cell 0.24s cubic-bezier(0.4, 0, 1, 1) both;
   }
 
   /* ── Modal — detail dne: seznam událostí ───────────────────────────── */
 
+  /* Klikatelná — otevře detail té konkrétní události (viz openEventModal). */
   .day-event-item {
     border-bottom: 1px solid var(--line-soft);
+    border-radius: 6px;
+    cursor: pointer;
     display: flex;
     gap: 12px;
-    padding: 12px 0;
+    margin: 0 -8px;
+    padding: 12px 8px;
+    transition: background 0.12s;
+  }
+
+  .day-event-item:hover {
+    background: var(--page);
   }
 
   .day-event-item:last-child {
@@ -1524,6 +1546,189 @@
     font-size: 13px;
     justify-content: center;
     text-align: center;
+  }
+
+  /* ── Modal — detail JEDNÉ události: info + komentáře ve dvou sloupcích ──
+     Pevná výška jako u #dayModal (konzistentní velikost oken), ale širší
+     (.modal-wide) a rozdělená na dva sloupce. Sloupec s komentáři je sám
+     o sobě flex, aby se seznam mohl posouvat a formulář zůstal přilepený
+     dole — stejný vzor jako běžné chatovací okno. ── */
+
+  #eventModal .modal-body {
+    border-top: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 420px;
+    padding: 0;
+  }
+
+  .event-modal-info {
+    border-right: 1px solid var(--line-soft);
+    overflow-y: auto;
+    padding: 16px 20px;
+  }
+
+  .event-info-row {
+    align-items: center;
+    color: var(--text);
+    display: flex;
+    font-size: 13px;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .event-info-row i {
+    color: var(--muted);
+    flex-shrink: 0;
+    font-size: 14px;
+  }
+
+  .event-info-desc {
+    border-top: 1px solid var(--line-soft);
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 12px 0 0;
+    padding-top: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .event-info-desc--empty {
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .event-modal-comments {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .event-comments-list {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    padding: 16px 20px;
+  }
+
+  .comments-empty,
+  .comments-loading {
+    color: var(--muted);
+    flex: 1;
+    align-items: center;
+    display: flex;
+    font-size: 13px;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .comment-item {
+    background: var(--page);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+
+  .comment-item-header {
+    align-items: baseline;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+  }
+
+  .comment-item-header strong {
+    color: var(--lidl-dark-blue);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .comment-item-meta {
+    align-items: center;
+    display: flex;
+    flex-shrink: 0;
+    gap: 4px;
+  }
+
+  .comment-item-time {
+    color: var(--muted);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .comment-item-delete {
+    align-items: center;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--muted);
+    cursor: pointer;
+    display: inline-flex;
+    height: 20px;
+    justify-content: center;
+    width: 20px;
+  }
+
+  .comment-item-delete:hover {
+    background: rgba(230, 10, 20, 0.1);
+    color: var(--lidl-red);
+  }
+
+  .comment-item-delete i {
+    font-size: 12px;
+  }
+
+  .comment-item-text {
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 4px 0 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .event-comment-form {
+    border-top: 1px solid var(--line-soft);
+    display: flex;
+    flex-shrink: 0;
+    gap: 8px;
+    padding: 10px 14px;
+  }
+
+  .event-comment-form textarea {
+    flex: 1;
+    min-height: 38px;
+    resize: none;
+  }
+
+  .event-comment-form .button-icon {
+    align-items: center;
+    background: var(--lidl-blue);
+    border: none;
+    border-radius: var(--radius);
+    color: var(--white);
+    cursor: pointer;
+    display: inline-flex;
+    flex-shrink: 0;
+    height: 38px;
+    justify-content: center;
+    width: 38px;
+  }
+
+  .event-comment-form .button-icon:hover {
+    background: var(--lidl-dark-blue);
+  }
+
+  .event-comment-form .button-icon:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .event-comment-form .button-icon i {
+    font-size: 15px;
   }
 
   /* ── Tooltip události (najetí na chip v mřížce) ───────────────────────

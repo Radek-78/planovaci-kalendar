@@ -7,8 +7,9 @@
  * Bez guardu by šel endpoint zavolat přímo z konzole prohlížeče, i kdyby
  * v UI žádné tlačítko neexistovalo.
  *
- * Stav: bootstrap + čtení událostí. Zápis (vytváření/úprava/mazání) a
- * endpointy pro uživatele a nastavení přibývají v dalších krocích podle
+ * Stav: bootstrap, čtení událostí, komentáře k události (čtení/přidání/
+ * smazání vlastního). Zápis událostí samotných (vytváření/úprava/mazání)
+ * a endpointy pro uživatele a nastavení přibývají v dalších krocích podle
  * SPECIFIKACE.md.
  */
 
@@ -96,4 +97,85 @@ function _resolveUserName_(email, cache) {
   const fullName = user ? (String(user.firstName || '') + ' ' + String(user.lastName || '')).trim() : '';
   cache[low] = fullName || low;
   return cache[low];
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   KOMENTÁŘE K UDÁLOSTI
+
+   Přístupné každému, kdo vidí kalendář (CALENDAR_READ) — i uživateli jen
+   se čtením. Komentář smí smazat jen autor, nebo kdo smí spravovat cizí
+   události (ADMIN/SUPERADMIN) — stejná logika jako u samotných událostí.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Komentáře k jedné události, seřazené od nejstaršího. */
+function apiGetEventComments(payload) {
+  return guard_(PERM_KEYS.CALENDAR_READ, (user) => {
+    const data = payload || {};
+    const eventId = cleanText_(data.eventId, 'ID události', 100, true);
+    const nameCache = {};
+
+    return dbGetAll_(SHEETS.EVENT_COMMENTS)
+      .filter((row) => String(row.event_id) === eventId)
+      .map((row) => _publicComment_(row, user, nameCache))
+      .sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0));
+  });
+}
+
+/** Přidá komentář k události. Vrací rovnou vytvořený komentář (bez dalšího čtení). */
+function apiAddEventComment(payload) {
+  return guard_(PERM_KEYS.CALENDAR_READ, (user) => {
+    const data = payload || {};
+    const eventId = cleanText_(data.eventId, 'ID události', 100, true);
+    const text = cleanText_(data.text, 'Komentář', LIMITS.COMMENT_MAX, true);
+
+    // Nejde komentovat neexistující (např. smazanou) událost.
+    if (!dbFindById_(SHEETS.EVENTS, eventId)) {
+      throw userError_('Událost nebyla nalezena.');
+    }
+
+    const comment = dbInsert_(SHEETS.EVENT_COMMENTS, {
+      event_id: eventId,
+      author_email: user.email,
+      text: text,
+    });
+
+    audit_('comment.create', 'Komentář k události ' + eventId + ': ' + text.slice(0, 80));
+
+    return _publicComment_(comment, user, {});
+  });
+}
+
+/** Smaže komentář — jen vlastní, nebo (ADMIN/SUPERADMIN) kterýkoli. */
+function apiDeleteEventComment(payload) {
+  return guard_(PERM_KEYS.CALENDAR_READ, (user) => {
+    const data = payload || {};
+    const id = cleanText_(data.id, 'ID komentáře', 100, true);
+
+    const comment = dbFindById_(SHEETS.EVENT_COMMENTS, id);
+    if (!comment) {
+      throw userError_('Komentář nebyl nalezen — možná ho mezitím smazal někdo jiný.');
+    }
+
+    const isOwner = cleanEmail_(comment.author_email) === user.email;
+    if (!isOwner && !canManageForeignEvents_(user)) {
+      throw userError_('Můžete mazat jen vlastní komentáře.');
+    }
+
+    dbDelete_(SHEETS.EVENT_COMMENTS, id);
+    audit_('comment.delete', 'Smazán komentář ' + id + ' k události ' + comment.event_id);
+    return null;
+  });
+}
+
+/** Přemění řádek/nově vytvořený záznam komentáře na podobu pro klienta. */
+function _publicComment_(row, user, nameCache) {
+  const authorEmail = cleanEmail_(row.author_email);
+  return {
+    id: String(row.id),
+    authorEmail: authorEmail,
+    authorName: _resolveUserName_(row.author_email, nameCache),
+    text: String(row.text),
+    createdAt: String(row.created_at),
+    canDelete: authorEmail === user.email || canManageForeignEvents_(user),
+  };
 }
