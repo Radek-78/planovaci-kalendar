@@ -6,10 +6,10 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.21 - 02.09.2026 13:48
-- Modal okno uzivatele zvetseno a bez zbytecneho scrollovani - siroky format rozsiren na 720px, pevna vyska formulare nahrazena prirozenou (jen skutecny obsah, zadne prazdne misto navic)
-- kalendar - vicedenni udalosti se ted vizualne spoji v jeden souvisly pruh pres vsechny dny v ramci tydne (misto samostatneho chipu v kazdem dni), zaobleni jen na skutecnem zacatku a konci
-- kazdy den ma nove misto az pro 5 soubeznych udalosti (drive 3 + soucet navic), pretecni nad ramec je jen vzacny okrajovy pripad s malym odznakem v rohu bunky
-- zuzena hlavicka se zkratkami dnu a zmensene okraje kolem cele mrizky kalendare pro vice mista na obsah
+- Modal okno uživatele zvětšeno a bez zbytečného scrollování — široký formát rozšířen na 720px, pevná výška formuláře nahrazena přirozenou (jen skutečný obsah, žádné prázdné místo navíc)
+- Kalendář — vícedenní události se teď vizuálně spojí v jeden souvislý pruh přes všechny dny v rámci týdne (místo samostatného chipu v každém dni), zaoblení jen na skutečném začátku a konci
+- Každý den má nově místo až pro 5 souběžných událostí (dříve 3 + součet navíc), přetečení nad rámec je jen vzácný okrajový případ s malým odznakem v rohu buňky
+- Zúžená hlavička se zkratkami dnů a zmenšené okraje kolem celé mřížky kalendáře pro víc místa na obsah
 
 ## v0.1.20 - 02.09.2026 13:32
 - Sloupec Akce u každého uživatele — tužka (editace všech údajů včetně role a organizace, e-mail už needitovatelný, je na něj navázaná historie událostí a komentářů) a koš (deaktivace, obnovitelná zpětnou ikonou u neaktivních)
