@@ -5,6 +5,12 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.12 - 02.09.2026 08:24
+- Modal detailu dne ted vyjede primo z kliknute bunky dne (vypocet posunu ke stredu obrazovky pres CSS promenne --modal-dx/--modal-dy) a stejnou cestou se pri zavreni zase zmensi zpet
+- pevna vyska modalu 350px pripravena na cca 5 udalosti, prazdny stav se do ni sam vycentruje
+- Novy sdileny tooltip v designu aplikace pri najeti na chip udalosti v mrizce - ikona a barva typu, cely nazev, presny cas/rozsah, popis a zadavatel
+- nahrazuje puvodni holy prohlizecovy tooltip (atribut title)
+
 ## v0.1.11 - 02.09.2026 08:16
 - Souhrn počtu událostí přesunut na řádek s navigací měsíců, designově zpracovaný jako odznak s ikonou
 - Vlastní přepínač měsíce/roku ve stylu aplikace (ikona kalendáře otevírá panel s rokem a mřížkou 12 měsíců) místo prohlížečového inputu, který se nedal stylovat

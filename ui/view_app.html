@@ -138,6 +138,10 @@
   <div class="modal-body" id="dayModalBody"><!-- vykresleno JS --></div>
 </dialog>
 
+<!-- Sdílený tooltip pro najetí na chip události v mřížce — jeden prvek pro
+     celou stránku, JS ho jen přesouvá a přepisuje obsah (viz bindChipTooltip). -->
+<div class="event-tooltip is-hidden" id="eventTooltip"></div>
+
 <!-- ══ Uživatel nemá přístup ══ -->
 <div class="app-shell is-hidden" id="appNoAccessShell">
   <main class="app-main">
@@ -228,6 +232,7 @@
       this.bindNav();
       this.bindMonthPicker();
       this.bindDayModal();
+      this.bindChipTooltip();
       this.renderCalendar();
 
       document.querySelector('#appShell').classList.remove('is-hidden');
@@ -249,7 +254,7 @@
       // při každém překreslení měsíce (stejný vzor jako v PMS plánovači).
       document.querySelector('#calGrid').addEventListener('click', (e) => {
         const cell = e.target.closest('.cal-cell');
-        if (cell && cell.dataset.date) this.openDayModal(cell.dataset.date);
+        if (cell && cell.dataset.date) this.openDayModal(cell.dataset.date, cell);
       });
     },
 
@@ -468,21 +473,29 @@
     /**
      * Jeden chip v buňce mřížky. Čas se vypíše jen první den vícedenní
      * události, další dny nesou jen značku pokračování „▸" — ikona a barva
-     * jsou doplněk, text (název) je vždy čitelný i bez nich.
+     * jsou doplněk, text (název) je vždy čitelný i bez nich. `data-event-id`
+     * slouží tooltipu (viz showChipTooltip) k dohledání celé události.
      */
     renderChip(event, isFirstDay) {
       const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a' };
       const timeLabel = event.allDay ? 'Celý den' : event.start.slice(11, 16);
       const prefix = isFirstDay ? timeLabel + ' ' : '▸ ';
 
-      return '<div class="cal-chip" style="--chip-color:' + Ui.escape(type.color) + '" title="' +
-        Ui.escape(type.label + ': ' + event.title) + '">' +
+      return '<div class="cal-chip" data-event-id="' + Ui.escape(event.id) +
+        '" style="--chip-color:' + Ui.escape(type.color) + '">' +
         '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i>' +
         '<span>' + Ui.escape(prefix + event.title) + '</span></div>';
     },
 
-    /** Otevře modal se seznamem událostí daného dne (jen čtení — viz hlavička souboru). */
-    openDayModal(dateIso) {
+    /**
+     * Otevře modal se seznamem událostí daného dne (jen čtení — viz hlavička
+     * souboru). `originEl` je kliknutá buňka — z jejího umístění na obrazovce
+     * se spočítá, odkud modal "vyjede" (viz CSS #dayModal[open], proměnné
+     * --modal-dx/--modal-dy).
+     */
+    openDayModal(dateIso, originEl) {
+      this.hideChipTooltip(); // ať tu nezůstane viset nad podložkou modalu
+
       const dayEvents = this.currentEvents
         .filter((event) => event.start.slice(0, 10) <= dateIso && event.end.slice(0, 10) >= dateIso)
         .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
@@ -496,43 +509,126 @@
         ? dayEvents.map((event) => this.renderDayEventItem(event)).join('')
         : '<p class="day-empty">Žádné události tento den.</p>';
 
-      Ui.openModal(document.querySelector('#dayModal'));
+      const dialog = document.querySelector('#dayModal');
+      if (originEl) {
+        const rect = originEl.getBoundingClientRect();
+        const dx = (rect.left + rect.width / 2) - window.innerWidth / 2;
+        const dy = (rect.top + rect.height / 2) - window.innerHeight / 2;
+        dialog.style.setProperty('--modal-dx', dx + 'px');
+        dialog.style.setProperty('--modal-dy', dy + 'px');
+      }
+
+      Ui.openModal(dialog);
     },
 
     /** Jedna položka v seznamu událostí dne — ikona typu, čas, popis, zadavatel. */
     renderDayEventItem(event) {
       const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a' };
-      const startIso = event.start.slice(0, 10);
-      const endIso = event.end.slice(0, 10);
-      const isMultiDay = startIso !== endIso;
-
-      let timeLabel;
-      if (event.allDay) {
-        timeLabel = isMultiDay
-          ? 'Celý den · ' + this.formatDateShort(startIso) + '–' + this.formatDateShort(endIso)
-          : 'Celý den';
-      } else if (isMultiDay) {
-        timeLabel = this.formatDateShort(startIso) + ' ' + event.start.slice(11, 16) +
-          ' – ' + this.formatDateShort(endIso) + ' ' + event.end.slice(11, 16);
-      } else {
-        timeLabel = event.start.slice(11, 16) + '–' + event.end.slice(11, 16);
-      }
 
       return '<div class="day-event-item">' +
         '<span class="day-event-icon" style="--chip-color:' + Ui.escape(type.color) + '">' +
           '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i></span>' +
         '<div class="day-event-text">' +
           '<div class="day-event-title-row"><strong>' + Ui.escape(event.title) + '</strong>' +
-            '<span class="day-event-time">' + Ui.escape(timeLabel) + '</span></div>' +
+            '<span class="day-event-time">' + Ui.escape(this.eventTimeLabel(event)) + '</span></div>' +
           (event.description ? '<p class="day-event-desc">' + Ui.escape(event.description) + '</p>' : '') +
           '<span class="day-event-owner">' + Ui.escape(event.ownerName) + '</span>' +
         '</div></div>';
+    },
+
+    /**
+     * Čitelný popis, kdy událost je — sdílené mezi seznamem v modalu
+     * a tooltipem nad chipem, ať se pravidla nepíšou na dvou místech.
+     */
+    eventTimeLabel(event) {
+      const startIso = event.start.slice(0, 10);
+      const endIso = event.end.slice(0, 10);
+      const isMultiDay = startIso !== endIso;
+
+      if (event.allDay) {
+        return isMultiDay
+          ? 'Celý den · ' + this.formatDateShort(startIso) + '–' + this.formatDateShort(endIso)
+          : 'Celý den';
+      }
+      if (isMultiDay) {
+        return this.formatDateShort(startIso) + ' ' + event.start.slice(11, 16) +
+          ' – ' + this.formatDateShort(endIso) + ' ' + event.end.slice(11, 16);
+      }
+      return event.start.slice(11, 16) + '–' + event.end.slice(11, 16);
     },
 
     /** Datum jako „D.M." — krátký formát pro rozsah vícedenní události. */
     formatDateShort(iso) {
       const parts = iso.split('-');
       return Number(parts[2]) + '.' + Number(parts[1]) + '.';
+    },
+
+    /**
+     * Tooltip s kompletními informacemi o události při najetí myší na chip.
+     * Deleguje se přes mouseover/mouseout (mouseenter/mouseleave nebublá,
+     * takže by se musel poslouchat na každém chipu zvlášť) — `closest()`
+     * najde chip i při najetí na jeho ikonu/text, porovnání s `relatedTarget`
+     * zabrání blikání při přechodu mezi vnitřními prvky téhož chipu.
+     */
+    bindChipTooltip() {
+      const grid = document.querySelector('#calGrid');
+
+      grid.addEventListener('mouseover', (e) => {
+        const chip = e.target.closest('.cal-chip');
+        if (!chip || (e.relatedTarget && chip.contains(e.relatedTarget))) return;
+        this.showChipTooltip(chip);
+      });
+
+      grid.addEventListener('mouseout', (e) => {
+        const chip = e.target.closest('.cal-chip');
+        if (!chip || (e.relatedTarget && chip.contains(e.relatedTarget))) return;
+        this.hideChipTooltip();
+      });
+    },
+
+    showChipTooltip(chip) {
+      const event = this.currentEvents.find((e) => e.id === chip.dataset.eventId);
+      if (!event) return;
+
+      const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a' };
+      const tooltip = document.querySelector('#eventTooltip');
+
+      tooltip.style.setProperty('--chip-color', type.color);
+      tooltip.innerHTML =
+        '<div class="event-tooltip-header">' +
+          '<span class="event-tooltip-icon"><i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i></span>' +
+          '<div class="event-tooltip-header-text">' +
+            '<p class="event-tooltip-type">' + Ui.escape(type.label) + '</p>' +
+            '<p class="event-tooltip-title">' + Ui.escape(event.title) + '</p>' +
+          '</div>' +
+        '</div>' +
+        '<p class="event-tooltip-row"><i class="ph ph-clock" aria-hidden="true"></i>' +
+          Ui.escape(this.eventTimeLabel(event)) + '</p>' +
+        (event.description ? '<p class="event-tooltip-desc">' + Ui.escape(event.description) + '</p>' : '') +
+        '<p class="event-tooltip-row event-tooltip-owner"><i class="ph ph-user" aria-hidden="true"></i>' +
+          Ui.escape(event.ownerName) + '</p>';
+
+      tooltip.classList.remove('is-hidden');
+      this.positionTooltip(tooltip, chip);
+    },
+
+    hideChipTooltip() {
+      document.querySelector('#eventTooltip').classList.add('is-hidden');
+    },
+
+    /** Nad chipem, nebo pod ním, když by se nahoře nevešel; vodorovně zarovnaný na střed a oříznutý do šířky okna. */
+    positionTooltip(tooltip, anchor) {
+      const anchorRect = anchor.getBoundingClientRect();
+      const tooltipRect = tooltip.getBoundingClientRect();
+
+      let top = anchorRect.top - tooltipRect.height - 8;
+      if (top < 8) top = anchorRect.bottom + 8;
+
+      let left = anchorRect.left + anchorRect.width / 2 - tooltipRect.width / 2;
+      left = Math.max(8, Math.min(left, window.innerWidth - tooltipRect.width - 8));
+
+      tooltip.style.top = top + 'px';
+      tooltip.style.left = left + 'px';
     },
 
     /** Datum jako `YYYY-MM-DD` v místním čase (ne UTC — cellDate je vždy lokální půlnoc). */
