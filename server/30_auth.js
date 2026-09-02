@@ -172,6 +172,14 @@ function canEditPastEvents_(user, settings) {
  * @param {Function} fn           tělo endpointu, dostane přihlášeného uživatele
  */
 function guard_(permissionKey, fn) {
+  // Apps Script může mezi jednotlivými voláními znovu použít stejnou "teplou"
+  // instanci běhu — modulové proměnné (dbCache_) se tedy NEMUSÍ vynulovat
+  // samy, jak by se dalo čekat. Bez tohoto resetu by endpoint mohl vrátit
+  // zastaralá data, pokud tabulku mezitím změnil jiný běh (typicky ruční
+  // TOOLS_* funkce spuštěná z editoru — ta běží ve zcela jiné instanci
+  // a dbInvalidate_, který volá, na tuto instanci nemá žádný vliv).
+  dbCache_ = {};
+
   try {
     if (!isSetupDone_()) {
       throw userError_('Aplikace není inicializována. Kontaktujte správce.');

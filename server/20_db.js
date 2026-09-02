@@ -170,7 +170,13 @@ function withLock_(fn) {
  * ručním mazáním obsahu buněk v tabulce.
  */
 function dbGetAll_(table) {
-  if (dbCache_[table]) return dbCache_[table];
+  // POZOR: kontrola musí být na PŘÍTOMNOST klíče, ne na jeho pravdivostní
+  // hodnotu — prázdná tabulka se cachuje jako [], a prázdné pole je v JS
+  // vždy pravdivé. `if (dbCache_[table])` by proto prázdný výsledek bralo
+  // jako "už mám v cache" napořád (v rámci jedné instance běhu) i po
+  // vložení nových řádků odjinud. Skutečně nová data v rámci JEDNOHO
+  // požadavku zajišťuje reset dbCache_ na začátku guard_()/doGet().
+  if (Object.prototype.hasOwnProperty.call(dbCache_, table)) return dbCache_[table];
 
   const sheet = dbSheet_(table);
   const lastRow = sheet.getLastRow();

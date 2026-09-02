@@ -15,6 +15,10 @@
  */
 
 function doGet() {
+  // Stejný důvod jako v guard_() (30_auth.js) — "teplá" instance běhu si
+  // může nést zastaralou dbCache_ z předchozího požadavku.
+  dbCache_ = {};
+
   let page = 'wizard';
   let settings = {};
 
