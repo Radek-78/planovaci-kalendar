@@ -26,7 +26,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.1.16',
+  version: 'v0.1.17',
   releaseDate: '2.9.2026',
 
   /**
@@ -46,6 +46,14 @@ const CONFIG = {
     yellow: '#fff000',
     red: '#e60a14',
   },
+
+  /**
+   * Jediná povolená e-mailová doména pro nové uživatele — ověřuje se na
+   * serveru v apiSaveUser. Pojistka proti překlepu při zadávání, ne
+   * bezpečnostní hranice sama o sobě (o přístupu stejně rozhoduje výhradně
+   * list `_users`, ne doména).
+   */
+  allowedEmailDomain: 'lidl.cz',
 };
 
 /**

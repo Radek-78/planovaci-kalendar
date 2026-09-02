@@ -232,3 +232,92 @@ function _publicComment_(row, user, nameCache) {
     canDelete: authorEmail === user.email || canManageForeignEvents_(user),
   };
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   UŽIVATELÉ
+
+   Přístupné jen SUPERADMIN/ADMIN (users_manage). Zatím jen ČTENÍ SEZNAMU
+   a VYTVÁŘENÍ — úprava/deaktivace existujícího uživatele je další krok
+   (viz SPECIFIKACE.md kapitola 8, apiDeactivateUser).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Seznam všech uživatelů, seřazený podle jména. */
+function apiGetUsers() {
+  return guard_(PERM_KEYS.USERS_MANAGE, () => {
+    return dbGetAll_(SHEETS.USERS)
+      .map(_publicUserRow_)
+      .sort((a, b) => a.fullName.localeCompare(b.fullName, 'cs'));
+  });
+}
+
+/**
+ * Vytvoří nového uživatele. E-mail musí být z povolené domény (CONFIG.
+ * allowedEmailDomain) a nesmí už v `_users` existovat. Roli SUPERADMIN smí
+ * přidělit jen SUPERADMIN — jinak by si ADMIN mohl sám sobě nebo komukoli
+ * přidat nejvyšší oprávnění.
+ *
+ * Zatím jen VYTVOŘENÍ — payload.id se ignoruje, úprava existujícího
+ * uživatele je další krok.
+ *
+ * @param {Object} payload  { email, firstName, lastName, role, permission }
+ */
+function apiSaveUser(payload) {
+  return guard_(PERM_KEYS.USERS_MANAGE, (user) => {
+    const data = payload || {};
+    const email = cleanEmail_(data.email);
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw userError_('Zadejte platný e-mail.');
+    }
+    if (!email.endsWith('@' + CONFIG.allowedEmailDomain)) {
+      throw userError_('E-mail musí být z domény @' + CONFIG.allowedEmailDomain + '.');
+    }
+    if (dbFindBy_(SHEETS.USERS, 'email', email)) {
+      throw userError_('Uživatel s tímto e-mailem už existuje.');
+    }
+
+    const firstName = cleanText_(data.firstName, 'Jméno', LIMITS.NAME_MAX, true);
+    const lastName = cleanText_(data.lastName, 'Příjmení', LIMITS.NAME_MAX, true);
+    const role = pickFrom_(data.role, Object.keys(ROLES), 'Role');
+
+    if (role === ROLES.SUPERADMIN && user.role !== ROLES.SUPERADMIN) {
+      throw userError_('Jen správce aplikace může vytvořit dalšího správce.');
+    }
+
+    // Oprávnění (EDITOR/VIEWER) má smysl jen u role USER — ADMIN/SUPERADMIN
+    // mají v matici oprávnění vždy plný zápis bez ohledu na tento sloupec.
+    const permission = role === ROLES.USER
+      ? pickFrom_(data.permission, Object.keys(PERMISSIONS), 'Oprávnění')
+      : PERMISSIONS.EDITOR;
+
+    const record = dbInsert_(SHEETS.USERS, {
+      email: email,
+      firstName: firstName,
+      lastName: lastName,
+      role: role,
+      permission: permission,
+      active: true,
+      last_visit_at: '',
+    });
+
+    audit_('user.create', 'Vytvořen uživatel ' + email + ' (role ' + role + ')');
+
+    return _publicUserRow_(record);
+  });
+}
+
+/** Přemění řádek uživatele na podobu pro klienta. */
+function _publicUserRow_(row) {
+  const firstName = String(row.firstName || '');
+  const lastName = String(row.lastName || '');
+  return {
+    id: String(row.id),
+    email: String(row.email),
+    firstName: firstName,
+    lastName: lastName,
+    fullName: (firstName + ' ' + lastName).trim() || String(row.email),
+    role: row.role,
+    permission: row.permission,
+    active: toBool_(row.active),
+  };
+}

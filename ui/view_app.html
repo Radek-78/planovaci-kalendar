@@ -104,12 +104,16 @@
       </div>
     </section>
 
-    <!-- Panel: Uživatelé (placeholder — plná funkce ve fázi 5) -->
+    <!-- Panel: Uživatelé — seznam a vytváření. Úprava/deaktivace existujícího
+         uživatele je další krok (viz SPECIFIKACE.md). -->
     <section class="view-panel" data-page-section="users">
-      <div class="view-placeholder">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-users"></use></svg>
-        <p>Tato sekce bude dostupná v další fázi vývoje.</p>
+      <div class="section-header">
+        <h2>Uživatelé</h2>
+        <button class="button button-primary" type="button" id="usersCreateBtn">
+          <i class="ph ph-user-plus" aria-hidden="true"></i> Nový uživatel
+        </button>
       </div>
+      <div class="users-list" id="usersList"><!-- vykresleno JS --></div>
     </section>
 
     <!-- Panel: Nastavení (placeholder — plná funkce ve fázi 5) -->
@@ -250,6 +254,62 @@
   </form>
 </dialog>
 
+<!-- ══ Modal: nový uživatel ══
+     Nabídka rolí ve #userFormRole se plní JS (fillUserRoleSelect) — SUPERADMIN
+     smí přidělit jen SUPERADMIN, jinak by tam server stejně nikoho nepustil
+     (žádná mrtvá volba, kterou by server odmítl). -->
+<dialog class="modal modal-grow" id="userFormModal">
+  <div class="modal-header">
+    <span class="modal-icon"><i class="ph ph-user-plus" aria-hidden="true"></i></span>
+    <div class="modal-header-text">
+      <p class="kicker">Nový uživatel</p>
+      <h2>Přidat do aplikace</h2>
+    </div>
+    <button class="modal-close" type="button" id="userFormClose" aria-label="Zavřít">
+      <i class="ph ph-x" aria-hidden="true"></i>
+    </button>
+  </div>
+  <form id="userForm">
+    <div class="modal-body event-form-body">
+      <div class="event-form-row">
+        <label>
+          <span>Jméno *</span>
+          <input type="text" id="userFormFirstName" maxlength="60" required>
+        </label>
+        <label>
+          <span>Příjmení *</span>
+          <input type="text" id="userFormLastName" maxlength="60" required>
+        </label>
+      </div>
+      <label>
+        <span>E-mail *</span>
+        <input type="email" id="userFormEmail" placeholder="jmeno.prijmeni@lidl.cz" required>
+      </label>
+      <div class="event-form-row">
+        <label>
+          <span>Role</span>
+          <select id="userFormRole"><!-- vykresleno JS --></select>
+        </label>
+        <label id="userFormPermissionField">
+          <span>Oprávnění</span>
+          <select id="userFormPermission">
+            <option value="EDITOR">Zápis</option>
+            <option value="VIEWER">Jen čtení</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="button button-secondary" id="userFormCancel">
+        <i class="ph ph-x" aria-hidden="true"></i> Zrušit
+      </button>
+      <button type="submit" class="button button-primary" id="userFormSubmit">
+        <i class="ph ph-check" aria-hidden="true"></i> Vytvořit
+      </button>
+    </div>
+  </form>
+</dialog>
+
 <!-- Sdílený tooltip pro najetí na chip události v mřížce — jeden prvek pro
      celou stránku, JS ho jen přesouvá a přepisuje obsah (viz bindChipTooltip). -->
 <div class="event-tooltip is-hidden" id="eventTooltip"></div>
@@ -314,6 +374,12 @@
     /** Smí uživatel zapisovat do kalendáře? Ze serveru (apiGetBootstrap), ne klientský odhad. */
     canWrite: false,
 
+    /** Smí uživatel spravovat uživatele? Ze serveru, stejný princip jako canWrite. */
+    canManageUsers: false,
+
+    /** Role přihlášeného uživatele — řídí, jestli formulář nabídne i SUPERADMIN (viz fillUserRoleSelect). */
+    currentUserRole: '',
+
     /** Poslední načtené události zobrazeného rozsahu — pro otevření modalu bez dalšího volání serveru. */
     currentEvents: [],
 
@@ -339,12 +405,16 @@
       // Položky menu, na které uživatel nemá právo, se v sidebaru vůbec
       // nezobrazí — server o právu už rozhodl, klient jen skrývá odkaz na
       // sekci, kterou by stejně nesměl otevřít.
-      if (!data.permissions.canManageUsers) document.querySelector('#navUsers').classList.add('is-hidden');
+      const canManageUsers = data.permissions.canManageUsers === true;
+      if (!canManageUsers) document.querySelector('#navUsers').classList.add('is-hidden');
       if (!data.permissions.canManageSettings) document.querySelector('#navSettings').classList.add('is-hidden');
 
       this.eventTypes = data.eventTypes || {};
       this.canWrite = data.permissions.canWrite === true;
+      this.canManageUsers = canManageUsers;
+      this.currentUserRole = data.user.role;
       this.fillEventTypeSelect();
+      this.fillUserRoleSelect();
 
       this.bindNav();
       this.bindMonthPicker();
@@ -352,6 +422,7 @@
       this.bindEventModal();
       this.bindEventForm();
       this.bindChipTooltip();
+      if (canManageUsers) this.bindUserForm();
       this.renderCalendar();
 
       document.querySelector('#appShell').classList.remove('is-hidden');
@@ -362,6 +433,25 @@
       const select = document.querySelector('#eventFormType');
       select.innerHTML = Object.keys(this.eventTypes)
         .map((key) => '<option value="' + Ui.escape(key) + '">' + Ui.escape(this.eventTypes[key].label) + '</option>')
+        .join('');
+    },
+
+    /**
+     * Naplní <select> s rolí ve formuláři nového uživatele. SUPERADMIN se
+     * nabízí, jen když je přihlášený sám SUPERADMIN — server by roli
+     * SUPERADMIN od ADMINa stejně odmítl, takže nemá smysl ji vůbec nabízet.
+     */
+    fillUserRoleSelect() {
+      const options = [
+        { value: 'USER', label: this.ROLE_LABELS.USER },
+        { value: 'ADMIN', label: this.ROLE_LABELS.ADMIN },
+      ];
+      if (this.currentUserRole === 'SUPERADMIN') {
+        options.push({ value: 'SUPERADMIN', label: this.ROLE_LABELS.SUPERADMIN });
+      }
+
+      document.querySelector('#userFormRole').innerHTML = options
+        .map((o) => '<option value="' + o.value + '">' + Ui.escape(o.label) + '</option>')
         .join('');
     },
 
@@ -620,6 +710,147 @@
         });
     },
 
+    /* ── Uživatelé ────────────────────────────────────────────────────── */
+
+    /** Otevírání/zavírání formuláře nového uživatele, přepínání pole "Oprávnění", odeslání. */
+    bindUserForm() {
+      document.querySelector('#usersCreateBtn').addEventListener('click', (e) => {
+        this.openCreateUserModal(e.currentTarget);
+      });
+
+      const dialog = document.querySelector('#userFormModal');
+      document.querySelector('#userFormClose').addEventListener('click', () => Ui.closeModal(dialog));
+      document.querySelector('#userFormCancel').addEventListener('click', () => Ui.closeModal(dialog));
+      dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) Ui.closeModal(dialog);
+      });
+      dialog.addEventListener('cancel', (e) => {
+        e.preventDefault();
+        Ui.closeModal(dialog);
+      });
+
+      // Oprávnění (zápis/jen čtení) dává smysl jen u role USER — u ADMIN/
+      // SUPERADMIN je vždy plné, pole se jen opticky skryje (visibility),
+      // ať se formulář nehýbe stejně jako u přepínače "Celý den".
+      document.querySelector('#userFormRole').addEventListener('change', () => this.updateUserFormPermissionVisibility());
+
+      document.querySelector('#userForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.submitUserForm();
+      });
+    },
+
+    updateUserFormPermissionVisibility() {
+      const isUserRole = document.querySelector('#userFormRole').value === 'USER';
+      document.querySelector('#userFormPermissionField').classList.toggle('event-form-field--hidden', !isUserRole);
+    },
+
+    openCreateUserModal(originEl) {
+      document.querySelector('#userFormFirstName').value = '';
+      document.querySelector('#userFormLastName').value = '';
+      document.querySelector('#userFormEmail').value = '';
+      document.querySelector('#userFormRole').value = 'USER';
+      document.querySelector('#userFormPermission').value = 'EDITOR';
+      this.updateUserFormPermissionVisibility();
+
+      const dialog = document.querySelector('#userFormModal');
+      this.setModalOrigin(dialog, originEl);
+      Ui.openModal(dialog);
+
+      document.querySelector('#userFormFirstName').focus();
+    },
+
+    /**
+     * Odešle formulář nového uživatele. Validace (formát a doména e-mailu,
+     * duplicita, kdo smí přidělit roli SUPERADMIN…) probíhá na SERVERU
+     * (apiSaveUser) — tady jen to nejzákladnější, ať uživatel nečeká na
+     * odpověď kvůli prázdnému poli.
+     */
+    submitUserForm() {
+      const firstName = document.querySelector('#userFormFirstName').value.trim();
+      const lastName = document.querySelector('#userFormLastName').value.trim();
+      const email = document.querySelector('#userFormEmail').value.trim();
+
+      if (!firstName || !lastName) {
+        Ui.toast('Vyplňte jméno i příjmení.', 'error');
+        return;
+      }
+      if (!email) {
+        Ui.toast('Vyplňte e-mail.', 'error');
+        return;
+      }
+
+      const role = document.querySelector('#userFormRole').value;
+      const payload = {
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        role: role,
+        permission: role === 'USER' ? document.querySelector('#userFormPermission').value : 'EDITOR',
+      };
+
+      const submitButton = document.querySelector('#userFormSubmit');
+      Ui.setButtonLoading(submitButton, true, 'Ukládám…');
+
+      Ui.call('apiSaveUser', payload, { silent: true })
+        .then(() => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.closeModal(document.querySelector('#userFormModal'));
+          Ui.toast('Uživatel vytvořen.', 'success');
+          this.loadUsers(); // znovu načte seznam, ať je nový uživatel hned vidět
+        })
+        .catch((error) => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    loadUsers() {
+      const list = document.querySelector('#usersList');
+      list.innerHTML = this.usersPlaceholder('Načítám uživatele…');
+
+      Ui.call('apiGetUsers', null, { silent: true })
+        .then((users) => this.renderUsers(users))
+        .catch((error) => {
+          list.innerHTML = this.usersPlaceholder('Uživatele se nepodařilo načíst.');
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    renderUsers(users) {
+      const list = document.querySelector('#usersList');
+      list.innerHTML = users.length
+        ? users.map((u) => this.renderUserRow(u)).join('')
+        : this.usersPlaceholder('Zatím žádní uživatelé.');
+    },
+
+    /** Prázdný/chybový/načítací stav seznamu — stejný jazyk jako placeholder Nastavení. */
+    usersPlaceholder(text) {
+      return '<div class="view-placeholder">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-users"></use></svg>' +
+        '<p>' + Ui.escape(text) + '</p></div>';
+    },
+
+    /** Jeden řádek v seznamu — avatar, jméno, e-mail, odznak role, oprávnění (jen u USER). */
+    renderUserRow(u) {
+      const roleLabel = this.ROLE_LABELS[u.role] || u.role;
+      const roleClass = u.role === 'SUPERADMIN' ? ' is-superadmin' : u.role === 'ADMIN' ? ' is-admin' : '';
+      const permissionText = u.role === 'USER' ? (u.permission === 'EDITOR' ? 'Zápis' : 'Jen čtení') : '';
+
+      return '<div class="user-row' + (u.active ? '' : ' is-inactive') + '">' +
+        '<span class="avatar user-avatar">' + Ui.escape(this.initials(u.fullName)) + '</span>' +
+        '<div class="user-row-text">' +
+          '<div class="user-row-name-line">' +
+            '<strong>' + Ui.escape(u.fullName) + '</strong>' +
+            '<span class="user-role-badge' + roleClass + '">' + Ui.escape(roleLabel) + '</span>' +
+            (u.active ? '' : '<span class="user-row-inactive-tag">Neaktivní</span>') +
+          '</div>' +
+          '<span class="user-row-email">' + Ui.escape(u.email) + '</span>' +
+        '</div>' +
+        (permissionText ? '<span class="user-row-permission">' + Ui.escape(permissionText) + '</span>' : '') +
+      '</div>';
+    },
+
     showSection(name) {
       document.querySelectorAll('.nav-link').forEach((item) => {
         item.classList.toggle('is-active', item.dataset.section === name);
@@ -627,6 +858,11 @@
       document.querySelectorAll('[data-page-section]').forEach((section) => {
         section.classList.toggle('is-active', section.dataset.pageSection === name);
       });
+
+      // Data sekce se načítají, až se na ni skutečně přepne — ne dopředu
+      // při startu appky. Při 6 uživatelích je znovunačtení při každém
+      // kliknutí levné a zaručí to čerstvá data i po vytvoření nového.
+      if (name === 'users' && this.canManageUsers) this.loadUsers();
     },
 
     navigateMonth(delta) {
