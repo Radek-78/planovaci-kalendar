@@ -127,6 +127,7 @@
           <span>Pozice</span>
           <span>Oprávnění</span>
           <span>Stav</span>
+          <span>Akce</span>
         </div>
         <div class="users-table-body" id="usersList"><!-- vykresleno JS --></div>
       </div>
@@ -280,10 +281,10 @@
      ručně, automatika se pro tenhle formulář přestane přepisovat. -->
 <dialog class="modal modal-wide modal-grow" id="userFormModal">
   <div class="modal-header">
-    <span class="modal-icon"><i class="ph ph-user-plus" aria-hidden="true"></i></span>
+    <span class="modal-icon" id="userFormModalIcon"><i class="ph ph-user-plus" aria-hidden="true"></i></span>
     <div class="modal-header-text">
-      <p class="kicker">Nový uživatel</p>
-      <h2>Přidat do aplikace</h2>
+      <p class="kicker" id="userFormKicker">Nový uživatel</p>
+      <h2 id="userFormModalTitle">Přidat do aplikace</h2>
     </div>
     <button class="modal-close" type="button" id="userFormClose" aria-label="Zavřít">
       <i class="ph ph-x" aria-hidden="true"></i>
@@ -306,6 +307,7 @@
           <label>
             <span>Uživatelské jméno (e-mail) *</span>
             <input type="email" id="userFormEmail" placeholder="jmeno.prijmeni@lidl.cz" required>
+            <small class="field-hint is-hidden" id="userFormEmailHint">E-mail nejde po založení účtu změnit — je na něj navázaná historie událostí a komentářů.</small>
           </label>
         </div>
       </div>
@@ -357,6 +359,31 @@
       </button>
     </div>
   </form>
+</dialog>
+
+<!-- ══ Modal: obecné potvrzení citlivé/nevratné akce ══
+     Nativní window.confirm/alert se v appce záměrně nepoužívá (jiný vzhled
+     než zbytek aplikace i nejisté chování v sandboxované iframe Apps
+     Scriptu) — místo toho jeden sdílený modal ve stylu appky, který si
+     JS (App.confirmAction) přeplní podle konkrétní akce. -->
+<dialog class="modal modal-grow" id="confirmModal">
+  <div class="modal-header">
+    <span class="modal-icon is-warning" id="confirmModalIcon"><i class="ph ph-warning" aria-hidden="true"></i></span>
+    <div class="modal-header-text">
+      <p class="kicker" id="confirmModalKicker">Potvrzení</p>
+      <h2 id="confirmModalTitle"></h2>
+    </div>
+    <button class="modal-close" type="button" id="confirmModalClose" aria-label="Zavřít">
+      <i class="ph ph-x" aria-hidden="true"></i>
+    </button>
+  </div>
+  <div class="modal-body" id="confirmModalBody"></div>
+  <div class="modal-actions">
+    <button type="button" class="button button-secondary" id="confirmModalCancel">
+      <i class="ph ph-x" aria-hidden="true"></i> Zrušit
+    </button>
+    <button type="button" class="button" id="confirmModalOk"></button>
+  </div>
 </dialog>
 
 <!-- Sdílený tooltip pro najetí na chip události v mřížce — jeden prvek pro
@@ -429,6 +456,12 @@
     /** Role přihlášeného uživatele — řídí, jestli formulář nabídne i SUPERADMIN (viz fillUserRoleSelect). */
     currentUserRole: '',
 
+    /** E-mail přihlášeného uživatele — řídí, aby si nemohl sám sobě zobrazit akci deaktivace (viz renderUserRow). */
+    currentUserEmail: '',
+
+    /** Poslední načtený seznam uživatelů — pro dohledání dat při otevření editace (viz openEditUserModal). */
+    usersCache: [],
+
     /** Doména pro automatické doplnění e-mailu (viz bindUserAutofill) — ze serveru (CONFIG.allowedEmailDomain). */
     allowedEmailDomain: '',
 
@@ -447,6 +480,8 @@
       Ui.setText('#sidebarAppSubtitle', data.settings.appSubtitle);
       Ui.setText('#sidebarAvatar', this.initials(data.user.fullName || data.user.email));
       Ui.setText('#sidebarUserName', data.user.fullName);
+
+      this.currentUserEmail = data.user.email;
 
       const roleLabel = this.ROLE_LABELS[data.user.role] || data.user.role;
       const permissionLabel = data.user.role === 'USER'
@@ -768,7 +803,7 @@
     /** Otevírání/zavírání formuláře nového uživatele, přepínání pole "Oprávnění", odeslání. */
     bindUserForm() {
       document.querySelector('#usersCreateBtn').addEventListener('click', (e) => {
-        this.openCreateUserModal(e.currentTarget);
+        this.openUserFormModal(null, e.currentTarget);
       });
 
       const dialog = document.querySelector('#userFormModal');
@@ -793,6 +828,32 @@
       });
 
       this.bindUserAutofill();
+      this.bindUserActions();
+      this.bindConfirmModal();
+    },
+
+    /**
+     * Klik na ikony ve sloupci Akce — delegováno na celý seznam, protože
+     * řádky se vždy vykreslují znovu (renderUsers), takže listener na
+     * jednotlivém tlačítku by po každém načtení zmizel s ním.
+     */
+    bindUserActions() {
+      document.querySelector('#usersList').addEventListener('click', (e) => {
+        const button = e.target.closest('.user-action-btn');
+        if (!button) return;
+
+        const id = button.dataset.id;
+        const user = this.usersCache.find((u) => u.id === id);
+        if (!user) return;
+
+        if (button.dataset.action === 'edit') {
+          this.openUserFormModal(user, button);
+        } else if (button.dataset.action === 'deactivate') {
+          this.confirmDeactivateUser(user, button);
+        } else if (button.dataset.action === 'activate') {
+          this.setUserActive(user, true, button);
+        }
+      });
     },
 
     updateUserFormPermissionVisibility() {
@@ -833,18 +894,41 @@
         .replace(/[^a-z]+/g, '');
     },
 
-    openCreateUserModal(originEl) {
-      document.querySelector('#userFormFirstName').value = '';
-      document.querySelector('#userFormLastName').value = '';
+    /**
+     * Otevře formulář uživatele — bez parametru user založí nový účet,
+     * s ním upraví existující. E-mail je u úpravy needitovatelný (viz
+     * komentář u apiSaveUser na serveru, proč se na něm nedá měnit) — pole
+     * se zamkne a dovysvětlí drobnou nápovědou pod ním (#userFormEmailHint).
+     */
+    openUserFormModal(user, originEl) {
+      document.querySelector('#userFormFirstName').value = user ? user.firstName : '';
+      document.querySelector('#userFormLastName').value = user ? user.lastName : '';
+
       const emailField = document.querySelector('#userFormEmail');
-      emailField.value = '';
-      delete emailField.dataset.manual; // nový formulář → automatika zase aktivní
-      document.querySelector('#userFormRole').value = 'USER';
-      document.querySelector('#userFormPermission').value = 'EDITOR';
-      document.querySelector('#userFormLocation').value = '';
-      document.querySelector('#userFormDepartment').value = '';
-      document.querySelector('#userFormPosition').value = '';
+      emailField.value = user ? user.email : '';
+      emailField.disabled = !!user;
+      document.querySelector('#userFormEmailHint').classList.toggle('is-hidden', !user);
+      if (user) {
+        // Needituje se → automatika ze jména/příjmení ho nesmí přepisovat.
+        emailField.dataset.manual = 'true';
+      } else {
+        delete emailField.dataset.manual; // nový formulář → automatika zase aktivní
+      }
+
+      document.querySelector('#userFormRole').value = user ? user.role : 'USER';
+      document.querySelector('#userFormPermission').value = user ? user.permission : 'EDITOR';
+      document.querySelector('#userFormLocation').value = user ? user.location : '';
+      document.querySelector('#userFormDepartment').value = user ? user.department : '';
+      document.querySelector('#userFormPosition').value = user ? user.position : '';
+      document.querySelector('#userForm').dataset.editId = user ? user.id : '';
       this.updateUserFormPermissionVisibility();
+
+      document.querySelector('#userFormModalIcon').innerHTML =
+        '<i class="ph ' + (user ? 'ph-pencil-simple' : 'ph-user-plus') + '" aria-hidden="true"></i>';
+      document.querySelector('#userFormKicker').textContent = user ? 'Upravit uživatele' : 'Nový uživatel';
+      document.querySelector('#userFormModalTitle').textContent = user ? user.fullName : 'Přidat do aplikace';
+      document.querySelector('#userFormSubmit').innerHTML =
+        '<i class="ph ph-check" aria-hidden="true"></i> ' + (user ? 'Uložit' : 'Vytvořit');
 
       const dialog = document.querySelector('#userFormModal');
       this.setModalOrigin(dialog, originEl);
@@ -854,12 +938,14 @@
     },
 
     /**
-     * Odešle formulář nového uživatele. Validace (formát a doména e-mailu,
-     * duplicita, kdo smí přidělit roli SUPERADMIN…) probíhá na SERVERU
-     * (apiSaveUser) — tady jen to nejzákladnější, ať uživatel nečeká na
-     * odpověď kvůli prázdnému poli.
+     * Odešle formulář uživatele — vytvoření i úpravu (viz apiSaveUser na
+     * serveru, id v datasetu formuláře rozhoduje o tom, který to je).
+     * Validace (formát a doména e-mailu, duplicita, kdo smí přidělit roli
+     * SUPERADMIN…) probíhá na SERVERU — tady jen to nejzákladnější, ať
+     * uživatel nečeká na odpověď kvůli prázdnému poli.
      */
     submitUserForm() {
+      const editId = document.querySelector('#userForm').dataset.editId || '';
       const firstName = document.querySelector('#userFormFirstName').value.trim();
       const lastName = document.querySelector('#userFormLastName').value.trim();
       const email = document.querySelector('#userFormEmail').value.trim();
@@ -884,6 +970,7 @@
         department: document.querySelector('#userFormDepartment').value.trim(),
         position: document.querySelector('#userFormPosition').value.trim(),
       };
+      if (editId) payload.id = editId;
 
       const submitButton = document.querySelector('#userFormSubmit');
       Ui.setButtonLoading(submitButton, true, 'Ukládám…');
@@ -892,11 +979,90 @@
         .then(() => {
           Ui.setButtonLoading(submitButton, false);
           Ui.closeModal(document.querySelector('#userFormModal'));
-          Ui.toast('Uživatel vytvořen.', 'success');
-          this.loadUsers(); // znovu načte seznam, ať je nový uživatel hned vidět
+          Ui.toast(editId ? 'Uživatel upraven.' : 'Uživatel vytvořen.', 'success');
+          this.loadUsers(); // znovu načte seznam, ať je změna hned vidět
         })
         .catch((error) => {
           Ui.setButtonLoading(submitButton, false);
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    /** Zavírání obecného potvrzovacího modalu — obsah a OK tlačítko si plní confirmAction. */
+    bindConfirmModal() {
+      const dialog = document.querySelector('#confirmModal');
+      document.querySelector('#confirmModalClose').addEventListener('click', () => Ui.closeModal(dialog));
+      document.querySelector('#confirmModalCancel').addEventListener('click', () => Ui.closeModal(dialog));
+      dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) Ui.closeModal(dialog);
+      });
+      dialog.addEventListener('cancel', (e) => {
+        e.preventDefault();
+        Ui.closeModal(dialog);
+      });
+    },
+
+    /**
+     * Obecné potvrzení citlivé/nevratné akce — jednotný vzhled appky místo
+     * window.confirm (viz komentář u #confirmModal v HTML). onConfirm
+     * dostane OK tlačítko a dialog — sám si řídí Ui.setButtonLoading a
+     * zavře modal až po úspěchu, ať při chybě uživatel vidí hlášku, ne
+     * prázdno po zmizelém modalu.
+     */
+    confirmAction(opts, originEl) {
+      document.querySelector('#confirmModalTitle').textContent = opts.title;
+      document.querySelector('#confirmModalBody').textContent = opts.body;
+
+      const okBtn = document.querySelector('#confirmModalOk');
+      okBtn.className = 'button ' + (opts.okClass || 'button-danger');
+      okBtn.innerHTML = '<i class="ph ' + (opts.okIcon || 'ph-trash') + '" aria-hidden="true"></i> ' + Ui.escape(opts.okLabel || 'Potvrdit');
+
+      // Tlačítko nahradíme čerstvým klonem, ať se z předchozích otevření
+      // (jiná akce, jiná data) nekumulují staré listenery odeslání.
+      const freshOk = okBtn.cloneNode(true);
+      okBtn.parentNode.replaceChild(freshOk, okBtn);
+      freshOk.addEventListener('click', () => opts.onConfirm(freshOk, document.querySelector('#confirmModal')));
+
+      const dialog = document.querySelector('#confirmModal');
+      this.setModalOrigin(dialog, originEl);
+      Ui.openModal(dialog);
+    },
+
+    /** Deaktivace je citlivá (bere uživateli přístup) → potvrzovací modal. Aktivace zpět jde rovnou (setUserActive). */
+    confirmDeactivateUser(user, originEl) {
+      this.confirmAction({
+        title: 'Deaktivovat uživatele?',
+        body: user.fullName + ' (' + user.email + ') tím ztratí přístup do aplikace. Účet i jeho historie zůstanou zachované — kdykoli ho můžete zase aktivovat.',
+        okLabel: 'Deaktivovat',
+        okIcon: 'ph-trash',
+        okClass: 'button-danger',
+        onConfirm: (okBtn, dialog) => {
+          Ui.setButtonLoading(okBtn, true, 'Deaktivuji…');
+          Ui.call('apiSetUserActive', { id: user.id, active: false }, { silent: true })
+            .then(() => {
+              Ui.closeModal(dialog);
+              Ui.toast('Uživatel deaktivován.', 'success');
+              this.loadUsers();
+            })
+            .catch((error) => {
+              Ui.setButtonLoading(okBtn, false);
+              Ui.toast(error.message, 'error');
+            });
+        },
+      }, originEl);
+    },
+
+    /** Aktivace (i deaktivace mimo confirmDeactivateUser) — přímé volání, seznam se po úspěchu znovu vykreslí. */
+    setUserActive(user, active, button) {
+      if (button) Ui.setButtonLoading(button, true);
+
+      Ui.call('apiSetUserActive', { id: user.id, active: active }, { silent: true })
+        .then(() => {
+          Ui.toast(active ? 'Uživatel aktivován.' : 'Uživatel deaktivován.', 'success');
+          this.loadUsers();
+        })
+        .catch((error) => {
+          if (button) Ui.setButtonLoading(button, false);
           Ui.toast(error.message, 'error');
         });
     },
@@ -914,6 +1080,7 @@
     },
 
     renderUsers(users) {
+      this.usersCache = users; // pro dohledání dat při kliku na tužku (openEditUserModal)
       const list = document.querySelector('#usersList');
       list.innerHTML = users.length
         ? users.map((u) => this.renderUserRow(u)).join('')
@@ -930,7 +1097,13 @@
     /**
      * Jeden řádek tabulky — sloupce musí PŘESNĚ odpovídat pořadí v hlavičce
      * (.users-table-head v HTML): avatar, jméno, e-mail, role, umístění,
-     * oddělení, pozice, oprávnění, stav.
+     * oddělení, pozice, oprávnění, stav, akce.
+     *
+     * Sloupec Akce se přizpůsobuje tomu, kdo se dívá (žádné mrtvé tlačítko,
+     * které by server stejně odmítl — stejný princip jako u fillUserRoleSelect):
+     * účet superadmina smí upravit/deaktivovat jen jiný superadmin (viz
+     * shodná kontrola v apiSaveUser/apiSetUserActive na serveru) a sám sebe
+     * nejde deaktivovat nikdo.
      */
     renderUserRow(u) {
       const roleLabel = this.ROLE_LABELS[u.role] || u.role;
@@ -939,6 +1112,23 @@
       // serveru vždy vynucený EDITOR (apiSaveUser), takže se tu korektně
       // ukáže "Zápis" i pro ně, ne jen u role Uživatel.
       const permissionText = u.permission === 'EDITOR' ? 'Zápis' : 'Jen čtení';
+
+      const canTouch = u.role !== 'SUPERADMIN' || this.currentUserRole === 'SUPERADMIN';
+      const isSelf = u.email === this.currentUserEmail;
+
+      let actions = '';
+      if (canTouch) {
+        actions += '<button type="button" class="user-action-btn is-edit" data-action="edit" data-id="' + Ui.escape(u.id) + '" title="Upravit" aria-label="Upravit ' + Ui.escape(u.fullName) + '">' +
+          '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>';
+
+        if (!isSelf) {
+          actions += u.active
+            ? '<button type="button" class="user-action-btn is-danger" data-action="deactivate" data-id="' + Ui.escape(u.id) + '" title="Deaktivovat" aria-label="Deaktivovat ' + Ui.escape(u.fullName) + '">' +
+              '<i class="ph ph-trash" aria-hidden="true"></i></button>'
+            : '<button type="button" class="user-action-btn is-restore" data-action="activate" data-id="' + Ui.escape(u.id) + '" title="Aktivovat" aria-label="Aktivovat ' + Ui.escape(u.fullName) + '">' +
+              '<i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i></button>';
+        }
+      }
 
       return '<div class="user-row' + (u.active ? '' : ' is-inactive') + '">' +
         '<span class="avatar user-avatar">' + Ui.escape(this.initials(u.fullName)) + '</span>' +
@@ -950,6 +1140,7 @@
         '<span class="user-cell-muted">' + Ui.escape(u.position || '—') + '</span>' +
         '<span class="user-cell-muted">' + Ui.escape(permissionText) + '</span>' +
         '<span class="user-status' + (u.active ? ' is-active' : '') + '">' + (u.active ? 'Aktivní' : 'Neaktivní') + '</span>' +
+        '<span class="user-actions">' + actions + '</span>' +
       '</div>';
     },
 

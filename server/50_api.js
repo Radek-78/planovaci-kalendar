@@ -240,10 +240,19 @@ function _publicComment_(row, user, nameCache) {
 /* ══════════════════════════════════════════════════════════════════════════
    UŽIVATELÉ
 
-   Přístupné jen SUPERADMIN/ADMIN (users_manage). Zatím jen ČTENÍ SEZNAMU
-   a VYTVÁŘENÍ — úprava/deaktivace existujícího uživatele je další krok
-   (viz SPECIFIKACE.md kapitola 8, apiDeactivateUser).
+   Přístupné jen SUPERADMIN/ADMIN (users_manage). apiSaveUser slouží na
+   VYTVOŘENÍ i ÚPRAVU (s payload.id = úprava, stejný vzor jako u budoucího
+   apiSaveEvent), apiSetUserActive na deaktivaci/reaktivaci (viz
+   SPECIFIKACE.md kapitola 8 a bezpečnostní bod 14 — nejde odebrat roli ani
+   deaktivovat posledního aktivního superadmina).
    ══════════════════════════════════════════════════════════════════════════ */
+
+/** Kolik aktivních uživatelů má právě roli SUPERADMIN — pojistka proti nenávratnému uzamčení appky. */
+function _activeSuperadminCount_() {
+  return dbGetAll_(SHEETS.USERS)
+    .filter((row) => row.role === ROLES.SUPERADMIN && toBool_(row.active))
+    .length;
+}
 
 /**
  * Seznam všech uživatelů, seřazený podle data vytvoření — nejnovější nahoře,
@@ -262,34 +271,55 @@ function apiGetUsers() {
 }
 
 /**
- * Vytvoří nového uživatele. E-mail musí být z povolené domény (CONFIG.
- * allowedEmailDomain) a nesmí už v `_users` existovat. Roli SUPERADMIN smí
- * přidělit jen SUPERADMIN — jinak by si ADMIN mohl sám sobě nebo komukoli
- * přidat nejvyšší oprávnění.
+ * Vytvoří nového uživatele, nebo upraví existujícího (payload.id = úprava,
+ * stejný vzor jako plánovaný apiSaveEvent). Roli SUPERADMIN smí přidělit
+ * jen SUPERADMIN — jinak by si ADMIN mohl sám sobě nebo komukoli přidat
+ * nejvyšší oprávnění. Odebrat roli SUPERADMIN poslednímu aktivnímu
+ * superadminovi nejde (bezpečnostní bod 14 v SPECIFIKACI.md) — appka by se
+ * tím nenávratně uzamkla, protože jen SUPERADMIN smí přidělovat SUPERADMIN.
  *
- * Zatím jen VYTVOŘENÍ — payload.id se ignoruje, úprava existujícího
- * uživatele je další krok.
+ * E-mail je u ÚPRAVY neměnný a payload.email se ignoruje — na e-mailu jsou
+ * navázané starší události a komentáře (owner_email/author_email, viz
+ * _resolveUserName_), jeho změna by je odpojila od jména. Kdo si spletl
+ * doménu, musí založit nový účet a starý deaktivovat, ne přejmenovat.
  *
  * Umístění/Oddělení/Pozice jsou zatím volný text (nepovinný) — Umístění se
  * později nahradí výběrem z importovaného seznamu logistických center,
  * Oddělení/Pozice výběrem ze seznamu spravovaného v Nastavení.
  *
- * @param {Object} payload  { email, firstName, lastName, role, permission,
- *                            location, department, position }
+ * @param {Object} payload  { id?, email, firstName, lastName, role,
+ *                            permission, location, department, position }
  */
 function apiSaveUser(payload) {
   return guard_(PERM_KEYS.USERS_MANAGE, (user) => {
     const data = payload || {};
-    const email = cleanEmail_(data.email);
+    const id = data.id ? String(data.id) : null;
+    const existing = id ? dbFindById_(SHEETS.USERS, id) : null;
+    if (id && !existing) {
+      throw userError_('Uživatel nebyl nalezen — mohl ho mezitím upravit někdo jiný.');
+    }
+    // Účet superadmina smí upravit jen jiný superadmin — jinak by ADMIN mohl
+    // superadminovi sebrat roli, aniž by mu ji SUPERADMIN kdy sám přidělil.
+    if (existing && existing.role === ROLES.SUPERADMIN && user.role !== ROLES.SUPERADMIN) {
+      throw userError_('Jen správce aplikace může upravit účet jiného správce.');
+    }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      throw userError_('Zadejte platný e-mail.');
-    }
-    if (!email.endsWith('@' + CONFIG.allowedEmailDomain)) {
-      throw userError_('E-mail musí být z domény @' + CONFIG.allowedEmailDomain + '.');
-    }
-    if (dbFindBy_(SHEETS.USERS, 'email', email)) {
-      throw userError_('Uživatel s tímto e-mailem už existuje.');
+    // E-mail: u nové osoby se validuje a kontroluje na duplicitu, u úpravy
+    // se převezme beze změny z existujícího záznamu (viz komentář výše).
+    let email;
+    if (existing) {
+      email = String(existing.email);
+    } else {
+      email = cleanEmail_(data.email);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw userError_('Zadejte platný e-mail.');
+      }
+      if (!email.endsWith('@' + CONFIG.allowedEmailDomain)) {
+        throw userError_('E-mail musí být z domény @' + CONFIG.allowedEmailDomain + '.');
+      }
+      if (dbFindBy_(SHEETS.USERS, 'email', email)) {
+        throw userError_('Uživatel s tímto e-mailem už existuje.');
+      }
     }
 
     const firstName = cleanText_(data.firstName, 'Jméno', LIMITS.NAME_MAX, true);
@@ -298,6 +328,10 @@ function apiSaveUser(payload) {
 
     if (role === ROLES.SUPERADMIN && user.role !== ROLES.SUPERADMIN) {
       throw userError_('Jen správce aplikace může vytvořit dalšího správce.');
+    }
+    if (existing && existing.role === ROLES.SUPERADMIN && toBool_(existing.active)
+        && role !== ROLES.SUPERADMIN && _activeSuperadminCount_() <= 1) {
+      throw userError_('Poslednímu aktivnímu správci aplikace nejde odebrat roli.');
     }
 
     // Oprávnění (EDITOR/VIEWER) má smysl jen u role USER — ADMIN/SUPERADMIN
@@ -310,20 +344,68 @@ function apiSaveUser(payload) {
     const department = cleanText_(data.department, 'Oddělení', LIMITS.ORG_FIELD_MAX, false);
     const position = cleanText_(data.position, 'Pozice', LIMITS.ORG_FIELD_MAX, false);
 
-    const record = dbInsert_(SHEETS.USERS, {
+    const fields = {
       email: email,
       firstName: firstName,
       lastName: lastName,
       role: role,
       permission: permission,
-      active: true,
-      last_visit_at: '',
       location: location,
       department: department,
       position: position,
-    });
+    };
 
-    audit_('user.create', 'Vytvořen uživatel ' + email + ' (role ' + role + ')');
+    let record;
+    if (existing) {
+      record = dbUpdate_(SHEETS.USERS, id, fields);
+      audit_('user.update', 'Upraven uživatel ' + email + ' (role ' + role + ')');
+    } else {
+      record = dbInsert_(SHEETS.USERS, Object.assign({ active: true, last_visit_at: '' }, fields));
+      audit_('user.create', 'Vytvořen uživatel ' + email + ' (role ' + role + ')');
+    }
+
+    return _publicUserRow_(record);
+  });
+}
+
+/**
+ * Deaktivuje nebo znovu aktivuje uživatele. Rozšiřuje původně plánovaný
+ * apiDeactivateUser(id) (SPECIFIKACE.md) o opačný směr (aktivace zpět) —
+ * bez něj by deaktivace byla nevratná jinak než ruční úpravou tabulky, což
+ * popírá smysl toho, proč jsme zvolili deaktivaci místo trvalého smazání.
+ *
+ * Nejde deaktivovat sám sebe (uzamklo by to vlastní přístup uprostřed
+ * session) ani posledního aktivního superadmina (bezpečnostní bod 14).
+ *
+ * @param {Object} payload  { id, active }
+ */
+function apiSetUserActive(payload) {
+  return guard_(PERM_KEYS.USERS_MANAGE, (user) => {
+    const data = payload || {};
+    const id = String(data.id || '');
+    const active = data.active === true;
+
+    const existing = dbFindById_(SHEETS.USERS, id);
+    if (!existing) {
+      throw userError_('Uživatel nebyl nalezen — mohl ho mezitím upravit někdo jiný.');
+    }
+    // Stejná pojistka jako v apiSaveUser — účet superadmina smí (de)aktivovat jen jiný superadmin.
+    if (existing.role === ROLES.SUPERADMIN && user.role !== ROLES.SUPERADMIN) {
+      throw userError_('Jen správce aplikace může upravit účet jiného správce.');
+    }
+
+    if (!active) {
+      if (String(existing.email) === user.email) {
+        throw userError_('Nemůžete deaktivovat sami sebe.');
+      }
+      if (existing.role === ROLES.SUPERADMIN && toBool_(existing.active) && _activeSuperadminCount_() <= 1) {
+        throw userError_('Posledního aktivního správce aplikace nejde deaktivovat.');
+      }
+    }
+
+    const record = dbUpdate_(SHEETS.USERS, id, { active: active });
+    audit_(active ? 'user.activate' : 'user.deactivate',
+      (active ? 'Aktivován' : 'Deaktivován') + ' uživatel ' + existing.email);
 
     return _publicUserRow_(record);
   });

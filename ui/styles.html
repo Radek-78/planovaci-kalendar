@@ -163,6 +163,16 @@
     background: var(--page);
   }
 
+  /* Nevratné/citlivé akce (potvrzovací modal — viz App.confirmAction). */
+  .button-danger {
+    background: var(--lidl-red);
+    color: var(--white);
+  }
+
+  .button-danger:hover {
+    background: #b3070f;
+  }
+
   .button:active {
     opacity: 0.8;
     transform: translateY(1px);
@@ -315,6 +325,14 @@
 
   .field-group .kicker {
     margin-bottom: 0;
+  }
+
+  /* Drobná vysvětlivka pod polem (např. proč je e-mail při úpravě needitovatelný). */
+  .field-hint {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 1.4;
   }
 
   /* ── Brána (wizard a obrazovka bez přístupu) ────────────────────────── */
@@ -1017,13 +1035,14 @@
 
   /* Hlavička i každý řádek sdílejí STEJNOU mřížku sloupců — musí se měnit
      vždy společně, jinak data přestanou lícovat pod popisky. Pořadí:
-     avatar, jméno, e-mail, role, umístění, oddělení, pozice, oprávnění, stav. */
+     avatar, jméno, e-mail, role, umístění, oddělení, pozice, oprávnění,
+     stav, akce. */
   .users-table-head,
   .user-row {
     align-items: center;
     display: grid;
     gap: 12px;
-    grid-template-columns: 40px 1.3fr 1.6fr 0.9fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr;
+    grid-template-columns: 40px 1.3fr 1.6fr 0.9fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 76px;
     padding: 10px 16px;
   }
 
@@ -1136,6 +1155,59 @@
 
   .user-status.is-active {
     color: var(--green);
+  }
+
+  /* Sloupec Akce — malé kulaté ikony (editace/deaktivace, u neaktivních
+     obnovení), barevně odlišené i beze změny na hover. Barva tu nikdy není
+     jediný nositel významu — každé tlačítko má i title/aria-label. */
+  .user-actions {
+    display: flex;
+    gap: 6px;
+    justify-self: start;
+  }
+
+  .user-action-btn {
+    align-items: center;
+    background: var(--line-soft);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    height: 28px;
+    justify-content: center;
+    transition: background 0.1s, color 0.1s;
+    width: 28px;
+  }
+
+  .user-action-btn i {
+    font-size: 14px;
+  }
+
+  .user-action-btn.is-edit {
+    color: var(--lidl-blue);
+  }
+
+  .user-action-btn.is-edit:hover {
+    background: var(--lidl-blue);
+    color: var(--white);
+  }
+
+  .user-action-btn.is-danger {
+    color: var(--lidl-red);
+  }
+
+  .user-action-btn.is-danger:hover {
+    background: var(--lidl-red);
+    color: var(--white);
+  }
+
+  .user-action-btn.is-restore {
+    color: var(--green);
+  }
+
+  .user-action-btn.is-restore:hover {
+    background: var(--green);
+    color: var(--white);
   }
 
   /* ── Kalendář — hlavička s navigací měsíců ────────────────────────────
@@ -1588,6 +1660,12 @@
   .modal-icon.is-event-color {
     background: color-mix(in srgb, var(--chip-color) 18%, white);
     color: var(--chip-color);
+  }
+
+  /* Ikona potvrzovacího modalu u citlivé akce (např. deaktivace uživatele). */
+  .modal-icon.is-warning {
+    background: color-mix(in srgb, var(--lidl-red) 18%, white);
+    color: var(--lidl-red);
   }
 
   .modal-header-text {

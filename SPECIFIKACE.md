@@ -306,9 +306,9 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiGetEvents(payload)` | `calendar_read` | `{ startDate, endDate }`, obě `YYYY-MM-DD` | pole událostí protínajících rozsah |
 | `apiSaveEvent(payload)` | `calendar_write` | s `id` = úprava, bez = nová | uložená událost |
 | `apiDeleteEvent(id)` | `calendar_write` | id | — |
-| `apiGetUsers()` | `users_manage` | — | seznam uživatelů |
-| `apiSaveUser(payload)` | `users_manage` | uživatel | uložený uživatel |
-| `apiDeactivateUser(id)` | `users_manage` | id | — |
+| `apiGetUsers()` | `users_manage` | — | seznam uživatelů, řazený podle data vytvoření (nejnovější nahoře) |
+| `apiSaveUser(payload)` | `users_manage` | s `id` = úprava (e-mail neměnný), bez = nový uživatel | uložený uživatel |
+| `apiSetUserActive(payload)` | `users_manage` | `{ id, active }` | uložený uživatel |
 | `apiGetSettings()` | `settings_manage` | — | mapa nastavení |
 | `apiSaveSettings(payload)` | `settings_manage` | whitelist klíčů | uložená nastavení |
 | `apiGetAuditLog(limit)` | `settings_manage` | limit | posledních N záznamů |
@@ -322,8 +322,10 @@ mřížce chyběla. Podmínka: `start <= to && end >= from`.
 - Uživatel se čte **ze session** (`Session.getActiveUser().getEmail()`), nikdy
   z parametrů volání.
 - Klient nikdy neposílá roli, oprávnění ani vlastníka — server si je určuje sám.
-- `apiSaveUser` nesmí dovolit povýšení sebe sama ani odebrání poslední aktivní
-  role SUPERADMIN (jinak se aplikace nenávratně uzamkne).
+- `apiSaveUser`/`apiSetUserActive` nesmí dovolit povýšení sebe sama, odebrání
+  role ani deaktivaci poslední aktivní role SUPERADMIN (jinak se aplikace
+  nenávratně uzamkne); účet superadmina smí upravit nebo deaktivovat jen jiný
+  superadmin; sám sebe nejde deaktivovat nikdo.
 - Každý zápis a smazání zapíše řádek do `_audit_log`.
 
 ---
