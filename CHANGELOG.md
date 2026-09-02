@@ -5,6 +5,14 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.18 - 02.09.2026 12:51
+- Sjednoceni hlavicek sekci - hlavicka obsahu (Uzivatele, Kalendar) je ted presne ve stejne urovni jako logo a nazev aplikace v sidebaru (58px, spodni ramecek)
+- Seznam uzivatelu prepracovan na sloupcovou tabulku - hlavicka se sedmi popisky a kazdy radek presne pod ni (Jmeno, E-mail, Role, Umisteni, Oddeleni, Pozice, Opravneni, Stav), cely v ohraniceném panelu jako u kalendare
+- Nove sloupce a pole Umisteni/Oddeleni/Pozice (zatim volny text, pozdeji navazane na import filialek a spravu seznamu v Nastaveni)
+- Formular uzivatele prepracovan na dvousloupcove siroke okno se skupinami poli, ikonami a kickery
+- Automaticke doplneni uzivatelskeho jmena (e-mailu) ze jmena a prijmeni - bez diakritiky, oddeleno teckou, s domenou @lidl.cz, prestane se prepisovat po rucni uprave
+- Oprava: rozsireni schematu existujici tabulky o nove sloupce (na rozdil od cele chybejici tabulky) se puvodne samo nedoplnilo - ted dbSheet_ kontroluje i shodu hlavicky, ne jen existenci listu
+
 ## v0.1.17 - 02.09.2026 12:26
 - Sekce Uživatelé — vytváření nových uživatelů a seznam. Nový endpoint apiGetUsers (seznam seřazený podle jména) a apiSaveUser (vytvoření s validací na serveru — formát a doména e-mailu @lidl.cz, duplicita, roli SUPERADMIN smí přidělit jen SUPERADMIN)
 - Formulář: jméno, příjmení, e-mail, role, oprávnění (jen u role Uživatel, ostatní mají vždy plný zápis)

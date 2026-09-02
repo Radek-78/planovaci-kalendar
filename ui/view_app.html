@@ -105,7 +105,10 @@
     </section>
 
     <!-- Panel: Uživatelé — seznam a vytváření. Úprava/deaktivace existujícího
-         uživatele je další krok (viz SPECIFIKACE.md). -->
+         uživatele je další krok (viz SPECIFIKACE.md).
+         Sloupcová tabulka: hlavička (.users-table-head) a každý řádek
+         (.user-row) sdílejí STEJNOU mřížku sloupců (viz styles.html), aby
+         data pod sebou přesně lícovala. -->
     <section class="view-panel" data-page-section="users">
       <div class="section-header">
         <h2>Uživatelé</h2>
@@ -113,7 +116,20 @@
           <i class="ph ph-user-plus" aria-hidden="true"></i> Nový uživatel
         </button>
       </div>
-      <div class="users-list" id="usersList"><!-- vykresleno JS --></div>
+      <div class="users-panel-wrap">
+        <div class="users-table-head">
+          <span></span>
+          <span>Jméno</span>
+          <span>E-mail</span>
+          <span>Role</span>
+          <span>Umístění</span>
+          <span>Oddělení</span>
+          <span>Pozice</span>
+          <span>Oprávnění</span>
+          <span>Stav</span>
+        </div>
+        <div class="users-table-body" id="usersList"><!-- vykresleno JS --></div>
+      </div>
     </section>
 
     <!-- Panel: Nastavení (placeholder — plná funkce ve fázi 5) -->
@@ -257,8 +273,12 @@
 <!-- ══ Modal: nový uživatel ══
      Nabídka rolí ve #userFormRole se plní JS (fillUserRoleSelect) — SUPERADMIN
      smí přidělit jen SUPERADMIN, jinak by tam server stejně nikoho nepustil
-     (žádná mrtvá volba, kterou by server odmítl). -->
-<dialog class="modal modal-grow" id="userFormModal">
+     (žádná mrtvá volba, kterou by server odmítl).
+
+     Uživatelské jméno (e-mail) se při psaní jména/příjmení dopočítává samo
+     (viz bindUserAutofill/emailSlug) — jakmile do e-mailu uživatel zasáhne
+     ručně, automatika se pro tenhle formulář přestane přepisovat. -->
+<dialog class="modal modal-wide modal-grow" id="userFormModal">
   <div class="modal-header">
     <span class="modal-icon"><i class="ph ph-user-plus" aria-hidden="true"></i></span>
     <div class="modal-header-text">
@@ -270,34 +290,63 @@
     </button>
   </div>
   <form id="userForm">
-    <div class="modal-body event-form-body">
-      <div class="event-form-row">
-        <label>
-          <span>Jméno *</span>
-          <input type="text" id="userFormFirstName" maxlength="60" required>
-        </label>
-        <label>
-          <span>Příjmení *</span>
-          <input type="text" id="userFormLastName" maxlength="60" required>
-        </label>
+    <div class="modal-body user-form-body">
+
+      <div class="user-form-col">
+        <div class="field-group">
+          <p class="kicker"><i class="ph ph-identification-badge" aria-hidden="true"></i> Osobní údaje</p>
+          <label>
+            <span>Jméno *</span>
+            <input type="text" id="userFormFirstName" maxlength="60" required>
+          </label>
+          <label>
+            <span>Příjmení *</span>
+            <input type="text" id="userFormLastName" maxlength="60" required>
+          </label>
+          <label>
+            <span>Uživatelské jméno (e-mail) *</span>
+            <input type="email" id="userFormEmail" placeholder="jmeno.prijmeni@lidl.cz" required>
+          </label>
+        </div>
       </div>
-      <label>
-        <span>E-mail *</span>
-        <input type="email" id="userFormEmail" placeholder="jmeno.prijmeni@lidl.cz" required>
-      </label>
-      <div class="event-form-row">
-        <label>
-          <span>Role</span>
-          <select id="userFormRole"><!-- vykresleno JS --></select>
-        </label>
-        <label id="userFormPermissionField">
-          <span>Oprávnění</span>
-          <select id="userFormPermission">
-            <option value="EDITOR">Zápis</option>
-            <option value="VIEWER">Jen čtení</option>
-          </select>
-        </label>
+
+      <div class="user-form-col">
+        <div class="field-group">
+          <p class="kicker"><i class="ph ph-shield-star" aria-hidden="true"></i> Role a oprávnění</p>
+          <div class="event-form-row">
+            <label>
+              <span>Role</span>
+              <select id="userFormRole"><!-- vykresleno JS --></select>
+            </label>
+            <label id="userFormPermissionField">
+              <span>Oprávnění</span>
+              <select id="userFormPermission">
+                <option value="EDITOR">Zápis</option>
+                <option value="VIEWER">Jen čtení</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <p class="kicker"><i class="ph ph-buildings" aria-hidden="true"></i> Organizace</p>
+          <label>
+            <span>Umístění</span>
+            <input type="text" id="userFormLocation" maxlength="60" placeholder="DL nebo kód LC">
+          </label>
+          <div class="event-form-row">
+            <label>
+              <span>Oddělení</span>
+              <input type="text" id="userFormDepartment" maxlength="60">
+            </label>
+            <label>
+              <span>Pozice</span>
+              <input type="text" id="userFormPosition" maxlength="60">
+            </label>
+          </div>
+        </div>
       </div>
+
     </div>
     <div class="modal-actions">
       <button type="button" class="button button-secondary" id="userFormCancel">
@@ -380,6 +429,9 @@
     /** Role přihlášeného uživatele — řídí, jestli formulář nabídne i SUPERADMIN (viz fillUserRoleSelect). */
     currentUserRole: '',
 
+    /** Doména pro automatické doplnění e-mailu (viz bindUserAutofill) — ze serveru (CONFIG.allowedEmailDomain). */
+    allowedEmailDomain: '',
+
     /** Poslední načtené události zobrazeného rozsahu — pro otevření modalu bez dalšího volání serveru. */
     currentEvents: [],
 
@@ -413,6 +465,7 @@
       this.canWrite = data.permissions.canWrite === true;
       this.canManageUsers = canManageUsers;
       this.currentUserRole = data.user.role;
+      this.allowedEmailDomain = data.allowedEmailDomain;
       this.fillEventTypeSelect();
       this.fillUserRoleSelect();
 
@@ -738,6 +791,8 @@
         e.preventDefault();
         this.submitUserForm();
       });
+
+      this.bindUserAutofill();
     },
 
     updateUserFormPermissionVisibility() {
@@ -745,12 +800,50 @@
       document.querySelector('#userFormPermissionField').classList.toggle('event-form-field--hidden', !isUserRole);
     },
 
+    /**
+     * Uživatelské jméno (e-mail) se dopočítává ze jména a příjmení —
+     * bez diakritiky, oddělené tečkou, s doménou @lidl.cz. Přestane se
+     * přepočítávat, jakmile do pole e-mailu uživatel sám napíše — needitujeme
+     * mu pod rukama, co si už upravil (klasický vzor "smart slug").
+     */
+    bindUserAutofill() {
+      const first = document.querySelector('#userFormFirstName');
+      const last = document.querySelector('#userFormLastName');
+      const email = document.querySelector('#userFormEmail');
+
+      const regenerate = () => {
+        if (email.dataset.manual === 'true') return;
+        const firstSlug = this.emailSlug(first.value);
+        const lastSlug = this.emailSlug(last.value);
+        const local = firstSlug && lastSlug ? firstSlug + '.' + lastSlug : (firstSlug || lastSlug);
+        email.value = local ? local + '@' + this.allowedEmailDomain : '';
+      };
+
+      first.addEventListener('input', regenerate);
+      last.addEventListener('input', regenerate);
+      email.addEventListener('input', () => { email.dataset.manual = 'true'; });
+    },
+
+    /** Jméno/příjmení → část e-mailu před zavináčem: bez diakritiky, malá písmena, jen a–z. */
+    emailSlug(value) {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // odstraní diakritická znaménka po rozkladu (á→a+´)
+        .toLowerCase()
+        .replace(/[^a-z]+/g, '');
+    },
+
     openCreateUserModal(originEl) {
       document.querySelector('#userFormFirstName').value = '';
       document.querySelector('#userFormLastName').value = '';
-      document.querySelector('#userFormEmail').value = '';
+      const emailField = document.querySelector('#userFormEmail');
+      emailField.value = '';
+      delete emailField.dataset.manual; // nový formulář → automatika zase aktivní
       document.querySelector('#userFormRole').value = 'USER';
       document.querySelector('#userFormPermission').value = 'EDITOR';
+      document.querySelector('#userFormLocation').value = '';
+      document.querySelector('#userFormDepartment').value = '';
+      document.querySelector('#userFormPosition').value = '';
       this.updateUserFormPermissionVisibility();
 
       const dialog = document.querySelector('#userFormModal');
@@ -787,6 +880,9 @@
         email: email,
         role: role,
         permission: role === 'USER' ? document.querySelector('#userFormPermission').value : 'EDITOR',
+        location: document.querySelector('#userFormLocation').value.trim(),
+        department: document.querySelector('#userFormDepartment').value.trim(),
+        position: document.querySelector('#userFormPosition').value.trim(),
       };
 
       const submitButton = document.querySelector('#userFormSubmit');
@@ -831,23 +927,26 @@
         '<p>' + Ui.escape(text) + '</p></div>';
     },
 
-    /** Jeden řádek v seznamu — avatar, jméno, e-mail, odznak role, oprávnění (jen u USER). */
+    /**
+     * Jeden řádek tabulky — sloupce musí PŘESNĚ odpovídat pořadí v hlavičce
+     * (.users-table-head v HTML): avatar, jméno, e-mail, role, umístění,
+     * oddělení, pozice, oprávnění, stav.
+     */
     renderUserRow(u) {
       const roleLabel = this.ROLE_LABELS[u.role] || u.role;
       const roleClass = u.role === 'SUPERADMIN' ? ' is-superadmin' : u.role === 'ADMIN' ? ' is-admin' : '';
-      const permissionText = u.role === 'USER' ? (u.permission === 'EDITOR' ? 'Zápis' : 'Jen čtení') : '';
+      const permissionText = u.role === 'USER' ? (u.permission === 'EDITOR' ? 'Zápis' : 'Jen čtení') : '—';
 
       return '<div class="user-row' + (u.active ? '' : ' is-inactive') + '">' +
         '<span class="avatar user-avatar">' + Ui.escape(this.initials(u.fullName)) + '</span>' +
-        '<div class="user-row-text">' +
-          '<div class="user-row-name-line">' +
-            '<strong>' + Ui.escape(u.fullName) + '</strong>' +
-            '<span class="user-role-badge' + roleClass + '">' + Ui.escape(roleLabel) + '</span>' +
-            (u.active ? '' : '<span class="user-row-inactive-tag">Neaktivní</span>') +
-          '</div>' +
-          '<span class="user-row-email">' + Ui.escape(u.email) + '</span>' +
-        '</div>' +
-        (permissionText ? '<span class="user-row-permission">' + Ui.escape(permissionText) + '</span>' : '') +
+        '<span class="user-cell-name">' + Ui.escape(u.fullName) + '</span>' +
+        '<span class="user-cell-email">' + Ui.escape(u.email) + '</span>' +
+        '<span class="user-role-badge' + roleClass + '">' + Ui.escape(roleLabel) + '</span>' +
+        '<span class="user-cell-muted">' + Ui.escape(u.location || '—') + '</span>' +
+        '<span class="user-cell-muted">' + Ui.escape(u.department || '—') + '</span>' +
+        '<span class="user-cell-muted">' + Ui.escape(u.position || '—') + '</span>' +
+        '<span class="user-cell-muted">' + Ui.escape(permissionText) + '</span>' +
+        '<span class="user-status' + (u.active ? ' is-active' : '') + '">' + (u.active ? 'Aktivní' : 'Neaktivní') + '</span>' +
       '</div>';
     },
 

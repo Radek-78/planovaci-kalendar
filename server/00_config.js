@@ -26,7 +26,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.1.17',
+  version: 'v0.1.18',
   releaseDate: '2.9.2026',
 
   /**
@@ -139,6 +139,8 @@ const LIMITS = {
   EVENT_MAX_DAYS: 31,
   /** Komentář k události — chatová zpráva, ne článek. */
   COMMENT_MAX: 500,
+  /** Organizační údaje uživatele (Umístění/Oddělení/Pozice) — zatím volný text. */
+  ORG_FIELD_MAX: 60,
 };
 
 /**

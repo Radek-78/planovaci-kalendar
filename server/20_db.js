@@ -23,6 +23,10 @@ const DB_SCHEMA = {
   _users: [
     'id', 'email', 'firstName', 'lastName', 'role', 'permission', 'active',
     'created_at', 'created_by', 'updated_at', 'last_visit_at',
+    // Organizační údaje — zatím volný text (viz apiSaveUser). Umístění se
+    // později nahradí výběrem z importovaného seznamu logistických center,
+    // Oddělení/Pozice výběrem ze seznamu spravovaného v Nastavení.
+    'location', 'department', 'position',
   ],
   _settings: ['key', 'value', 'updated_at', 'updated_by'],
   _audit_log: ['timestamp', 'user', 'action', 'detail'],
@@ -96,18 +100,24 @@ function dbSpreadsheet_() {
 }
 
 /**
- * Vrátí list dané tabulky. Samoopravné: DB_SCHEMA se v čase rozšiřuje (nové
- * funkce = nové tabulky), ale dbEnsureSchema_() se sama od sebe nespouští —
- * jen při wizardu nebo ručně přes TOOLS_zkontrolujSchema. Bez tohoto by
- * tabulka přidaná do DB_SCHEMA po založení databáze zůstala trvale chybějící,
- * dokud by si někdo nevzpomněl spustit nástroj ručně. Tady se schéma zkusí
- * doplnit rovnou při prvním přístupu — chyba padne, jen když list chybí
- * i po tomto pokusu (typicky překlep v názvu tabulky).
+ * Vrátí list dané tabulky. Samoopravné ve DVOU směrech — DB_SCHEMA se
+ * v čase rozšiřuje (nové funkce = nové tabulky NEBO nové sloupce v už
+ * existující tabulce), ale dbEnsureSchema_() se sama od sebe nespouští,
+ * jen při wizardu nebo ručně přes TOOLS_zkontrolujSchema:
+ *   1. tabulka úplně chybí → doplnit celou (viz historie: event_comments),
+ *   2. tabulka existuje, ale hlavička neodpovídá aktuální DB_SCHEMA (typicky
+ *      přibyly sloupce na konci) → doplnit chybějící sloupce, ne založit
+ *      znovu.
+ * Bez tohoto by nový sloupec přidaný do schématu zůstal v datech neviditelný,
+ * dokud by si někdo nevzpomněl spustit nástroj ručně — přesně ta past, co se
+ * reálně stala s tabulkou event_comments. Chyba padne, jen když list chybí
+ * i po pokusu o opravu (typicky překlep v názvu tabulky).
  */
 function dbSheet_(table) {
   const spreadsheet = dbSpreadsheet_();
   let sheet = spreadsheet.getSheetByName(table);
-  if (!sheet) {
+
+  if (!sheet || !_dbHeaderMatches_(sheet, table)) {
     dbEnsureSchema_(spreadsheet);
     sheet = spreadsheet.getSheetByName(table);
   }
@@ -115,6 +125,13 @@ function dbSheet_(table) {
     throw userError_('Tabulka „' + table + '" v databázi chybí. Kontaktujte správce.');
   }
   return sheet;
+}
+
+/** Odpovídá první řádek listu aktuálnímu schématu dané tabulky? */
+function _dbHeaderMatches_(sheet, table) {
+  const headers = DB_SCHEMA[table];
+  const current = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+  return headers.every((header, i) => current[i] === header);
 }
 
 /**

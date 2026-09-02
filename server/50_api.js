@@ -39,6 +39,10 @@ function apiGetBootstrap() {
         holidaysEnabled: settings.holidaysEnabled,
       },
       eventTypes: EVENT_TYPES,
+      // Jen pro nápovědu při vyplňování formuláře (automatické doplnění
+      // uživatelského jména) — skutečná kontrola domény je vždy na serveru
+      // v apiSaveUser, klient si ji tady jen zobrazuje/napovídá.
+      allowedEmailDomain: CONFIG.allowedEmailDomain,
       version: CONFIG.version,
       releaseDate: CONFIG.releaseDate,
     };
@@ -259,7 +263,12 @@ function apiGetUsers() {
  * Zatím jen VYTVOŘENÍ — payload.id se ignoruje, úprava existujícího
  * uživatele je další krok.
  *
- * @param {Object} payload  { email, firstName, lastName, role, permission }
+ * Umístění/Oddělení/Pozice jsou zatím volný text (nepovinný) — Umístění se
+ * později nahradí výběrem z importovaného seznamu logistických center,
+ * Oddělení/Pozice výběrem ze seznamu spravovaného v Nastavení.
+ *
+ * @param {Object} payload  { email, firstName, lastName, role, permission,
+ *                            location, department, position }
  */
 function apiSaveUser(payload) {
   return guard_(PERM_KEYS.USERS_MANAGE, (user) => {
@@ -290,6 +299,10 @@ function apiSaveUser(payload) {
       ? pickFrom_(data.permission, Object.keys(PERMISSIONS), 'Oprávnění')
       : PERMISSIONS.EDITOR;
 
+    const location = cleanText_(data.location, 'Umístění', LIMITS.ORG_FIELD_MAX, false);
+    const department = cleanText_(data.department, 'Oddělení', LIMITS.ORG_FIELD_MAX, false);
+    const position = cleanText_(data.position, 'Pozice', LIMITS.ORG_FIELD_MAX, false);
+
     const record = dbInsert_(SHEETS.USERS, {
       email: email,
       firstName: firstName,
@@ -298,6 +311,9 @@ function apiSaveUser(payload) {
       permission: permission,
       active: true,
       last_visit_at: '',
+      location: location,
+      department: department,
+      position: position,
     });
 
     audit_('user.create', 'Vytvořen uživatel ' + email + ' (role ' + role + ')');
@@ -319,5 +335,8 @@ function _publicUserRow_(row) {
     role: row.role,
     permission: row.permission,
     active: toBool_(row.active),
+    location: String(row.location || ''),
+    department: String(row.department || ''),
+    position: String(row.position || ''),
   };
 }
