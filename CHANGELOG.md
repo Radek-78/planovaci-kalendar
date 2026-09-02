@@ -6,10 +6,10 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.25 - 02.09.2026 18:16
-- Kalendar - v mrizce ted az 4 udalosti v jednom dni (drive 3), zbytek pres +N jako doposud
-- primo v chipu udalosti (po najeti mysi u praveho okraje) male ikony tuzky a kose pro rychlou editaci/smazani bez otevirani seznamu dne - viditelne jen tomu, kdo danou udalost smi spravovat
-- klik na telo chipu porad otevira jen cteni (detail udalosti)
-- oprava - chyba flexboxu bránila spolehlivemu orizavani dlouhych nazvu na tri tecky, ted funguje spravne i s ikonami navic
+- Kalendář — v mřížce teď až 4 události v jednom dni (dříve 3), zbytek přes +N jako doposud
+- Přímo v chipu události (po najetí myší u pravého okraje) malé ikony tužky a koše pro rychlou editaci/smazání bez otevírání seznamu dne — viditelné jen tomu, kdo danou událost smí spravovat
+- Klik na tělo chipu pořád otevírá jen čtení (detail události)
+- Oprava — chyba flexboxu bránila spolehlivému ořezávání dlouhých názvů na tři tečky, teď funguje správně i s ikonami navíc
 
 ## v0.1.24 - 02.09.2026 18:08
 - Kalendář — chipy událostí mají zase kompaktní pevnou velikost (nerostou s volným místem v dráze), víc odsazení od horního i bočních okrajů buňky
