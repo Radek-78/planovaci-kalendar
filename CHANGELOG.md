@@ -5,6 +5,12 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.25 - 02.09.2026 18:16
+- Kalendar - v mrizce ted az 4 udalosti v jednom dni (drive 3), zbytek pres +N jako doposud
+- primo v chipu udalosti (po najeti mysi u praveho okraje) male ikony tuzky a kose pro rychlou editaci/smazani bez otevirani seznamu dne - viditelne jen tomu, kdo danou udalost smi spravovat
+- klik na telo chipu porad otevira jen cteni (detail udalosti)
+- oprava - chyba flexboxu bránila spolehlivemu orizavani dlouhych nazvu na tri tecky, ted funguje spravne i s ikonami navic
+
 ## v0.1.24 - 02.09.2026 18:08
 - Kalendář — chipy událostí mají zase kompaktní pevnou velikost (nerostou s volným místem v dráze), víc odsazení od horního i bočních okrajů buňky
 - Prázdné místo v buňce zůstává dole pod posledními chipy díky samostatnému prázdnému řádku na konci každého týdne, buňky přitom pořád vyplní celou dostupnou výšku mřížky

@@ -454,7 +454,7 @@
     CAL_HEADER_ROW: 20, // px – úplně první řádek mřížky se zkratkami dnů (Po/Út/…)
     CAL_HEAD_ROW: 20,   // px – řádek s číslem dne v každém týdnu
     CAL_LANE_ROW: 20,   // px – jedna dráha pro chip/pruh události (pevná výška — velikost chipu se neroztahuje, viz .cal-chip)
-    CAL_LANE_COUNT: 3,  // kolik drah (souběžných událostí) se v týdnu zobrazí najednou — zbytek nahradí "+N" (viz renderEvents)
+    CAL_LANE_COUNT: 4,  // kolik drah (souběžných událostí) se v týdnu zobrazí najednou — zbytek nahradí "+N" (viz renderEvents)
     CAL_GRID_GAP: 4,    // px – mezera mřížky (řádky i sloupce)
 
     /** Měsíc aktuálně zobrazený v mřížce (den se nepoužívá, jen měsíc/rok). */
@@ -587,6 +587,19 @@
       // Klik na konkrétní chip má přednost před klikem na buňku — otevírá
       // detail TÉ události, ne seznam celého dne.
       document.querySelector('#calGrid').addEventListener('click', (e) => {
+        // Tužka/koš přímo v chipu (viz renderChip/canManageEvent) mají
+        // přednost před obecným kliknutím na chip, jinak by pod nimi
+        // prosvítal detail události — stejný vzor jako u seznamu dne.
+        const actionBtn = e.target.closest('.cal-chip-action');
+        if (actionBtn && actionBtn.dataset.eventId) {
+          if (actionBtn.dataset.action === 'edit') {
+            this.openEditEventModal(actionBtn.dataset.eventId, actionBtn);
+          } else if (actionBtn.dataset.action === 'delete') {
+            this.confirmDeleteEvent(actionBtn.dataset.eventId, actionBtn);
+          }
+          return;
+        }
+
         const chip = e.target.closest('.cal-chip');
         if (chip && chip.dataset.eventId) {
           this.openEventModal(chip.dataset.eventId, chip);
@@ -1523,6 +1536,11 @@
      * text (název) je vždy čitelný i bez nich. `data-event-id` slouží
      * tooltipu (viz showChipTooltip) i kliku (otevření detailu) k dohledání
      * celé události.
+     *
+     * Tužka/koš (jen u událostí, které smí uživatel spravovat — viz
+     * canManageEvent) se u pravého okraje ukážou až po najetí myší
+     * (.cal-chip-actions, viz CSS) — chip je na trvalé zobrazení dvou ikon
+     * navíc příliš úzký, klik mimo ně pořád otevírá jen detail.
      */
     renderChip(event, isStart, isEnd, laneTrack, colStartLine, colEndLine) {
       const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a' };
@@ -1530,11 +1548,22 @@
       const prefix = isStart ? timeLabel + ' ' : '▸ ';
       const cls = 'cal-chip' + (isStart ? ' is-start' : '') + (isEnd ? ' is-end' : '');
 
+      const actions = this.canManageEvent(event)
+        ? '<span class="cal-chip-actions">' +
+            '<button type="button" class="cal-chip-action is-edit" data-action="edit" data-event-id="' + Ui.escape(event.id) + '" title="Upravit" aria-label="Upravit událost">' +
+              '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>' +
+            '<button type="button" class="cal-chip-action is-danger" data-action="delete" data-event-id="' + Ui.escape(event.id) + '" title="Smazat" aria-label="Smazat událost">' +
+              '<i class="ph ph-trash" aria-hidden="true"></i></button>' +
+          '</span>'
+        : '';
+
       return '<div class="' + cls + '" data-event-id="' + Ui.escape(event.id) +
         '" style="--chip-color:' + Ui.escape(type.color) + '; grid-row:' + laneTrack +
         '; grid-column:' + colStartLine + ' / ' + colEndLine + '">' +
         '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i>' +
-        '<span>' + Ui.escape(prefix + event.title) + '</span></div>';
+        '<span>' + Ui.escape(prefix + event.title) + '</span>' +
+        actions +
+      '</div>';
     },
 
     /** Dnešní datum jako RRRR-MM-DD — pro srovnání „nelze zakládat do minulosti". */

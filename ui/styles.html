@@ -1607,9 +1607,58 @@
     font-size: 10px;
   }
 
+  /* min-width: 0 je tu nutné — bez něj by flex položka (výchozí min-width:
+     auto) odmítala zúžit se pod šířku svého textu, takže by text-overflow:
+     ellipsis nikdy neměl šanci se uplatnit (klasická flexbox past). */
   .cal-chip span {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  /* Tužka/koš přímo v chipu — jen po najetí myší (chip je na trvalé
+     zobrazení dvou ikon navíc příliš úzký), jen u událostí, které smí
+     uživatel spravovat (viz canManageEvent/renderChip). Barva úpravy
+     dědí barvu chipu, ať v drobném prostoru nepůsobí rušivě — smazání
+     zůstává vždy červené (univerzální význam, i tady malé). */
+  .cal-chip-actions {
+    display: none;
+    flex-shrink: 0;
+    gap: 2px;
+  }
+
+  .cal-chip:hover .cal-chip-actions {
+    display: flex;
+  }
+
+  .cal-chip-action {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.65);
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    display: inline-flex;
+    flex-shrink: 0;
+    height: 14px;
+    justify-content: center;
+    padding: 0; /* na téhle malé ploše by výchozí prohlížečový padding tlačítka ikonu prakticky vytlačil ven */
+    width: 14px;
+  }
+
+  .cal-chip-action i {
+    font-size: 9px;
+  }
+
+  .cal-chip-action.is-edit {
+    color: inherit;
+  }
+
+  .cal-chip-action.is-danger {
+    color: var(--lidl-red);
+  }
+
+  .cal-chip-action:hover {
+    background: var(--white);
   }
 
   /* Odznak "+N" — kolik událostí se do posledního zobrazeného sloupce (dráhy)
