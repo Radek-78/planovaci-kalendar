@@ -6,11 +6,11 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.13 - 02.09.2026 08:42
-- Modal detailu konkretni udalosti - klik na chip v mrizce nebo na polozku v dennim seznamu ted otevre detail te konkretni udalosti, ne jen seznam cele dne
-- Dvousloupcovy layout: info o udalosti vlevo (cas, zadavatel, popis), komentare vpravo
-- Novy chatovaci system komentaru k udalosti - nova tabulka event_comments, endpointy apiGetEventComments/apiAddEventComment/apiDeleteEventComment
-- pridat smi kdokoli s pravem cist kalendar (i VIEWER), smazat jen vlastni komentar nebo (ADMIN/SUPERADMIN) kterykoli
-- Sdilena animace vyjeti z klikleho prvku (trida modal-grow) ted funguje pro oba modaly
+- Modal detailu konkrétní události — klik na chip v mřížce nebo na položku v denním seznamu teď otevře detail té konkrétní události, ne jen seznam celého dne
+- Dvousloupcový layout: info o události vlevo (čas, zadavatel, popis), komentáře vpravo
+- Nový chatovací systém komentářů k události — nová tabulka event_comments, endpointy apiGetEventComments/apiAddEventComment/apiDeleteEventComment
+- Přidat smí kdokoli s právem číst kalendář (i VIEWER), smazat jen vlastní komentář nebo (ADMIN/SUPERADMIN) kterýkoli
+- Sdílená animace vyjetí z kliklého prvku (třída modal-grow) teď funguje pro oba modaly
 
 ## v0.1.12 - 02.09.2026 08:24
 - Modal detailu dne teď vyjede přímo z kliknuté buňky dne (výpočet posunu ke středu obrazovky přes CSS proměnné --modal-dx/--modal-dy) a stejnou cestou se při zavření zase zmenší zpět
