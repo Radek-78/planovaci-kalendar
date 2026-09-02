@@ -180,3 +180,24 @@ function pickFrom_(value, allowedValues, fieldName) {
   }
   return text;
 }
+
+/**
+ * Ověří, že hodnota je platné datum ve tvaru `YYYY-MM-DD`.
+ *
+ * Kontroluje i to, že datum skutečně existuje (např. „2026-02-31" formát
+ * splní, ale zpětné složení z Date objektu se neshoduje — takže neprojde).
+ */
+function cleanDateOnly_(value, fieldName) {
+  const text = String(value === null || value === undefined ? '' : value).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    throw userError_('Pole „' + fieldName + '" musí být datum ve tvaru RRRR-MM-DD.');
+  }
+
+  const parts = text.split('-').map(Number);
+  const year = parts[0], month = parts[1], day = parts[2];
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    throw userError_('Pole „' + fieldName + '" obsahuje neplatné datum.');
+  }
+  return text;
+}

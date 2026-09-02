@@ -5,6 +5,14 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.6 - 02.09.2026 07:42
+- Dnešní den výrazněji zvýrazněný — celá karta žlutým rámečkem a jemným podbarvením, ne jen odznak u čísla
+- Napojení kalendáře na skutečná data: nový endpoint apiGetEvents (průnik rozsahu, jméno zadavatele z _users)
+- chipy událostí v mřížce s ikonou a barvou podle typu (Phosphor Icons, verze připnutá), vícedenní událost jako chip v každém dni se značkou pokračování
+- souhrn počtu událostí tento měsíc v hlavičce
+- klik na den otevírá modal se seznamem událostí toho dne (zatím jen čtení, bez úprav/mazání)
+- modal systém portovaný z Výchozí aplikace 2.0 (nativní dialog)
+
 ## v0.1.5 - 02.09.2026 07:31
 - Nový design mřížky kalendáře (varianta C z porovnání tří návrhů): sloupec týdnů jako tmavě modrý pruh přes celou výšku řádku, dny jako oddělené zaoblené karty s mezerou, dnešek žlutým kolečkovým odznakem, aktuální týden žlutým pruhem, podbarvení a zmodrání rámečku při najetí myší
 - návrhy uloženy do navrhy/ (vyloučeno z nahrávání do Apps Scriptu)

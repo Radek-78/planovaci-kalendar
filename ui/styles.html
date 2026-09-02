@@ -974,6 +974,12 @@
     text-transform: capitalize;
   }
 
+  .cal-summary {
+    color: var(--muted);
+    font-size: 12px;
+    margin: 6px 0 0;
+  }
+
   /* ── Kalendář — mřížka (varianta „C — výrazná, barevné pásy") ─────────
      Vybráno ze tří navržených směrů (viz navrhy/navrhy-kalendare.html):
      sloupec týdnů jako tmavě modrý pruh, dny jako oddělené zaoblené karty
@@ -1090,6 +1096,22 @@
     font-weight: 700;
   }
 
+  /* Dnešek — celá karta výrazně orámovaná žlutou (firemní akcent), aby bylo
+     na první pohled jasné, který den je dnešní, i mezi víkendovými dny.
+     Pravidlo musí být v CSS AŽ ZA .is-weekend/.is-past, aby při souběhu
+     (dnešek o víkendu) vyhrálo — obě mají stejnou specificitu, rozhoduje
+     pořadí v souboru. */
+  .cal-cell.is-today {
+    background: #fffdf0;
+    border-color: var(--lidl-yellow);
+    border-width: 2px;
+    padding: 6px; /* o 1px méně než běžná buňka — kompenzuje silnější rámeček */
+  }
+
+  .cal-cell.is-today:hover {
+    background: #fff8d6;
+  }
+
   /* Dnešek — žlutý kolečkový odznak kolem čísla, ne rámeček celé buňky. */
   .cal-cell.is-today .cal-daynum {
     align-items: center;
@@ -1100,6 +1122,282 @@
     height: 22px;
     justify-content: center;
     width: 22px;
+  }
+
+  /* ── Kalendář — chipy událostí v buňce ─────────────────────────────────
+     Barva chipu (--chip-color) přichází z EVENT_TYPES na serveru pro daný
+     typ. Ikona i barva jsou jen doplněk — text (název události) je vždy
+     čitelný i bez nich, takže výpadek ikonového fontu nic neschová. ── */
+
+  .cal-chips {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 4px;
+    min-width: 0;
+  }
+
+  .cal-chip {
+    align-items: center;
+    background: color-mix(in srgb, var(--chip-color) 14%, white);
+    border-radius: 4px;
+    color: var(--chip-color);
+    display: flex;
+    font-size: 10px;
+    font-weight: 700;
+    gap: 4px;
+    overflow: hidden;
+    padding: 2px 5px;
+    white-space: nowrap;
+  }
+
+  .cal-chip i {
+    flex-shrink: 0;
+    font-size: 10px;
+  }
+
+  .cal-chip span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cal-chip-more {
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 0 5px;
+  }
+
+  /* ── Modal — detail dne (nativní <dialog>, port z Výchozí aplikace 2.0) ─ */
+
+  .modal {
+    background: var(--white);
+    border: none;
+    border-radius: var(--radius);
+    border-top: 4px solid var(--lidl-blue);
+    box-shadow: 0 24px 80px rgba(0, 20, 80, 0.28), 0 4px 16px rgba(0, 20, 80, 0.12);
+    max-height: calc(100vh - 48px);
+    max-width: min(480px, calc(100vw - 32px));
+    overflow: hidden;
+    padding: 0;
+    width: 100%;
+  }
+
+  .modal[open] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .modal::backdrop {
+    background: rgba(0, 24, 70, 0.5);
+    backdrop-filter: blur(3px);
+  }
+
+  .modal-header {
+    align-items: center;
+    background-color: var(--lidl-dark-blue);
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 15px, rgba(255, 255, 255, 0.035) 15px, rgba(255, 255, 255, 0.035) 16px),
+      repeating-linear-gradient(90deg, transparent, transparent 15px, rgba(255, 255, 255, 0.035) 15px, rgba(255, 255, 255, 0.035) 16px);
+    display: flex;
+    flex-shrink: 0;
+    gap: 14px;
+    overflow: hidden;
+    padding: 13px 18px;
+    position: relative;
+  }
+
+  .modal-header::before {
+    background:
+      radial-gradient(circle at 105% 120%, rgba(255, 240, 0, 0.18) 0%, transparent 45%),
+      radial-gradient(circle at 92% -20%, rgba(255, 255, 255, 0.06) 0%, transparent 40%);
+    content: "";
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+  }
+
+  .modal-icon {
+    align-items: center;
+    background: var(--lidl-yellow);
+    border-radius: var(--radius);
+    color: var(--lidl-dark-blue);
+    display: inline-flex;
+    flex-shrink: 0;
+    height: 38px;
+    justify-content: center;
+    position: relative;
+    width: 38px;
+    z-index: 1;
+  }
+
+  .modal-icon i {
+    font-size: 18px;
+  }
+
+  .modal-header-text {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .modal-header .kicker {
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 2px;
+  }
+
+  .modal-header h2 {
+    color: var(--white);
+    font-size: 16px;
+    margin-bottom: 0;
+  }
+
+  .modal-close {
+    align-items: center;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius);
+    color: rgba(255, 255, 255, 0.55);
+    cursor: pointer;
+    display: inline-flex;
+    flex-shrink: 0;
+    height: 30px;
+    justify-content: center;
+    margin-left: auto;
+    position: relative;
+    transition: background 0.12s, color 0.12s;
+    width: 30px;
+    z-index: 1;
+  }
+
+  .modal-close:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--white);
+  }
+
+  .modal-close i {
+    font-size: 15px;
+  }
+
+  .modal-body {
+    border-top: 1px solid var(--line-soft);
+    color: var(--muted);
+    font-size: 14px;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 8px 22px 20px;
+  }
+
+  @keyframes modal-enter {
+    from { opacity: 0; transform: scale(0.86) translateY(18px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  @keyframes modal-leave {
+    from { opacity: 1; transform: scale(1) translateY(0); }
+    to   { opacity: 0; transform: scale(0.93) translateY(10px); }
+  }
+
+  @keyframes backdrop-enter {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  @keyframes backdrop-leave {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+  }
+
+  dialog[open] {
+    animation: modal-enter 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  dialog[open].is-closing {
+    animation: modal-leave 0.22s ease-in both;
+  }
+
+  dialog[open]::backdrop {
+    animation: backdrop-enter 0.3s ease both;
+  }
+
+  dialog[open].is-closing::backdrop {
+    animation: backdrop-leave 0.22s ease both;
+  }
+
+  /* ── Modal — detail dne: seznam událostí ───────────────────────────── */
+
+  .day-event-item {
+    border-bottom: 1px solid var(--line-soft);
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+  }
+
+  .day-event-item:last-child {
+    border-bottom: none;
+  }
+
+  .day-event-icon {
+    align-items: center;
+    background: color-mix(in srgb, var(--chip-color) 16%, white);
+    border-radius: 8px;
+    color: var(--chip-color);
+    display: flex;
+    flex-shrink: 0;
+    height: 36px;
+    justify-content: center;
+    width: 36px;
+  }
+
+  .day-event-icon i {
+    font-size: 17px;
+  }
+
+  .day-event-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .day-event-title-row {
+    align-items: baseline;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+  }
+
+  .day-event-title-row strong {
+    color: var(--text);
+    font-size: 14px;
+  }
+
+  .day-event-time {
+    color: var(--muted);
+    flex-shrink: 0;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .day-event-desc {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 4px 0 0;
+  }
+
+  .day-event-owner {
+    color: var(--lidl-blue);
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 6px;
+  }
+
+  .day-empty {
+    color: var(--muted);
+    font-size: 13px;
+    padding: 24px 0;
+    text-align: center;
   }
 
   /* ── Úvodní překryv při načítání ────────────────────────────────────── */

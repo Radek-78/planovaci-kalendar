@@ -7,6 +7,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= app.appName ?></title>
+    <!-- Jediná externí závislost aplikace — ikony typů událostí (chipy v kalendáři,
+         modal detailu dne). Verze připnutá napevno, ať se vzhled sám neposune.
+         Aplikace zůstává funkční i při výpadku CDN — ikona nikdy nenese význam
+         sama, vždy je doplněná textem (viz SPECIFIKACE.md, bezpečnostní bod 13). -->
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
     <?!= include('ui/styles'); ?>
   </head>
 

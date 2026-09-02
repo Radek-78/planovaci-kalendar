@@ -26,7 +26,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.1.5',
+  version: 'v0.1.6',
   releaseDate: '2.9.2026',
 
   /**
@@ -100,18 +100,20 @@ const PERM_KEYS = {
 };
 
 /**
- * Typy událostí. Klíč se ukládá do databáze, popisek a ikona slouží jen
+ * Typy událostí. Klíč se ukládá do databáze, popisek/ikona/barva slouží jen
  * k zobrazení. Cokoliv mimo tento seznam server odmítne — proto whitelist.
- * Ikony jsou názvy Phosphor Icons bez prefixu "ph-".
+ * Ikony jsou názvy Phosphor Icons bez prefixu "ph-". Barva je jen doplňkové
+ * odlišení chipů v mřížce — nikdy jediný nositel významu, ten vždy nese
+ * i text (bezpečnostní checklist v SPECIFIKACE.md, bod 13).
  */
 const EVENT_TYPES = {
-  default: { label: 'Běžné', icon: 'chat-circle' },
-  meeting: { label: 'Schůzka', icon: 'users-three' },
-  trip: { label: 'Služební cesta', icon: 'airplane-tilt' },
-  important: { label: 'Důležité', icon: 'warning' },
-  deadline: { label: 'Deadline', icon: 'alarm' },
-  homeoffice: { label: 'Home Office', icon: 'house' },
-  party: { label: 'Oslava / Teambuilding', icon: 'confetti' },
+  default: { label: 'Běžné', icon: 'chat-circle', color: '#5e6e8a' },
+  meeting: { label: 'Schůzka', icon: 'users-three', color: '#0050aa' },
+  trip: { label: 'Služební cesta', icon: 'airplane-tilt', color: '#008cd2' },
+  important: { label: 'Důležité', icon: 'warning', color: '#e60a14' },
+  deadline: { label: 'Deadline', icon: 'alarm', color: '#b45309' },
+  homeoffice: { label: 'Home Office', icon: 'house', color: '#16a34a' },
+  party: { label: 'Oslava / Teambuilding', icon: 'confetti', color: '#c026d3' },
 };
 
 /**

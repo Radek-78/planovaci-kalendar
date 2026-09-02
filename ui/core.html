@@ -103,6 +103,27 @@
       setTimeout(() => node.remove(), type === 'error' ? 7000 : 3600);
     },
 
+    /* ── Modal (nativní <dialog>) ─────────────────────────────────────────
+       Animace zavření (modal-leave) běží na animationend; setTimeout je jen
+       záložní pojistka, kdyby se z nějakého důvodu animace nespustila. ── */
+
+    openModal(dialog) {
+      dialog.showModal();
+    },
+
+    closeModal(dialog) {
+      dialog.classList.add('is-closing');
+      const done = () => {
+        dialog.classList.remove('is-closing');
+        dialog.close();
+      };
+      const fallback = setTimeout(done, 280);
+      dialog.addEventListener('animationend', () => {
+        clearTimeout(fallback);
+        done();
+      }, { once: true });
+    },
+
     /* ── Drobné pomůcky ────────────────────────────────────────────────── */
 
     /** Nastaví textový obsah prvku (bezpečně, bez interpretace HTML). */

@@ -288,7 +288,7 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | Endpoint | Guard | Vstup | Výstup |
 |---|---|---|---|
 | `apiGetBootstrap()` | `calendar_read` | — | uživatel, jeho práva, nastavení, typy událostí |
-| `apiGetEvents(from, to)` | `calendar_read` | rozsah `YYYY-MM-DD` | pole událostí protínajících rozsah |
+| `apiGetEvents(payload)` | `calendar_read` | `{ startDate, endDate }`, obě `YYYY-MM-DD` | pole událostí protínajících rozsah |
 | `apiSaveEvent(payload)` | `calendar_write` | s `id` = úprava, bez = nová | uložená událost |
 | `apiDeleteEvent(id)` | `calendar_write` | id | — |
 | `apiGetUsers()` | `users_manage` | — | seznam uživatelů |

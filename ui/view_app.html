@@ -7,18 +7,19 @@
   podle oprávnění) + hlavní obsah. Zároveň obsahuje obrazovku „bez přístupu"
   pro uživatele, který v tabulce `_users` není nebo je neaktivní.
 
-  ROZSAH TOHOTO KROKU — jen základní vzhled, bez napojení na data:
+  Obsahuje:
     - sidebar: funkční přepínání panelů, karta přihlášeného uživatele
-    - kalendář: skutečná měsíční mřížka (data, čísla týdnů, dnešek/víkend/
-      jiný měsíc/minulost), navigace mezi měsíci
+    - kalendář: měsíční mřížka (data, čísla týdnů, dnešek/víkend/jiný
+      měsíc/minulost), navigace mezi měsíci, souhrn počtu událostí
+    - události: chipy v mřížce (apiGetEvents), klik na den → modal
+      se seznamem událostí toho dne — zatím jen ČTENÍ, žádné vytváření,
+      úprava ani mazání (to je další krok, potřebuje apiSaveEvent/
+      apiDeleteEvent a kontrolu vlastnictví na serveru)
     - Uživatelé a Nastavení: zatím jen prázdný placeholder
 
-  Co v tomto kroku ZÁMĚRNĚ chybí (přijde v dalším kroku spolu s apiGetEvents):
-    - načtení a vykreslení událostí (chipy v mřížce)
-    - klik na den → modal s detailem dne
+  Co ZÁMĚRNĚ chybí:
     - zvýraznění státních svátků — čeká na editovatelný seznam v Nastavení
       (viz SPECIFIKACE.md, žádný dočasný hardcoded seznam)
-    - souhrn počtu událostí v hlavičce
 -->
 
 <!-- ══ Aplikace (přístup povolen) ══ -->
@@ -69,6 +70,7 @@
           </button>
           <span class="cal-month-label" id="calMonthLabel"></span>
         </div>
+        <p class="cal-summary" id="calSummary"></p>
       </div>
       <div class="cal-grid-wrap">
         <div class="cal-grid" id="calGrid"><!-- vykresleno JS --></div>
@@ -93,6 +95,21 @@
 
   </main>
 </div>
+
+<!-- ══ Modal: detail dne (zatím jen čtení — viz komentář v hlavičce souboru) ══ -->
+<dialog class="modal" id="dayModal">
+  <div class="modal-header">
+    <span class="modal-icon"><i class="ph ph-calendar-blank" aria-hidden="true"></i></span>
+    <div class="modal-header-text">
+      <p class="kicker" id="dayModalKicker">Den</p>
+      <h2 id="dayModalTitle"></h2>
+    </div>
+    <button class="modal-close" type="button" id="dayModalClose" aria-label="Zavřít">
+      <i class="ph ph-x" aria-hidden="true"></i>
+    </button>
+  </div>
+  <div class="modal-body" id="dayModalBody"><!-- vykresleno JS --></div>
+</dialog>
 
 <!-- ══ Uživatel nemá přístup ══ -->
 <div class="app-shell is-hidden" id="appNoAccessShell">
@@ -137,9 +154,19 @@
     MONTH_NAMES: ['leden', 'únor', 'březen', 'duben', 'květen', 'červen',
       'červenec', 'srpen', 'září', 'říjen', 'listopad', 'prosinec'],
     DAY_NAMES: ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'],
+    DAY_NAMES_FULL: ['Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota', 'Neděle'],
+
+    /** Nejvíc chipů v jedné buňce, zbytek nahradí souhrnné „+N". */
+    MAX_CHIPS_PER_CELL: 3,
 
     /** Měsíc aktuálně zobrazený v mřížce (den se nepoužívá, jen měsíc/rok). */
     calDate: new Date(),
+
+    /** Typy událostí ze serveru (EVENT_TYPES) — naplní se v onBootstrap. */
+    eventTypes: {},
+
+    /** Poslední načtené události zobrazeného rozsahu — pro otevření modalu bez dalšího volání serveru. */
+    currentEvents: [],
 
     init() {
       const boot = window.APP_BOOTSTRAP || {};
@@ -166,7 +193,10 @@
       if (!data.permissions.canManageUsers) document.querySelector('#navUsers').classList.add('is-hidden');
       if (!data.permissions.canManageSettings) document.querySelector('#navSettings').classList.add('is-hidden');
 
+      this.eventTypes = data.eventTypes || {};
+
       this.bindNav();
+      this.bindDayModal();
       this.renderCalendar();
 
       document.querySelector('#appShell').classList.remove('is-hidden');
@@ -182,6 +212,26 @@
       document.querySelector('#calToday').addEventListener('click', () => {
         this.calDate = new Date();
         this.renderCalendar();
+      });
+
+      // Delegovaný listener — přežije opakované přepisování innerHTML mřížky
+      // při každém překreslení měsíce (stejný vzor jako v PMS plánovači).
+      document.querySelector('#calGrid').addEventListener('click', (e) => {
+        const cell = e.target.closest('.cal-cell');
+        if (cell && cell.dataset.date) this.openDayModal(cell.dataset.date);
+      });
+    },
+
+    /** Zavírání modalu detailu dne — křížkem, klikem na pozadí, klávesou Esc. */
+    bindDayModal() {
+      const dialog = document.querySelector('#dayModal');
+      document.querySelector('#dayModalClose').addEventListener('click', () => Ui.closeModal(dialog));
+      dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) Ui.closeModal(dialog); // klik mimo obsah = na ::backdrop
+      });
+      dialog.addEventListener('cancel', (e) => {
+        e.preventDefault();
+        Ui.closeModal(dialog);
       });
     },
 
@@ -200,9 +250,10 @@
     },
 
     /**
-     * Vykreslí měsíční mřížku — zatím jen vizuální kostra (viz komentář
-     * v hlavičce souboru). Mřížka je vždy 6 týdnů × 7 dní, pondělí první,
-     * se sloupcem čísel kalendářních týdnů vlevo.
+     * Vykreslí měsíční mřížku — data, čísla kalendářních týdnů, stavy dnů.
+     * Mřížka je vždy 6 týdnů × 7 dní, pondělí první, se sloupcem čísel
+     * týdnů vlevo. Po vykreslení dat rovnou dotáhne události pro celý
+     * zobrazený rozsah (viz loadEvents).
      */
     renderCalendar() {
       const year = this.calDate.getFullYear();
@@ -213,8 +264,10 @@
       today.setHours(0, 0, 0, 0);
 
       const first = new Date(year, month, 1);
+      const last = new Date(year, month + 1, 0);
       const startOffset = (first.getDay() + 6) % 7; // pondělí = 0
       const gridStart = new Date(year, month, 1 - startOffset);
+      const gridEnd = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + 41);
       const todayWeek = this.isoWeek(today);
 
       let html = '<div class="cal-weekhead"></div>';
@@ -229,6 +282,7 @@
 
         for (let col = 0; col < 7; col++) {
           const cellDate = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + row * 7 + col);
+          const dateIso = this.isoDate(cellDate);
           const isOtherMonth = cellDate.getMonth() !== month;
           const isWeekend = col >= 5;
           const isToday = cellDate.getTime() === today.getTime();
@@ -240,11 +294,155 @@
             (isToday ? ' is-today' : '') +
             (isPast ? ' is-past' : '');
 
-          html += '<div class="' + cls + '"><span class="cal-daynum">' + cellDate.getDate() + '</span></div>';
+          html += '<div class="' + cls + '" data-date="' + dateIso + '">' +
+            '<span class="cal-daynum">' + cellDate.getDate() + '</span>' +
+            '<div class="cal-chips" data-chips="' + dateIso + '"></div>' +
+            '</div>';
         }
       }
 
       document.querySelector('#calGrid').innerHTML = html;
+      this.loadEvents(this.isoDate(gridStart), this.isoDate(gridEnd), first, last);
+    },
+
+    /**
+     * Načte události pro celý zobrazený rozsah mřížky (42 dní) — tiše,
+     * bez velkého úvodního překryvu, aby přepínání měsíců nepůsobilo
+     * těžkopádně. Neúspěch se jen oznámí hláškou, mřížka zůstane funkční
+     * i bez událostí.
+     */
+    loadEvents(fromIso, toIso, monthFirst, monthLast) {
+      Ui.call('apiGetEvents', { startDate: fromIso, endDate: toIso }, { silent: true })
+        .then((events) => this.renderEvents(events, monthFirst, monthLast))
+        .catch((error) => Ui.toast('Události se nepodařilo načíst: ' + error.message, 'error'));
+    },
+
+    /**
+     * Rozdělí načtené události do jednotlivých dní (vícedenní událost
+     * dostane chip v každém dni, který pokrývá — viz SPECIFIKACE.md 7.3)
+     * a vloží je do už vykreslené mřížky. Souhrn v hlavičce počítá jen
+     * události protínající AKTUÁLNĚ ZOBRAZENÝ MĚSÍC, ne celou 42denní
+     * mřížku (ta zasahuje i do sousedních měsíců).
+     */
+    renderEvents(events, monthFirst, monthLast) {
+      this.currentEvents = events;
+
+      const byDate = {};
+      events.forEach((event) => {
+        const startIso = event.start.slice(0, 10);
+        const endIso = event.end.slice(0, 10);
+        const cursor = new Date(startIso + 'T00:00');
+        const last = new Date(endIso + 'T00:00');
+        let isFirstDay = true;
+        while (cursor.getTime() <= last.getTime()) {
+          const iso = this.isoDate(cursor);
+          if (!byDate[iso]) byDate[iso] = [];
+          byDate[iso].push({ event: event, isFirstDay: isFirstDay });
+          cursor.setDate(cursor.getDate() + 1);
+          isFirstDay = false;
+        }
+      });
+
+      document.querySelectorAll('[data-chips]').forEach((container) => {
+        const items = byDate[container.dataset.chips] || [];
+        const visible = items.slice(0, this.MAX_CHIPS_PER_CELL);
+        const overflow = items.length - visible.length;
+
+        let html = visible.map((item) => this.renderChip(item.event, item.isFirstDay)).join('');
+        if (overflow > 0) html += '<div class="cal-chip-more">+' + overflow + '</div>';
+        container.innerHTML = html;
+      });
+
+      const monthFirstIso = this.isoDate(monthFirst);
+      const monthLastIso = this.isoDate(monthLast);
+      const count = events.filter((event) =>
+        event.start.slice(0, 10) <= monthLastIso && event.end.slice(0, 10) >= monthFirstIso
+      ).length;
+
+      let summary;
+      if (count === 0) summary = 'Žádné události tento měsíc';
+      else if (count === 1) summary = '1 událost tento měsíc';
+      else if (count < 5) summary = count + ' události tento měsíc';
+      else summary = count + ' událostí tento měsíc';
+      Ui.setText('#calSummary', summary);
+    },
+
+    /**
+     * Jeden chip v buňce mřížky. Čas se vypíše jen první den vícedenní
+     * události, další dny nesou jen značku pokračování „▸" — ikona a barva
+     * jsou doplněk, text (název) je vždy čitelný i bez nich.
+     */
+    renderChip(event, isFirstDay) {
+      const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a' };
+      const timeLabel = event.allDay ? 'Celý den' : event.start.slice(11, 16);
+      const prefix = isFirstDay ? timeLabel + ' ' : '▸ ';
+
+      return '<div class="cal-chip" style="--chip-color:' + Ui.escape(type.color) + '" title="' +
+        Ui.escape(type.label + ': ' + event.title) + '">' +
+        '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i>' +
+        '<span>' + Ui.escape(prefix + event.title) + '</span></div>';
+    },
+
+    /** Otevře modal se seznamem událostí daného dne (jen čtení — viz hlavička souboru). */
+    openDayModal(dateIso) {
+      const dayEvents = this.currentEvents
+        .filter((event) => event.start.slice(0, 10) <= dateIso && event.end.slice(0, 10) >= dateIso)
+        .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+
+      const date = new Date(dateIso + 'T00:00');
+      Ui.setText('#dayModalKicker', this.DAY_NAMES_FULL[(date.getDay() + 6) % 7]);
+      Ui.setText('#dayModalTitle', date.getDate() + '. ' + this.MONTH_NAMES[date.getMonth()] + ' ' + date.getFullYear());
+
+      const body = document.querySelector('#dayModalBody');
+      body.innerHTML = dayEvents.length
+        ? dayEvents.map((event) => this.renderDayEventItem(event)).join('')
+        : '<p class="day-empty">Žádné události tento den.</p>';
+
+      Ui.openModal(document.querySelector('#dayModal'));
+    },
+
+    /** Jedna položka v seznamu událostí dne — ikona typu, čas, popis, zadavatel. */
+    renderDayEventItem(event) {
+      const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a' };
+      const startIso = event.start.slice(0, 10);
+      const endIso = event.end.slice(0, 10);
+      const isMultiDay = startIso !== endIso;
+
+      let timeLabel;
+      if (event.allDay) {
+        timeLabel = isMultiDay
+          ? 'Celý den · ' + this.formatDateShort(startIso) + '–' + this.formatDateShort(endIso)
+          : 'Celý den';
+      } else if (isMultiDay) {
+        timeLabel = this.formatDateShort(startIso) + ' ' + event.start.slice(11, 16) +
+          ' – ' + this.formatDateShort(endIso) + ' ' + event.end.slice(11, 16);
+      } else {
+        timeLabel = event.start.slice(11, 16) + '–' + event.end.slice(11, 16);
+      }
+
+      return '<div class="day-event-item">' +
+        '<span class="day-event-icon" style="--chip-color:' + Ui.escape(type.color) + '">' +
+          '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i></span>' +
+        '<div class="day-event-text">' +
+          '<div class="day-event-title-row"><strong>' + Ui.escape(event.title) + '</strong>' +
+            '<span class="day-event-time">' + Ui.escape(timeLabel) + '</span></div>' +
+          (event.description ? '<p class="day-event-desc">' + Ui.escape(event.description) + '</p>' : '') +
+          '<span class="day-event-owner">' + Ui.escape(event.ownerName) + '</span>' +
+        '</div></div>';
+    },
+
+    /** Datum jako „D.M." — krátký formát pro rozsah vícedenní události. */
+    formatDateShort(iso) {
+      const parts = iso.split('-');
+      return Number(parts[2]) + '.' + Number(parts[1]) + '.';
+    },
+
+    /** Datum jako `YYYY-MM-DD` v místním čase (ne UTC — cellDate je vždy lokální půlnoc). */
+    isoDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + d;
     },
 
     /** Číslo ISO kalendářního týdne pro dané datum. */
