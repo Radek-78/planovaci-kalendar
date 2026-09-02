@@ -6,7 +6,7 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.26 - 02.09.2026 18:24
-- Kalendar - ikony tuzky a kose v chipu udalosti se ted vzdy pritisknou k pravemu okraji (margin-left auto), ne jen hned za kratky nazev - u sirsich (vicedennich) chipu s kratkym nazvem drive viselo mezi textem a okrajem prazdne misto
+- Kalendář — ikony tužky a koše v chipu události se teď vždy přitisknou k pravému okraji (margin-left auto), ne jen hned za krátký název — u širších (vícedenních) chipů s krátkým názvem dřív viselo mezi textem a okrajem prázdné místo
 
 ## v0.1.25 - 02.09.2026 18:16
 - Kalendář — v mřížce teď až 4 události v jednom dni (dříve 3), zbytek přes +N jako doposud
