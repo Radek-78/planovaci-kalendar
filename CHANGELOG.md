@@ -6,10 +6,10 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.10 - 02.09.2026 08:09
-- Skutecna oprava priciny: diagnostika ukazala typeof start=object - Sheets datum tise prevedl na typ Date i pres textovy format sloupce (samotne setNumberFormat @ zapisu nezabranilo)
-- oprava na obou koncich - pri zapisu (dbRecordToRow_) se hodnoty sloupcu z TEXT_COLUMNS uvozuji apostrofem, coz format skutecne vynuti
-- pri cteni (dbGetAll_) se u events.start/end typ Date pri nalezu prevede zpet na RRRR-MM-DDTHH:mm, takze funguje i pro 8 jiz vlozenych testovacich radku bez nutnosti je mazat
-- aktualizovana SPECIFIKACE.md a poznamky v pameti
+- Skutečná oprava příčiny: diagnostika ukázala typeof start=object — Sheets datum tiše převedl na typ Date i přes textový formát sloupce (samotné setNumberFormat "@" zápisu nezabránilo)
+- Oprava na obou koncích — při zápisu (dbRecordToRow_) se hodnoty sloupců z TEXT_COLUMNS uvozují apostrofem, což formát skutečně vynutí
+- Při čtení (dbGetAll_) se u events.start/end typ Date při nálezu převede zpět na RRRR-MM-DDTHH:mm, takže funguje i pro 8 už vložených testovacích řádků bez nutnosti je mazat
+- Aktualizovaná SPECIFIKACE.md a poznámky v paměti
 
 ## v0.1.9 - 02.09.2026 08:03
 - Nový diagnostický nástroj TOOLS_diagnostikaUdalosti (server/90_tools.js) — vypíše syrová data z listu events přesně tak, jak je čte server, a u každého řádku ukáže typeof start/end a jestli by prošel filtrem apiGetEvents pro aktuální měsíc
