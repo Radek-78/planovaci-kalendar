@@ -6,10 +6,10 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.23 - 02.09.2026 17:43
-- Kalendar - vyska bunek dne se vraci k puvodnimu chovani (drahy se zase roztahnou a zaplni celou dostupnou vysku mrizky, ne pevnych 17px na drahu)
-- modal detailu dne - u vlastnich udalosti (a u administratora/spravce i u cizich) se ted zobrazuji ikony tuzky a kose - editace otevre predvyplneny formular, smazani jde pres potvrzovaci okno a smaze i navazane komentare
-- nove endpointy - apiSaveEvent zvladne i upravu existujici udalosti (drive jen zalozeni), novy apiDeleteEvent
-- bezpecnostni pravidla - cizi udalost smi upravit/smazat jen administrator/spravce, jiz probehlou udalost jen podle nastaveni pastEditAdminOnly, novou udalost do minulosti framebuffer nejde zalozit nikdy
+- Kalendář — výška buněk dne se vrací k původnímu chování (dráhy se zase roztáhnou a zaplní celou dostupnou výšku mřížky, ne pevných 17px na dráhu)
+- Modal detailu dne — u vlastních událostí (a u administrátora/správce i u cizích) se teď zobrazují ikony tužky a koše — editace otevře předvyplněný formulář, smazání jde přes potvrzovací okno a smaže i navázané komentáře
+- Nové endpointy — apiSaveEvent zvládne i úpravu existující události (dříve jen založení), nový apiDeleteEvent
+- Bezpečnostní pravidla — cizí událost smí upravit/smazat jen administrátor/správce, již proběhlou událost jen podle nastavení pastEditAdminOnly, novou událost do minulosti nejde založit nikdy
 
 ## v0.1.22 - 02.09.2026 14:26
 - Kalendář — návrat na max 3 události v jedné dráze na den, zbytek nahrazuje skutečný odznak +N přímo v mřížce (ne jen roh buňky) — klik na něj otevře detail dne se vším
