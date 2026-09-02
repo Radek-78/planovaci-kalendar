@@ -6,10 +6,10 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.17 - 02.09.2026 12:26
-- Sekce Uzivatele - vytvareni novych uzivatelu a seznam. Novy endpoint apiGetUsers (seznam serazeny podle jmena) a apiSaveUser (vytvoreni s validaci na serveru - format a domena e-mailu @lidl.cz, duplicita, roli SUPERADMIN smi pridelit jen SUPERADMIN)
-- Formular: jmeno, prijmeni, e-mail, role, opravneni (jen u role Uzivatel, ostatni maji vzdy plny zapis)
-- Seznam: avatar, jmeno a e-mail, barevny odznak role, opravneni, neaktivni uzivatel vyblednuty
-- Nabidka roli ve formulari se prizpusobuje - ADMIN nevidi moznost vytvorit dalsiho SUPERADMINA
+- Sekce Uživatelé — vytváření nových uživatelů a seznam. Nový endpoint apiGetUsers (seznam seřazený podle jména) a apiSaveUser (vytvoření s validací na serveru — formát a doména e-mailu @lidl.cz, duplicita, roli SUPERADMIN smí přidělit jen SUPERADMIN)
+- Formulář: jméno, příjmení, e-mail, role, oprávnění (jen u role Uživatel, ostatní mají vždy plný zápis)
+- Seznam: avatar, jméno a e-mail, barevný odznak role, oprávnění, neaktivní uživatel vybledlý
+- Nabídka rolí ve formuláři se přizpůsobuje — ADMIN nevidí možnost vytvořit dalšího SUPERADMINA
 
 ## v0.1.16 - 02.09.2026 09:25
 - Oprava: tlačítka Nová událost, Zrušit a Vytvořit postrádala základní třídu button (měla jen barevný modifikátor button-primary/button-secondary), takže jim chyběl rámeček, zaoblení, odsazení i výška — teď vypadají jako ostatní tlačítka v aplikaci
