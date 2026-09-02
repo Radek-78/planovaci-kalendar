@@ -5,6 +5,12 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.21 - 02.09.2026 13:48
+- Modal okno uzivatele zvetseno a bez zbytecneho scrollovani - siroky format rozsiren na 720px, pevna vyska formulare nahrazena prirozenou (jen skutecny obsah, zadne prazdne misto navic)
+- kalendar - vicedenni udalosti se ted vizualne spoji v jeden souvisly pruh pres vsechny dny v ramci tydne (misto samostatneho chipu v kazdem dni), zaobleni jen na skutecnem zacatku a konci
+- kazdy den ma nove misto az pro 5 soubeznych udalosti (drive 3 + soucet navic), pretecni nad ramec je jen vzacny okrajovy pripad s malym odznakem v rohu bunky
+- zuzena hlavicka se zkratkami dnu a zmensene okraje kolem cele mrizky kalendare pro vice mista na obsah
+
 ## v0.1.20 - 02.09.2026 13:32
 - Sloupec Akce u každého uživatele — tužka (editace všech údajů včetně role a organizace, e-mail už needitovatelný, je na něj navázaná historie událostí a komentářů) a koš (deaktivace, obnovitelná zpětnou ikonou u neaktivních)
 - Nové endpointy — apiSaveUser teď zvládne i úpravu existujícího uživatele (dříve jen založení), apiSetUserActive na deaktivaci/aktivaci

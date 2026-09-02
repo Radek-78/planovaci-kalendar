@@ -1407,17 +1407,19 @@
     border: 1px solid var(--line);
     border-radius: var(--radius);
     flex: 1;
-    margin: 16px 20px 20px;
+    margin: 12px 16px 16px;
     min-height: 0;
     overflow: hidden auto;
-    padding: 10px;
+    padding: 8px;
   }
 
+  /* grid-template-rows se počítá a nastavuje v JS (viz App.renderCalendar) —
+     každý týden potřebuje vlastní počet řádkových čar (hlava dne + drahy pro
+     pruhy událostí), což se do statického CSS nedá zapsat rozumně čitelně. */
   .cal-grid {
     display: grid;
-    gap: 6px;
+    gap: 4px;
     grid-template-columns: 44px repeat(7, 1fr);
-    grid-template-rows: 26px repeat(6, minmax(64px, 1fr));
     height: 100%;
   }
 
@@ -1464,15 +1466,22 @@
     color: var(--lidl-dark-blue);
   }
 
+  /* Buňka dne je teď JEN podklad (barva, rámeček, hover) — číslo dne uvnitř
+     je position:absolute (viz .cal-daynum), takže na jejím vlastním
+     paddingu vůbec nezáleží. Chipy/pruhy událostí NEJSOU její potomci —
+     jsou to samostatné položky téže mřížky (viz App.renderChip), umístěné
+     přes grid-row/grid-column přesně nad ni (i přes více sousedních buněk
+     u vícedenní události), proto z-index: 0, ať je pruh (z-index: 1) vždy
+     nad podkladem, ne naopak. */
   .cal-cell {
     background: var(--white);
     border: 1px solid var(--line);
     border-radius: 8px;
     min-width: 0;
     overflow: hidden;
-    padding: 7px;
     position: relative;
     transition: background 0.12s, border-color 0.12s;
+    z-index: 0;
   }
 
   .cal-cell:hover {
@@ -1505,10 +1514,18 @@
     color: var(--muted);
   }
 
+  /* Position: absolute — vyjmuté z toku, ať jeho skutečná vykreslená výška
+     nemusí přesně sedět na px s CAL_HEAD_ROW (viz App.renderCalendar).
+     Stačí, aby se do CAL_HEAD_ROW vešlo (má rezervu), a nemusí se to ladit
+     na pixel přesně. */
   .cal-daynum {
     color: var(--text);
     font-size: 12px;
     font-weight: 700;
+    left: 7px;
+    position: absolute;
+    top: 4px;
+    z-index: 1;
   }
 
   /* Dnešek — celá karta výrazně orámovaná žlutou (firemní akcent), aby bylo
@@ -1520,23 +1537,24 @@
     background: #fffdf0;
     border-color: var(--lidl-yellow);
     border-width: 2px;
-    padding: 6px; /* o 1px méně než běžná buňka — kompenzuje silnější rámeček */
   }
 
   .cal-cell.is-today:hover {
     background: #fff8d6;
   }
 
-  /* Dnešek — žlutý kolečkový odznak kolem čísla, ne rámeček celé buňky. */
+  /* Dnešek — žlutý kolečkový odznak kolem čísla, ne rámeček celé buňky.
+     18px (ne víc) — musí se i s odsazením shora vejít do CAL_HEAD_ROW,
+     ať nezasahuje do první dráhy s pruhy událostí pod ním. */
   .cal-cell.is-today .cal-daynum {
     align-items: center;
     background: var(--lidl-yellow);
     border-radius: 50%;
     color: var(--lidl-dark-blue);
     display: inline-flex;
-    height: 22px;
+    height: 18px;
     justify-content: center;
-    width: 22px;
+    width: 18px;
   }
 
   /* ── Kalendář — chipy událostí v buňce ─────────────────────────────────
@@ -1544,26 +1562,39 @@
      typ. Ikona i barva jsou jen doplněk — text (název události) je vždy
      čitelný i bez nich, takže výpadek ikonového fontu nic neschová. ── */
 
-  .cal-chips {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    margin-top: 4px;
-    min-width: 0;
-  }
-
+  /* Pruh (chip) události — samostatná položka mřížky (ne potomek buňky!),
+     umístěná přes grid-row (přidělená dráha) a grid-column (rozsah dnů,
+     který v tomto týdnu pokrývá — viz App.renderChip). Díky grid-column
+     přes víc sloupců vyplní pruh svou vlastní krabicí i mezeru mezi
+     sousedními buňkami, takže vícedenní událost vypadá jako JEDEN souvislý
+     pruh, ne jako řada oddělených chipů. Hranatý uprostřed, zaoblený jen
+     na skutečném začátku/konci (is-start/is-end) — stejný princip. */
   .cal-chip {
     align-items: center;
     background: color-mix(in srgb, var(--chip-color) 14%, white);
-    border-radius: 4px;
+    border-radius: 0;
     color: var(--chip-color);
     display: flex;
     font-size: 10px;
     font-weight: 700;
     gap: 4px;
+    height: 100%; /* vyplní celou svou dráhu — mezeru mezi drahami dělá už gap mřížky, netřeba svislý margin navíc */
+    margin: 0 2px; /* jen vodorovný odstup od kraje buňky na začátku/konci pruhu */
     overflow: hidden;
-    padding: 2px 5px;
+    padding: 0 6px;
+    position: relative;
     white-space: nowrap;
+    z-index: 1;
+  }
+
+  .cal-chip.is-start {
+    border-bottom-left-radius: 4px;
+    border-top-left-radius: 4px;
+  }
+
+  .cal-chip.is-end {
+    border-bottom-right-radius: 4px;
+    border-top-right-radius: 4px;
   }
 
   .cal-chip i {
@@ -1576,11 +1607,20 @@
     text-overflow: ellipsis;
   }
 
-  .cal-chip-more {
-    color: var(--muted);
-    font-size: 10px;
+  /* Odznak "víc událostí, než je drah" — vzácný okrajový případ (přes
+     CAL_LANE_COUNT souběžných událostí v jednom dni), viz renderEvents.
+     Malý roh buňky, ne další řádek — nezabírá trvale místo v mřížce. */
+  .cal-cell-overflow {
+    background: var(--muted);
+    border-radius: 999px;
+    bottom: 4px;
+    color: var(--white);
+    font-size: 8px;
     font-weight: 700;
-    padding: 0 5px;
+    padding: 1px 5px;
+    position: absolute;
+    right: 4px;
+    z-index: 1;
   }
 
   /* ── Modal — detail dne (nativní <dialog>, port z Výchozí aplikace 2.0) ─ */
@@ -1603,9 +1643,9 @@
     flex-direction: column;
   }
 
-  /* Širší varianta pro dvousloupcový modal detailu události. */
+  /* Širší varianta pro dvousloupcové modaly (detail události, uživatel). */
   .modal-wide {
-    max-width: min(680px, calc(100vw - 32px));
+    max-width: min(720px, calc(100vw - 32px));
   }
 
   .modal::backdrop {
@@ -2185,11 +2225,14 @@
      skupiny. Pevná výška jako u ostatních formulářů — nic se při vyplňování
      nesmí hýbat. ── */
 
+  /* Bez pevné výšky (na rozdíl od formuláře události) — obsah sám o sobě
+     není o moc vyšší než cca 300px, takže fixní 480px zbytečně natahovalo
+     okno a přitom ho na nižších obrazovkách nutilo scrollovat (viz
+     .modal{max-height}, který je tu jediným skutečným limitem). */
   .user-form-body {
     display: grid;
     gap: 16px;
     grid-template-columns: 1fr 1fr;
-    height: 480px;
     overflow-y: auto;
     padding: 18px 22px;
   }
