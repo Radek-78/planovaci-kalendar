@@ -5,6 +5,12 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.10 - 02.09.2026 08:09
+- Skutecna oprava priciny: diagnostika ukazala typeof start=object - Sheets datum tise prevedl na typ Date i pres textovy format sloupce (samotne setNumberFormat @ zapisu nezabranilo)
+- oprava na obou koncich - pri zapisu (dbRecordToRow_) se hodnoty sloupcu z TEXT_COLUMNS uvozuji apostrofem, coz format skutecne vynuti
+- pri cteni (dbGetAll_) se u events.start/end typ Date pri nalezu prevede zpet na RRRR-MM-DDTHH:mm, takze funguje i pro 8 jiz vlozenych testovacich radku bez nutnosti je mazat
+- aktualizovana SPECIFIKACE.md a poznamky v pameti
+
 ## v0.1.9 - 02.09.2026 08:03
 - Nový diagnostický nástroj TOOLS_diagnostikaUdalosti (server/90_tools.js) — vypíše syrová data z listu events přesně tak, jak je čte server, a u každého řádku ukáže typeof start/end a jestli by prošel filtrem apiGetEvents pro aktuální měsíc
 - Pomáhá zjistit, proč kalendář nezobrazuje již vložené události

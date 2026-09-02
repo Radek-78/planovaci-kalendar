@@ -152,11 +152,26 @@ funguje tedy i jako migrace při pozdějším rozšíření.
 | `description` | text, max 2000 znaků | nepovinné |
 | `*_at` | ISO 8601 text | `nowIso_()` |
 
-**Pozor na past ze Sheets:** sloupce `start` a `end` musí být natvrdo
-naformátované jako text (`setNumberFormat('@')`). Bez toho Sheets tiše převede
-`2026-09-01T08:30` na typ Date a `google.script.run` takovou hodnotu vrací
-nespolehlivě. Tato chyba se v PMS reálně vyskytla a řeší ji tam
-`_pmsEnsurePlannerEventsSheet_`.
+**Past ze Sheets — dvojí ochrana:** sloupce `start` a `end` musí zůstat
+doslovný text (`2026-09-01T08:30`), jinak Sheets hodnotu tiše převede na typ
+Date a textové porovnání rozsahu v `apiGetEvents` přestane fungovat (řetězec
+jako `"Wed Sep 02"` se s `RRRR-MM-DD` nikdy neshoduje). Tato chyba se v PMS
+reálně vyskytla (`_pmsEnsurePlannerEventsSheet_`) a 2. 9. 2026 i tady —
+ověřeno nástrojem `TOOLS_diagnostikaUdalosti`.
+
+Samotné nastavení formátu buňky na `"@"` (`setNumberFormat`) se ukázalo
+**nespolehlivé** — Sheets si řetězec vypadající jako datum přesto tiše
+převede při zápisu přes `appendRow`/`setValues`. Funkční řešení je dvoufázové:
+1. **při zápisu** (`dbRecordToRow_`) se hodnota u sloupců z `TEXT_COLUMNS`
+   uvozuje apostrofem (`'2026-09-01T08:30`) — stejný trik jako ruční zápis
+   v UI Sheets, který vynutí doslovný text; do výsledné hodnoty se apostrof
+   nepropíše,
+2. **při čtení** (`dbGetAll_`) se u `events.start`/`events.end` (jediných
+   sloupců, kde na formátu závisí logika, ne jen zobrazení) hodnota typu
+   `Date` převede zpět na `YYYY-MM-DDTHH:mm` — obrana do hloubky pro řádky,
+   které vznikly ještě před opravou, nebo byly ručně upravené přímo v Sheets.
+
+Viz [[apps-script-text-format-nespolehlive]] v paměti projektu.
 
 **Celodenní událost** se ukládá jako `start = YYYY-MM-DDT00:00` a
 `end = YYYY-MM-DDT23:59`, plus `all_day = true`. Díky tomu funguje jediné

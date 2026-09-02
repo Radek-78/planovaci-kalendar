@@ -50,6 +50,20 @@ const TEXT_COLUMNS = {
   events: ['start', 'end', 'created_at', 'updated_at'],
 };
 
+/**
+ * Podmnožina TEXT_COLUMNS, kde na formátu ZÁLEŽÍ PRO LOGIKU (řazení,
+ * porovnávání rozsahu) — ne jen pro zobrazení. Sem patří jen `events.start`
+ * a `events.end`, protože apiGetEvents nad nimi dělá textové porovnání
+ * rozsahu. Pokud takový sloupec i přes ochranu v dbRecordToRow_ přesto
+ * obsahuje typ Date (např. řádek vznikl ještě předtím, než ochrana platila,
+ * nebo ho někdo ručně přepsal přímo v Sheets), dbGetAll_ ho při čtení
+ * převede zpět na očekávaný tvar `YYYY-MM-DDTHH:mm` — obrana do hloubky,
+ * nespoléhat jen na to, že se do listu nikdy nic špatně nezapíše.
+ */
+const LOCAL_DATETIME_COLUMNS = {
+  events: ['start', 'end'],
+};
+
 /** Handle na databázi pro aktuální běh skriptu (šetří opakované openById). */
 let dbHandle_ = null;
 
@@ -194,9 +208,15 @@ function dbGetAll_(table) {
   values.forEach((row, rowIndex) => {
     if (row[0] === '' || row[0] === null) return; // prázdný řádek
 
+    const localDatetimeColumns = LOCAL_DATETIME_COLUMNS[table] || [];
     const record = {};
     headers.forEach((header, colIndex) => {
-      record[header] = row[colIndex];
+      let value = row[colIndex];
+      // Obrana do hloubky — viz komentář u LOCAL_DATETIME_COLUMNS.
+      if (value instanceof Date && localDatetimeColumns.indexOf(header) !== -1) {
+        value = Utilities.formatDate(value, TIMEZONE, "yyyy-MM-dd'T'HH:mm");
+      }
+      record[header] = value;
     });
     // Číslo řádku v listu — potřebné pro cílený update/delete bez dalšího hledání.
     record._row = rowIndex + 2;
@@ -230,11 +250,21 @@ function dbInvalidate_(table) {
  * Připraví pole hodnot v pořadí sloupců podle schématu.
  * Chybějící klíče se zapíší jako prázdný řetězec, přebytečné se ignorují —
  * do listu se tak nikdy nedostane sloupec, který ve schématu není.
+ *
+ * U sloupců z TEXT_COLUMNS se hodnota navíc uvozuje apostrofem — stejný trik
+ * jako ruční zápis '2026-09-02T08:30 v UI Sheets, který vynutí doslovný text.
+ * Ukázalo se totiž (viz TOOLS_diagnostikaUdalosti a paměť projektu), že
+ * samotné nastavení formátu buňky na "@" zápisu přes appendRow/setValues
+ * nezabrání — Sheets si řetězec vypadající jako datum stejně tiše převede
+ * na typ Date. Apostrof do výsledné hodnoty nejde, jen vynutí interpretaci.
  */
 function dbRecordToRow_(table, record) {
+  const textColumns = TEXT_COLUMNS[table] || [];
   return DB_SCHEMA[table].map((header) => {
     const value = record[header];
-    return value === undefined || value === null ? '' : value;
+    if (value === undefined || value === null || value === '') return '';
+    if (textColumns.indexOf(header) !== -1) return "'" + value;
+    return value;
   });
 }
 
