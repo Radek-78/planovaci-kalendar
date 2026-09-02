@@ -453,7 +453,7 @@
      */
     CAL_HEADER_ROW: 20, // px – úplně první řádek mřížky se zkratkami dnů (Po/Út/…)
     CAL_HEAD_ROW: 20,   // px – řádek s číslem dne v každém týdnu
-    CAL_LANE_ROW: 17,   // px – jedna dráha pro chip/pruh události
+    CAL_LANE_ROW: 20,   // px – jedna dráha pro chip/pruh události (pevná výška — velikost chipu se neroztahuje, viz .cal-chip)
     CAL_LANE_COUNT: 3,  // kolik drah (souběžných událostí) se v týdnu zobrazí najednou — zbytek nahradí "+N" (viz renderEvents)
     CAL_GRID_GAP: 4,    // px – mezera mřížky (řádky i sloupce)
 
@@ -1316,15 +1316,19 @@
       const grid = document.querySelector('#calGrid');
 
       // Řádková šablona: hlavička dnů (pevná) + pro každý ze 6 týdnů hlava
-      // (pevná — jen číslo dne) a drahy. Drahy jsou "minmax(…, 1fr)", ne
-      // pevný px — díky tomu se rovnoměrně roztáhnou a vyplní celou
-      // dostupnou výšku .cal-grid-wrap (stejně jako předchozí návrh
-      // s minmax(64px, 1fr) na celý řádek), místo aby mřížka s méně
-      // drahami (CAL_LANE_COUNT) zůstala menší, než kolik je místa.
+      // (číslo dne) a drahy — VŠECHNY pevné px, ať mají chipy pořád stejnou
+      // kompaktní velikost bez ohledu na to, kolik volného místa mřížka má.
+      // Zbylé místo do plné výšky .cal-grid-wrap pohltí jeden přidaný
+      // "spacer" řádek na konci každého týdne (minmax(0, 1fr), do kterého
+      // se nikdy nic nekreslí) — takže buňka dne pořád vyplní celou
+      // dostupnou výšku (viz .cal-cell/.cal-weeknum-cell níže, obě teď
+      // objímají i tenhle spacer), ale prázdný prostor zůstává dole pod
+      // posledním chipem, ne roztažený DO chipů samotných.
       const rowSizes = [this.CAL_HEADER_ROW + 'px'];
       for (let w = 0; w < 6; w++) {
         rowSizes.push(this.CAL_HEAD_ROW + 'px');
-        for (let l = 0; l < this.CAL_LANE_COUNT; l++) rowSizes.push('minmax(' + this.CAL_LANE_ROW + 'px, 1fr)');
+        for (let l = 0; l < this.CAL_LANE_COUNT; l++) rowSizes.push(this.CAL_LANE_ROW + 'px');
+        rowSizes.push('minmax(0, 1fr)'); // spacer
       }
       grid.style.gridTemplateRows = rowSizes.join(' ');
 
@@ -1336,7 +1340,7 @@
         const weekNum = this.isoWeek(rowStart);
         const isCurrentWeek = weekNum === todayWeek && rowStart.getFullYear() === today.getFullYear();
         const headTrack = this.calHeadTrack(row);
-        const rowSpan = 1 + this.CAL_LANE_COUNT;
+        const rowSpan = 2 + this.CAL_LANE_COUNT; // hlava + drahy + spacer
 
         html += '<div class="cal-weeknum-cell' + (isCurrentWeek ? ' is-current-week' : '') +
           '" style="grid-row:' + headTrack + ' / span ' + rowSpan + '">KT<b>' + weekNum + '</b></div>';
@@ -1366,9 +1370,14 @@
       this.loadEvents(this.isoDate(gridStart), this.isoDate(gridEnd), first, last);
     },
 
-    /** Řádková čára mřížky, kde začíná "hlava" (číslo dne) daného týdne — sdílené mezi renderCalendar a renderEvents, ať se vzorec nerozjede na dvou místech. */
+    /**
+     * Řádková čára mřížky, kde začíná "hlava" (číslo dne) daného týdne —
+     * sdílené mezi renderCalendar a renderEvents, ať se vzorec nerozjede na
+     * dvou místech. Blok jednoho týdne má (2 + CAL_LANE_COUNT) řádkových
+     * čar — hlava, drahy a spacer navíc (viz renderCalendar).
+     */
     calHeadTrack(row) {
-      return 2 + row * (1 + this.CAL_LANE_COUNT);
+      return 2 + row * (2 + this.CAL_LANE_COUNT);
     },
 
     /** Rozdíl ve dnech mezi dvěma daty RRRR-MM-DD (b − a). */
@@ -1554,14 +1563,12 @@
     },
 
     /**
-     * Otevře modal se seznamem událostí daného dne. `originEl` je kliknutý
-     * prvek na obrazovce, ze kterého modal vizuálně "vyjede" (viz
-     * setModalOrigin a CSS třída .modal-grow).
-     *
-     * Prázdný den, na který se smí zakládat, přeskočí prázdný seznam a
-     * otevře rovnou formulář nové události — nemá smysl ukazovat modal jen
-     * s hláškou „žádné události" a tlačítkem. Den s existujícími událostmi
-     * seznam ukáže jako dřív, s tlačítkem „Nová událost" navrch.
+     * Otevře modal se seznamem událostí daného dne — VŽDY, i pro prázdný
+     * den (dřív se v tom případě přeskočilo rovnou na formulář nové
+     * události; teď je jediná cesta k němu tlačítko „Nová událost" v tomto
+     * modalu, ať má klik na buňku jedno předvídatelné chování). `originEl`
+     * je kliknutý prvek na obrazovce, ze kterého modal vizuálně "vyjede"
+     * (viz setModalOrigin a CSS třída .modal-grow).
      */
     openDayModal(dateIso, originEl) {
       this.hideChipTooltip(); // ať tu nezůstane viset nad podložkou modalu
@@ -1569,11 +1576,6 @@
       const dayEvents = this.currentEvents
         .filter((event) => event.start.slice(0, 10) <= dateIso && event.end.slice(0, 10) >= dateIso)
         .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
-
-      if (!dayEvents.length && this.canCreateOn(dateIso)) {
-        this.openCreateEventModal(dateIso, originEl);
-        return;
-      }
 
       const date = new Date(dateIso + 'T00:00');
       Ui.setText('#dayModalKicker', this.DAY_NAMES_FULL[(date.getDay() + 6) % 7]);
