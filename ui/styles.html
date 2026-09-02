@@ -1880,6 +1880,14 @@
     grid-template-columns: 1fr 1fr;
   }
 
+  /* Skrytí pole s časem při "Celý den" — visibility, ne display:none.
+     Prostor v layoutu zůstává rezervovaný, takže se sousední řádky ani
+     o pixel neposunou (display:none by řádku přepočítalo výšku podle
+     zbylého viditelného pole). */
+  .event-form-field--hidden {
+    visibility: hidden;
+  }
+
   /* Zaškrtávátko "Celý den" ve stejném řádku jako "Typ" — prázdný <span>
      v HTML (viz eventFormModal) drží stejnou výšku popisku jako sourozenní
      pole, aby zaškrtávátko vizuálně sedělo na úrovni selectu vedle sebe. */

@@ -5,6 +5,11 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.16 - 02.09.2026 09:25
+- Oprava: tlačítka Nová událost, Zrušit a Vytvořit postrádala základní třídu button (měla jen barevný modifikátor button-primary/button-secondary), takže jim chyběl rámeček, zaoblení, odsazení i výška — teď vypadají jako ostatní tlačítka v aplikaci
+- Doplněny ikony (křížek u Zrušit, fajfka u Vytvořit)
+- Oprava: po zaškrtnutí Celý den se pole s časem místo mizení z layoutu (display none) jen opticky skryje (visibility hidden) a prostor zůstává rezervovaný, takže se sousední pole a popisky už ani o pixel neposunou
+
 ## v0.1.15 - 02.09.2026 09:17
 - Select (rozbalovací seznam typu události) neměl vůbec žádný vlastní styl a zobrazoval se čistě prohlížečově — teď má stejný rámeček, výšku a zaoblení jako ostatní pole, plus vlastní šipka místo systémové
 - Zaškrtávátka (Celý den) už nedědí styl textových polí, který je dělal rozbité

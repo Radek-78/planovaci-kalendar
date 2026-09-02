@@ -140,7 +140,7 @@
   </div>
   <div class="modal-body" id="dayModalBody"><!-- vykresleno JS --></div>
   <div class="modal-actions is-hidden" id="dayModalActions">
-    <button type="button" class="button-primary" id="dayModalCreateBtn">
+    <button type="button" class="button button-primary" id="dayModalCreateBtn">
       <i class="ph ph-plus" aria-hidden="true"></i> Nová událost
     </button>
   </div>
@@ -240,8 +240,12 @@
       </label>
     </div>
     <div class="modal-actions">
-      <button type="button" class="button-secondary" id="eventFormCancel">Zrušit</button>
-      <button type="submit" class="button-primary" id="eventFormSubmit">Vytvořit</button>
+      <button type="button" class="button button-secondary" id="eventFormCancel">
+        <i class="ph ph-x" aria-hidden="true"></i> Zrušit
+      </button>
+      <button type="submit" class="button button-primary" id="eventFormSubmit">
+        <i class="ph ph-check" aria-hidden="true"></i> Vytvořit
+      </button>
     </div>
   </form>
 </dialog>
@@ -532,8 +536,12 @@
     /** Skryje pole s časem, když je zaškrtnuté „Celý den" — čas pak nedává smysl vyplňovat. */
     updateEventFormTimeVisibility() {
       const allDay = document.querySelector('#eventFormAllDay').checked;
-      document.querySelector('#eventFormStartTimeField').classList.toggle('is-hidden', allDay);
-      document.querySelector('#eventFormEndTimeField').classList.toggle('is-hidden', allDay);
+      // visibility, ne display:none — pole zůstává v layoutu (jen neviditelné
+      // a mimo tab pořadí), takže se řádek/mezery při přepnutí ani o pixel
+      // nepohnou. .is-hidden (display:none) by tu naopak přepočítalo výšku
+      // řádku a vše by se mírně posunulo — přesně to, co dřív vadilo.
+      document.querySelector('#eventFormStartTimeField').classList.toggle('event-form-field--hidden', allDay);
+      document.querySelector('#eventFormEndTimeField').classList.toggle('event-form-field--hidden', allDay);
     },
 
     /**
