@@ -137,6 +137,36 @@ function TOOLS_vlozTestovaciUdalosti() {
     },
   ];
 
+  _toolsInsertEvents_(events);
+}
+
+/**
+ * Přidá čtyři události do JEDNOHO dne (2. 9. 2026, spolu s „Denní standup"
+ * z TOOLS_vlozTestovaciUdalosti dohromady čtyři) — pro ruční ověření, jak
+ * mřížka zvládne víc událostí v jedné buňce (chip „+N" nad limit) a jak
+ * vypadá modal detailu dne s delším seznamem.
+ *
+ * POZOR: spustit jen JEDNOU, ze stejného důvodu jako TOOLS_vlozTestovaciUdalosti.
+ */
+function TOOLS_vlozDalsiUdalostiTentyzDen() {
+  _toolsInsertEvents_([
+    {
+      start: '2026-09-02T11:00', end: '2026-09-02T11:15', all_day: false, type: 'default',
+      title: 'Rychlá konzultace', description: '',
+    },
+    {
+      start: '2026-09-02T13:00', end: '2026-09-02T13:30', all_day: false, type: 'important',
+      title: 'Předání dokumentů', description: '',
+    },
+    {
+      start: '2026-09-02T15:00', end: '2026-09-02T16:00', all_day: false, type: 'meeting',
+      title: 'Call s klientem', description: 'Test více událostí v jednom dni.',
+    },
+  ]);
+}
+
+/** Společný zápis testovacích událostí pro TOOLS_vloz* funkce výše. */
+function _toolsInsertEvents_(events) {
   const ownerEmail = currentEmail_() || 'test@example.com';
   events.forEach((event) => {
     dbInsert_(SHEETS.EVENTS, Object.assign({}, event, { owner_email: ownerEmail }));

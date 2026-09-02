@@ -68,9 +68,36 @@
           <button class="cal-nav-btn" type="button" id="calNext" aria-label="Následující měsíc">
             <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
           </button>
+
+          <!-- Ikona kalendáře otevírá vlastní (ne prohlížečový) přepínač měsíce/roku
+               ve stylu aplikace — viz cal-month-picker níže. -->
+          <span class="cal-month-picker-wrap">
+            <button class="cal-nav-btn" type="button" id="calMonthPickerBtn" aria-label="Přejít na měsíc">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"></use></svg>
+            </button>
+
+            <div class="cal-month-picker is-hidden" id="calMonthPicker">
+              <div class="cal-month-picker-year">
+                <button type="button" class="cal-month-picker-year-btn" id="calPickerPrevYear" aria-label="Předchozí rok">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-left"></use></svg>
+                </button>
+                <span id="calPickerYear"></span>
+                <button type="button" class="cal-month-picker-year-btn" id="calPickerNextYear" aria-label="Následující rok">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+                </button>
+              </div>
+              <div class="cal-month-picker-grid" id="calPickerGrid"><!-- 12 měsíců, vykresleno JS --></div>
+            </div>
+          </span>
+
           <span class="cal-month-label" id="calMonthLabel"></span>
+
+          <!-- Souhrn na stejném řádku jako navigace, vpravo. -->
+          <span class="cal-summary" id="calSummary">
+            <i class="ph ph-calendar-check" aria-hidden="true"></i>
+            <span id="calSummaryText"></span>
+          </span>
         </div>
-        <p class="cal-summary" id="calSummary"></p>
       </div>
       <div class="cal-grid-wrap">
         <div class="cal-grid" id="calGrid"><!-- vykresleno JS --></div>
@@ -162,6 +189,9 @@
     /** Měsíc aktuálně zobrazený v mřížce (den se nepoužívá, jen měsíc/rok). */
     calDate: new Date(),
 
+    /** Rok rozkliknutý v přepínači měsíce — nezávislý na calDate, dokud se měsíc nezvolí. */
+    pickerYear: new Date().getFullYear(),
+
     /** Typy událostí ze serveru (EVENT_TYPES) — naplní se v onBootstrap. */
     eventTypes: {},
 
@@ -196,6 +226,7 @@
       this.eventTypes = data.eventTypes || {};
 
       this.bindNav();
+      this.bindMonthPicker();
       this.bindDayModal();
       this.renderCalendar();
 
@@ -219,6 +250,73 @@
       document.querySelector('#calGrid').addEventListener('click', (e) => {
         const cell = e.target.closest('.cal-cell');
         if (cell && cell.dataset.date) this.openDayModal(cell.dataset.date);
+      });
+    },
+
+    /**
+     * Vlastní přepínač měsíce/roku ve stylu aplikace (ikona kalendáře vedle
+     * navigace). Záměrně NE nativní `<input type="month">` — jeho vyskakovací
+     * kalendář je čistě prohlížečové UI a stylem appky se dá ovlivnit jen
+     * minimálně; vlastní panel jde dodělat přesně na míru.
+     */
+    bindMonthPicker() {
+      const btn = document.querySelector('#calMonthPickerBtn');
+      const panel = document.querySelector('#calMonthPicker');
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation(); // ať to hned nezavře posluchač na document níže
+        panel.classList.contains('is-hidden') ? this.openMonthPicker() : this.closeMonthPicker();
+      });
+
+      // Klik kamkoliv mimo panel ho zavře.
+      document.addEventListener('click', (e) => {
+        if (!panel.classList.contains('is-hidden') && !panel.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+          this.closeMonthPicker();
+        }
+      });
+
+      document.querySelector('#calPickerPrevYear').addEventListener('click', () => {
+        this.pickerYear -= 1;
+        this.renderMonthPicker();
+      });
+      document.querySelector('#calPickerNextYear').addEventListener('click', () => {
+        this.pickerYear += 1;
+        this.renderMonthPicker();
+      });
+    },
+
+    openMonthPicker() {
+      this.pickerYear = this.calDate.getFullYear();
+      this.renderMonthPicker();
+      document.querySelector('#calMonthPicker').classList.remove('is-hidden');
+    },
+
+    closeMonthPicker() {
+      document.querySelector('#calMonthPicker').classList.add('is-hidden');
+    },
+
+    /** Vykreslí rok a mřížku 12 měsíců v panelu; zvýrazní zobrazený i dnešní měsíc. */
+    renderMonthPicker() {
+      Ui.setText('#calPickerYear', this.pickerYear);
+
+      const today = new Date();
+      const grid = document.querySelector('#calPickerGrid');
+
+      grid.innerHTML = this.MONTH_NAMES.map((name, index) => {
+        const isCurrent = this.pickerYear === this.calDate.getFullYear() && index === this.calDate.getMonth();
+        const isTodayMonth = this.pickerYear === today.getFullYear() && index === today.getMonth();
+        const cls = 'cal-month-picker-month' +
+          (isCurrent ? ' is-current' : '') +
+          (isTodayMonth && !isCurrent ? ' is-today-month' : '');
+        return '<button type="button" class="' + cls + '" data-month="' + index + '">' + name.slice(0, 3) + '</button>';
+      }).join('');
+
+      grid.querySelectorAll('[data-month]').forEach((button) => {
+        button.addEventListener('click', () => {
+          this.calDate = new Date(this.pickerYear, Number(button.dataset.month), 1);
+          this.closeMonthPicker();
+          this.renderCalendar();
+        });
       });
     },
 
@@ -360,11 +458,11 @@
       ).length;
 
       let summary;
-      if (count === 0) summary = 'Žádné události tento měsíc';
-      else if (count === 1) summary = '1 událost tento měsíc';
-      else if (count < 5) summary = count + ' události tento měsíc';
-      else summary = count + ' událostí tento měsíc';
-      Ui.setText('#calSummary', summary);
+      if (count === 0) summary = 'Žádné události';
+      else if (count === 1) summary = '1 událost';
+      else if (count < 5) summary = count + ' události';
+      else summary = count + ' událostí';
+      Ui.setText('#calSummaryText', summary);
     },
 
     /**

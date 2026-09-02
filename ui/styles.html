@@ -928,6 +928,12 @@
     gap: 8px;
   }
 
+  /* Ikona kalendáře a odznak se souhrnem jsou v témže řádku jako navigace —
+     souhrn je poslední prvek a "margin-left: auto" ho odtlačí doprava. */
+  .cal-month-picker-wrap {
+    position: relative;
+  }
+
   .cal-nav-btn {
     align-items: center;
     background: var(--white);
@@ -974,10 +980,109 @@
     text-transform: capitalize;
   }
 
+  /* Souhrn počtu událostí — odznak na konci navigačního řádku, ne holý text. */
   .cal-summary {
-    color: var(--muted);
+    align-items: center;
+    background: var(--page);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--lidl-blue);
+    display: inline-flex;
     font-size: 12px;
-    margin: 6px 0 0;
+    font-weight: 700;
+    gap: 6px;
+    margin-left: auto;
+    padding: 5px 12px;
+  }
+
+  .cal-summary i {
+    font-size: 13px;
+  }
+
+  /* ── Přepínač měsíce/roku (vlastní, ne prohlížečový) ──────────────────── */
+
+  .cal-month-picker {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: 0 16px 40px rgba(0, 36, 102, 0.18);
+    left: 0;
+    padding: 10px;
+    position: absolute;
+    top: calc(100% + 6px);
+    width: 220px;
+    z-index: 30;
+  }
+
+  .cal-month-picker-year {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 2px;
+  }
+
+  .cal-month-picker-year span {
+    color: var(--lidl-dark-blue);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .cal-month-picker-year-btn {
+    align-items: center;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius);
+    color: var(--muted);
+    cursor: pointer;
+    display: inline-flex;
+    height: 26px;
+    justify-content: center;
+    width: 26px;
+  }
+
+  .cal-month-picker-year-btn:hover {
+    background: var(--page);
+    color: var(--lidl-blue);
+  }
+
+  .cal-month-picker-year-btn svg {
+    height: 13px;
+    width: 13px;
+  }
+
+  .cal-month-picker-grid {
+    display: grid;
+    gap: 4px;
+    grid-template-columns: repeat(3, 1fr);
+    margin-top: 8px;
+  }
+
+  .cal-month-picker-month {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 0;
+    text-align: center;
+    text-transform: capitalize;
+  }
+
+  .cal-month-picker-month:hover {
+    background: var(--page);
+  }
+
+  .cal-month-picker-month.is-current {
+    background: var(--lidl-blue);
+    color: var(--white);
+    font-weight: 700;
+  }
+
+  /* Dnešní měsíc, pokud zrovna není ten zobrazený — jen tenký žlutý obrys. */
+  .cal-month-picker-month.is-today-month {
+    border-color: var(--lidl-yellow);
   }
 
   /* ── Kalendář — mřížka (varianta „C — výrazná, barevné pásy") ─────────
