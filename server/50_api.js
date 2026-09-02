@@ -46,6 +46,59 @@ function apiGetBootstrap() {
 }
 
 /**
+ * Vytvoří novou událost. Smí jen ten, kdo má právo zápisu (calendar_write) —
+ * VIEWER kalendář jen čte. Vlastník se bere ze SESSION, nikdy z payloadu.
+ *
+ * Zatím jen VYTVOŘENÍ — úprava a mazání existující události je další krok
+ * (potřebuje navíc kontrolu vlastnictví a pravidlo pro proběhlé události,
+ * viz SPECIFIKACE.md kapitola 7.2, body 8–9).
+ *
+ * @param {Object} payload  { start, end, allDay, type, title, description } —
+ *                          start/end RRRR-MM-DDTHH:mm
+ */
+function apiSaveEvent(payload) {
+  return guard_(PERM_KEYS.CALENDAR_WRITE, (user) => {
+    const data = payload || {};
+    const start = cleanDateTime_(data.start, 'Začátek');
+    const end = cleanDateTime_(data.end, 'Konec');
+    const allDay = data.allDay === true;
+    const type = pickFrom_(data.type, Object.keys(EVENT_TYPES), 'Typ');
+    const title = cleanText_(data.title, 'Název', LIMITS.TITLE_MAX, true);
+    const description = cleanText_(data.description, 'Popis', LIMITS.DESCRIPTION_MAX, false);
+
+    if (end <= start) {
+      throw userError_('Konec musí být později než začátek.');
+    }
+
+    const startDate = start.slice(0, 10);
+    const endDate = end.slice(0, 10);
+    const dayCount = Math.round(
+      (new Date(endDate + 'T00:00') - new Date(startDate + 'T00:00')) / 86400000
+    ) + 1;
+    if (dayCount > LIMITS.EVENT_MAX_DAYS) {
+      throw userError_('Událost může trvat nejvýše ' + LIMITS.EVENT_MAX_DAYS + ' dní.');
+    }
+    if (startDate < todayIso_()) {
+      throw userError_('Událost nelze založit do minulosti.');
+    }
+
+    const record = dbInsert_(SHEETS.EVENTS, {
+      start: start,
+      end: end,
+      all_day: allDay,
+      type: type,
+      title: title,
+      description: description,
+      owner_email: user.email,
+    });
+
+    audit_('event.create', 'Vytvořena událost „' + title + '" (' + start + ' – ' + end + ')');
+
+    return { id: record.id };
+  });
+}
+
+/**
  * Události protínající zadaný rozsah dat (typicky 42denní zobrazená mřížka).
  *
  * Vyhodnocuje se jako PRŮNIK, ne „start uvnitř rozsahu" — jinak by vícedenní

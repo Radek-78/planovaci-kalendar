@@ -123,7 +123,10 @@
   </main>
 </div>
 
-<!-- ══ Modal: detail dne (seznam událostí, klik na položku otevře její detail) ══ -->
+<!-- ══ Modal: detail dne (seznam událostí, klik na položku otevře její detail) ══
+     Tlačítko "Nová událost" se zobrazí, jen když má uživatel právo zápisu
+     a den není v minulosti (viz renderDayModalActions) — prázdný den bez
+     těchto omezení otevírá formulář rovnou, bez zacházky přes tento modal. -->
 <dialog class="modal modal-grow" id="dayModal">
   <div class="modal-header">
     <span class="modal-icon"><i class="ph ph-calendar-blank" aria-hidden="true"></i></span>
@@ -136,6 +139,11 @@
     </button>
   </div>
   <div class="modal-body" id="dayModalBody"><!-- vykresleno JS --></div>
+  <div class="modal-actions is-hidden" id="dayModalActions">
+    <button type="button" class="button-primary" id="dayModalCreateBtn">
+      <i class="ph ph-plus" aria-hidden="true"></i> Nová událost
+    </button>
+  </div>
 </dialog>
 
 <!-- ══ Modal: detail JEDNÉ události — info vlevo, komentáře vpravo ══
@@ -165,6 +173,77 @@
       </form>
     </div>
   </div>
+</dialog>
+
+<!-- ══ Modal: nová událost ══
+     Datum je předvyplněné podle dne, na který se kliklo (viz
+     openCreateEventModal); jde ho přepsat, takže formulář zvládne
+     i vícedenní událost. Zobrazit ho smí jen ten, kdo má právo zápisu —
+     viz podmínka u tlačítek, která ho otevírají. -->
+<dialog class="modal modal-grow" id="eventFormModal">
+  <div class="modal-header">
+    <span class="modal-icon"><i class="ph ph-calendar-plus" aria-hidden="true"></i></span>
+    <div class="modal-header-text">
+      <p class="kicker">Nová událost</p>
+      <h2 id="eventFormDateLabel"></h2>
+    </div>
+    <button class="modal-close" type="button" id="eventFormClose" aria-label="Zavřít">
+      <i class="ph ph-x" aria-hidden="true"></i>
+    </button>
+  </div>
+  <form id="eventForm">
+    <div class="modal-body event-form-body">
+      <label>
+        <span>Název *</span>
+        <input type="text" id="eventFormTitle" maxlength="120" required>
+      </label>
+
+      <div class="event-form-row">
+        <label>
+          <span>Typ</span>
+          <select id="eventFormType"><!-- vykresleno JS --></select>
+        </label>
+        <label class="event-form-allday">
+          <span>&nbsp;</span>
+          <span class="event-form-checkbox">
+            <input type="checkbox" id="eventFormAllDay">
+            <span>Celý den</span>
+          </span>
+        </label>
+      </div>
+
+      <div class="event-form-row">
+        <label>
+          <span>Od *</span>
+          <input type="date" id="eventFormStartDate" required>
+        </label>
+        <label id="eventFormStartTimeField">
+          <span>Čas</span>
+          <input type="time" id="eventFormStartTime">
+        </label>
+      </div>
+
+      <div class="event-form-row">
+        <label>
+          <span>Do *</span>
+          <input type="date" id="eventFormEndDate" required>
+        </label>
+        <label id="eventFormEndTimeField">
+          <span>Čas</span>
+          <input type="time" id="eventFormEndTime">
+        </label>
+      </div>
+
+      <label>
+        <span>Popis</span>
+        <textarea id="eventFormDescription" maxlength="2000" rows="4"></textarea>
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="button-secondary" id="eventFormCancel">Zrušit</button>
+      <button type="submit" class="button-primary" id="eventFormSubmit">Vytvořit</button>
+    </div>
+  </form>
 </dialog>
 
 <!-- Sdílený tooltip pro najetí na chip události v mřížce — jeden prvek pro
@@ -228,6 +307,9 @@
     /** Typy událostí ze serveru (EVENT_TYPES) — naplní se v onBootstrap. */
     eventTypes: {},
 
+    /** Smí uživatel zapisovat do kalendáře? Ze serveru (apiGetBootstrap), ne klientský odhad. */
+    canWrite: false,
+
     /** Poslední načtené události zobrazeného rozsahu — pro otevření modalu bez dalšího volání serveru. */
     currentEvents: [],
 
@@ -257,15 +339,26 @@
       if (!data.permissions.canManageSettings) document.querySelector('#navSettings').classList.add('is-hidden');
 
       this.eventTypes = data.eventTypes || {};
+      this.canWrite = data.permissions.canWrite === true;
+      this.fillEventTypeSelect();
 
       this.bindNav();
       this.bindMonthPicker();
       this.bindDayModal();
       this.bindEventModal();
+      this.bindEventForm();
       this.bindChipTooltip();
       this.renderCalendar();
 
       document.querySelector('#appShell').classList.remove('is-hidden');
+    },
+
+    /** Naplní <select> ve formuláři nové události přímo z whitelistu typů ze serveru. */
+    fillEventTypeSelect() {
+      const select = document.querySelector('#eventFormType');
+      select.innerHTML = Object.keys(this.eventTypes)
+        .map((key) => '<option value="' + Ui.escape(key) + '">' + Ui.escape(this.eventTypes[key].label) + '</option>')
+        .join('');
     },
 
     /** Přepínání panelů kliknutím v postranním menu a navigace v kalendáři. */
@@ -411,6 +504,112 @@
         const button = e.target.closest('.comment-item-delete');
         if (button && button.dataset.commentId) this.deleteComment(button.dataset.commentId);
       });
+    },
+
+    /**
+     * Zavírání formuláře nové události, přepínání zobrazení času podle
+     * zaškrtnutí „Celý den" a odeslání.
+     */
+    bindEventForm() {
+      const dialog = document.querySelector('#eventFormModal');
+      document.querySelector('#eventFormClose').addEventListener('click', () => Ui.closeModal(dialog));
+      document.querySelector('#eventFormCancel').addEventListener('click', () => Ui.closeModal(dialog));
+      dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) Ui.closeModal(dialog);
+      });
+      dialog.addEventListener('cancel', (e) => {
+        e.preventDefault();
+        Ui.closeModal(dialog);
+      });
+
+      document.querySelector('#eventFormAllDay').addEventListener('change', () => this.updateEventFormTimeVisibility());
+      document.querySelector('#eventForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.submitEventForm();
+      });
+    },
+
+    /** Skryje pole s časem, když je zaškrtnuté „Celý den" — čas pak nedává smysl vyplňovat. */
+    updateEventFormTimeVisibility() {
+      const allDay = document.querySelector('#eventFormAllDay').checked;
+      document.querySelector('#eventFormStartTimeField').classList.toggle('is-hidden', allDay);
+      document.querySelector('#eventFormEndTimeField').classList.toggle('is-hidden', allDay);
+    },
+
+    /**
+     * Otevře formulář nové události s datem předvyplněným podle dne, na
+     * který se kliklo. `originEl` řídí, odkud modal vizuálně "vyjede".
+     */
+    openCreateEventModal(dateIso, originEl) {
+      this.hideChipTooltip();
+
+      const date = new Date(dateIso + 'T00:00');
+      Ui.setText('#eventFormDateLabel', date.getDate() + '. ' + this.MONTH_NAMES[date.getMonth()] + ' ' + date.getFullYear());
+
+      document.querySelector('#eventFormTitle').value = '';
+      document.querySelector('#eventFormType').value = 'default';
+      document.querySelector('#eventFormAllDay').checked = false;
+      document.querySelector('#eventFormStartDate').value = dateIso;
+      document.querySelector('#eventFormEndDate').value = dateIso;
+      document.querySelector('#eventFormStartTime').value = '09:00';
+      document.querySelector('#eventFormEndTime').value = '10:00';
+      document.querySelector('#eventFormDescription').value = '';
+      this.updateEventFormTimeVisibility();
+
+      const dialog = document.querySelector('#eventFormModal');
+      this.setModalOrigin(dialog, originEl);
+      Ui.openModal(dialog);
+
+      document.querySelector('#eventFormTitle').focus();
+    },
+
+    /**
+     * Odešle formulář nové události. Validace (povinná pole, rozsah dat,
+     * zákaz minulosti…) probíhá na SERVERU (apiSaveEvent) — tady se jen
+     * poskládá payload a klientsky ověří to nejzákladnější, ať uživatel
+     * nečeká na odpověď serveru kvůli prázdnému názvu.
+     */
+    submitEventForm() {
+      const title = document.querySelector('#eventFormTitle').value.trim();
+      if (!title) {
+        Ui.toast('Vyplňte název události.', 'error');
+        return;
+      }
+
+      const allDay = document.querySelector('#eventFormAllDay').checked;
+      const startDate = document.querySelector('#eventFormStartDate').value;
+      const endDate = document.querySelector('#eventFormEndDate').value;
+      if (!startDate || !endDate) {
+        Ui.toast('Vyplňte datum od i do.', 'error');
+        return;
+      }
+
+      const startTime = allDay ? '00:00' : (document.querySelector('#eventFormStartTime').value || '00:00');
+      const endTime = allDay ? '23:59' : (document.querySelector('#eventFormEndTime').value || '00:00');
+
+      const payload = {
+        start: startDate + 'T' + startTime,
+        end: endDate + 'T' + endTime,
+        allDay: allDay,
+        type: document.querySelector('#eventFormType').value,
+        title: title,
+        description: document.querySelector('#eventFormDescription').value.trim(),
+      };
+
+      const submitButton = document.querySelector('#eventFormSubmit');
+      Ui.setButtonLoading(submitButton, true, 'Ukládám…');
+
+      Ui.call('apiSaveEvent', payload, { silent: true })
+        .then(() => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.closeModal(document.querySelector('#eventFormModal'));
+          Ui.toast('Událost vytvořena.', 'success');
+          this.renderCalendar(); // znovu načte události, ať je nová hned vidět
+        })
+        .catch((error) => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.toast(error.message, 'error');
+        });
     },
 
     showSection(name) {
@@ -562,10 +761,25 @@
         '<span>' + Ui.escape(prefix + event.title) + '</span></div>';
     },
 
+    /** Dnešní datum jako RRRR-MM-DD — pro srovnání „nelze zakládat do minulosti". */
+    todayIso() {
+      return this.isoDate(new Date());
+    },
+
+    /** Smí uživatel založit novou událost na tento den? */
+    canCreateOn(dateIso) {
+      return this.canWrite && dateIso >= this.todayIso();
+    },
+
     /**
      * Otevře modal se seznamem událostí daného dne. `originEl` je kliknutý
      * prvek na obrazovce, ze kterého modal vizuálně "vyjede" (viz
      * setModalOrigin a CSS třída .modal-grow).
+     *
+     * Prázdný den, na který se smí zakládat, přeskočí prázdný seznam a
+     * otevře rovnou formulář nové události — nemá smysl ukazovat modal jen
+     * s hláškou „žádné události" a tlačítkem. Den s existujícími událostmi
+     * seznam ukáže jako dřív, s tlačítkem „Nová událost" navrch.
      */
     openDayModal(dateIso, originEl) {
       this.hideChipTooltip(); // ať tu nezůstane viset nad podložkou modalu
@@ -573,6 +787,11 @@
       const dayEvents = this.currentEvents
         .filter((event) => event.start.slice(0, 10) <= dateIso && event.end.slice(0, 10) >= dateIso)
         .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+
+      if (!dayEvents.length && this.canCreateOn(dateIso)) {
+        this.openCreateEventModal(dateIso, originEl);
+        return;
+      }
 
       const date = new Date(dateIso + 'T00:00');
       Ui.setText('#dayModalKicker', this.DAY_NAMES_FULL[(date.getDay() + 6) % 7]);
@@ -582,6 +801,18 @@
       body.innerHTML = dayEvents.length
         ? dayEvents.map((event) => this.renderDayEventItem(event)).join('')
         : '<p class="day-empty">Žádné události tento den.</p>';
+
+      const actions = document.querySelector('#dayModalActions');
+      const createBtn = document.querySelector('#dayModalCreateBtn');
+      if (this.canCreateOn(dateIso)) {
+        actions.classList.remove('is-hidden');
+        createBtn.onclick = () => {
+          Ui.closeModal(document.querySelector('#dayModal'));
+          this.openCreateEventModal(dateIso, createBtn);
+        };
+      } else {
+        actions.classList.add('is-hidden');
+      }
 
       const dialog = document.querySelector('#dayModal');
       this.setModalOrigin(dialog, originEl);
@@ -617,21 +848,41 @@
       this.hideChipTooltip();
 
       const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a' };
-      const icon = document.querySelector('#eventModalIcon');
-      icon.style.setProperty('--chip-color', type.color);
-      icon.innerHTML = '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i>';
+
+      // --chip-color na dialogu samotném — díky dědění CSS proměnných ho
+      // automaticky použije jak ikona v hlavičce, tak barevný pruh info
+      // panelu, bez nutnosti nastavovat ho na obou zvlášť.
+      const dialog = document.querySelector('#eventModal');
+      dialog.style.setProperty('--chip-color', type.color);
+      document.querySelector('#eventModalIcon').innerHTML =
+        '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i>';
 
       Ui.setText('#eventModalKicker', type.label);
       Ui.setText('#eventModalTitle', event.title);
 
+      const startDate = new Date(event.start.slice(0, 10) + 'T00:00');
+      const dateLabel = this.DAY_NAMES_FULL[(startDate.getDay() + 6) % 7] + ' ' +
+        startDate.getDate() + '. ' + this.MONTH_NAMES[startDate.getMonth()] + ' ' + startDate.getFullYear();
+
       document.querySelector('#eventModalInfo').innerHTML =
-        '<div class="event-info-row"><i class="ph ph-clock" aria-hidden="true"></i><span>' +
-          Ui.escape(this.eventTimeLabel(event)) + '</span></div>' +
-        '<div class="event-info-row"><i class="ph ph-user" aria-hidden="true"></i><span>' +
-          Ui.escape(event.ownerName) + '</span></div>' +
-        (event.description
-          ? '<p class="event-info-desc">' + Ui.escape(event.description) + '</p>'
-          : '<p class="event-info-desc event-info-desc--empty">Bez popisu.</p>');
+        '<div class="event-info-block">' +
+          '<p class="event-info-label">Kdy</p>' +
+          '<p class="event-info-value">' + Ui.escape(this.eventTimeLabel(event)) + '</p>' +
+          '<p class="event-info-sub">' + Ui.escape(dateLabel) + '</p>' +
+        '</div>' +
+        '<div class="event-info-block">' +
+          '<p class="event-info-label">Zadavatel</p>' +
+          '<p class="event-info-value-row">' +
+            '<span class="event-info-avatar">' + Ui.escape(this.initials(event.ownerName)) + '</span>' +
+            '<span>' + Ui.escape(event.ownerName) + '</span>' +
+          '</p>' +
+        '</div>' +
+        '<div class="event-info-block">' +
+          '<p class="event-info-label">Popis</p>' +
+          (event.description
+            ? '<p class="event-info-text">' + Ui.escape(event.description) + '</p>'
+            : '<p class="event-info-text event-info-text--empty">Bez popisu.</p>') +
+        '</div>';
 
       const form = document.querySelector('#eventCommentForm');
       form.dataset.eventId = eventId;
@@ -639,7 +890,6 @@
 
       this.loadEventComments(eventId);
 
-      const dialog = document.querySelector('#eventModal');
       this.setModalOrigin(dialog, originEl);
       Ui.openModal(dialog);
     },
@@ -663,7 +913,7 @@
       Ui.call('apiGetEventComments', { eventId: eventId }, { silent: true })
         .then((comments) => this.renderComments(comments))
         .catch((error) => {
-          list.innerHTML = '<p class="comments-empty">Komentáře se nepodařilo načíst.</p>';
+          list.innerHTML = this.commentsEmptyState('ph-warning', 'Komentáře se nepodařilo načíst.');
           Ui.toast(error.message, 'error');
         });
     },
@@ -672,8 +922,13 @@
       const list = document.querySelector('#eventCommentsList');
       list.innerHTML = comments.length
         ? comments.map((comment) => this.renderCommentItem(comment)).join('')
-        : '<p class="comments-empty">Zatím žádné komentáře. Buďte první.</p>';
+        : this.commentsEmptyState('ph-chat-circle-dots', 'Zatím žádné komentáře.<br>Buďte první.');
       list.scrollTop = list.scrollHeight;
+    },
+
+    /** Prázdný/chybový stav seznamu komentářů — ikona + text, stejný jazyk jako .view-placeholder. */
+    commentsEmptyState(icon, html) {
+      return '<div class="comments-empty"><i class="ph ' + icon + '" aria-hidden="true"></i><p>' + html + '</p></div>';
     },
 
     renderCommentItem(comment) {

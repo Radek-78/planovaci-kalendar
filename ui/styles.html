@@ -1406,6 +1406,19 @@
     padding: 8px 22px 20px;
   }
 
+  /* Patička s akčními tlačítky (Zrušit/Vytvořit, "+ Nová událost" u dne).
+     flex-shrink: 0, ať ji flex-column .modal[open] nikdy nesmáčkne. */
+  .modal-actions {
+    align-items: center;
+    background: #f5f8fc;
+    border-top: 1px solid var(--line-soft);
+    display: flex;
+    flex-shrink: 0;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 14px 22px;
+  }
+
   /* Pevná výška těla modalu detailu dne — místo pro cca 5 událostí (víc
      v jednom dni se v praxi nepředpokládá). Míň událostí nechá pod sebou
      volný prostor, prázdný stav (žádné události) se do něj sám vycentruje. */
@@ -1562,39 +1575,79 @@
     padding: 0;
   }
 
+  /* Barevný pruh nahoře váže celý panel k barvě typu události (--chip-color
+     dědí z #eventModal, nastaveno v openEventModal) — stejný jazyk jako
+     ikona v hlavičce a chipy v mřížce, aby okno nepůsobilo jako holý text. */
   .event-modal-info {
     border-right: 1px solid var(--line-soft);
+    border-top: 3px solid var(--chip-color, var(--lidl-blue));
     overflow-y: auto;
-    padding: 16px 20px;
+    padding: 18px 20px;
   }
 
-  .event-info-row {
-    align-items: center;
-    color: var(--text);
-    display: flex;
-    font-size: 13px;
-    gap: 8px;
-    margin-bottom: 10px;
+  .event-info-block {
+    margin-bottom: 22px;
   }
 
-  .event-info-row i {
+  .event-info-block:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Stejný vzor jako .kicker jinde v appce — malý popisek nad hodnotou. */
+  .event-info-label {
     color: var(--muted);
-    flex-shrink: 0;
-    font-size: 14px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    margin: 0 0 5px;
+    text-transform: uppercase;
   }
 
-  .event-info-desc {
-    border-top: 1px solid var(--line-soft);
+  .event-info-value {
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .event-info-sub {
+    color: var(--muted);
+    font-size: 12px;
+    margin: 2px 0 0;
+    text-transform: capitalize;
+  }
+
+  .event-info-value-row {
+    align-items: center;
+    display: flex;
+    gap: 9px;
+    margin: 0;
+  }
+
+  .event-info-avatar {
+    align-items: center;
+    background: var(--page);
+    border-radius: 50%;
+    color: var(--lidl-blue);
+    display: inline-flex;
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    height: 27px;
+    justify-content: center;
+    width: 27px;
+  }
+
+  .event-info-text {
     color: var(--text);
     font-size: 13px;
     line-height: 1.6;
-    margin: 12px 0 0;
-    padding-top: 12px;
+    margin: 0;
     white-space: pre-wrap;
     word-break: break-word;
   }
 
-  .event-info-desc--empty {
+  .event-info-text--empty {
     color: var(--muted);
     font-style: italic;
   }
@@ -1614,15 +1667,28 @@
     padding: 16px 20px;
   }
 
+  /* Prázdný/chybový stav komentářů — ikona + text, stejný jazyk jako .view-placeholder. */
   .comments-empty,
   .comments-loading {
-    color: var(--muted);
-    flex: 1;
     align-items: center;
+    color: var(--muted);
     display: flex;
+    flex: 1;
+    flex-direction: column;
     font-size: 13px;
+    gap: 8px;
     justify-content: center;
     text-align: center;
+  }
+
+  .comments-empty i {
+    color: var(--line);
+    font-size: 28px;
+  }
+
+  .comments-empty p {
+    line-height: 1.5;
+    margin: 0;
   }
 
   .comment-item {
@@ -1729,6 +1795,53 @@
 
   .event-comment-form .button-icon i {
     font-size: 15px;
+  }
+
+  /* ── Formulář nové události ───────────────────────────────────────────
+     Popisky polí ("Název", "Typ"...) používají globální pravidlo pro
+     label (viz začátek souboru) — malá verzálková šedá, žádná zvláštní
+     třída navíc potřeba. ── */
+
+  .event-form-body {
+    display: grid;
+    gap: 14px;
+  }
+
+  .event-form-row {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Zaškrtávátko "Celý den" ve stejném řádku jako "Typ" — prázdný <span>
+     v HTML (viz eventFormModal) drží stejnou výšku popisku jako sourozenní
+     pole, aby zaškrtávátko vizuálně sedělo na úrovni selectu vedle sebe. */
+  .event-form-allday {
+    align-content: end;
+  }
+
+  .event-form-checkbox {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    text-transform: none;
+  }
+
+  .event-form-checkbox input {
+    accent-color: var(--lidl-blue);
+    height: 16px;
+    width: 16px;
+  }
+
+  .event-form-checkbox span {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+
+  .event-form-body textarea {
+    resize: vertical;
   }
 
   /* ── Tooltip události (najetí na chip v mřížce) ───────────────────────

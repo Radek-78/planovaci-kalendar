@@ -95,9 +95,22 @@ function dbSpreadsheet_() {
   return dbHandle_;
 }
 
-/** Vrátí list dané tabulky, nebo vyhodí chybu, když neexistuje. */
+/**
+ * Vrátí list dané tabulky. Samoopravné: DB_SCHEMA se v čase rozšiřuje (nové
+ * funkce = nové tabulky), ale dbEnsureSchema_() se sama od sebe nespouští —
+ * jen při wizardu nebo ručně přes TOOLS_zkontrolujSchema. Bez tohoto by
+ * tabulka přidaná do DB_SCHEMA po založení databáze zůstala trvale chybějící,
+ * dokud by si někdo nevzpomněl spustit nástroj ručně. Tady se schéma zkusí
+ * doplnit rovnou při prvním přístupu — chyba padne, jen když list chybí
+ * i po tomto pokusu (typicky překlep v názvu tabulky).
+ */
 function dbSheet_(table) {
-  const sheet = dbSpreadsheet_().getSheetByName(table);
+  const spreadsheet = dbSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName(table);
+  if (!sheet) {
+    dbEnsureSchema_(spreadsheet);
+    sheet = spreadsheet.getSheetByName(table);
+  }
   if (!sheet) {
     throw userError_('Tabulka „' + table + '" v databázi chybí. Kontaktujte správce.');
   }

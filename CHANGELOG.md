@@ -5,6 +5,13 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.14 - 02.09.2026 09:03
+- Oprava: chybejici tabulka event_comments (a jakakoli budouci nova tabulka) se ted sama dopocita pri prvnim pristupu (dbSheet_), takze uz neni potreba rucne spoustet TOOLS_zkontrolujSchema po kazdem rozsireni schematu
+- Novy endpoint apiSaveEvent - vytvareni udalosti s plnou validaci na serveru (povinna pole, konec az start, max 31 dni, zakaz zalozeni do minulosti)
+- Klik na prazdny den s pravem zapisu otevre rovnou formular nove udalosti, den s existujicimi udalostmi ukaze seznam s tlacitkem Nova udalost navrch
+- Redesign panelu s informacemi o udalosti - barevny pruh podle typu, popisky ve stylu zbytku aplikace, iniciálový avatar zadavatele
+- Prazdny/chybovy stav komentaru ted s ikonou misto holeho textu
+
 ## v0.1.13 - 02.09.2026 08:42
 - Modal detailu konkrétní události — klik na chip v mřížce nebo na položku v denním seznamu teď otevře detail té konkrétní události, ne jen seznam celého dne
 - Dvousloupcový layout: info o události vlevo (čas, zadavatel, popis), komentáře vpravo

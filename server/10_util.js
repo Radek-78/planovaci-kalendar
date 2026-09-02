@@ -201,3 +201,26 @@ function cleanDateOnly_(value, fieldName) {
   }
   return text;
 }
+
+/**
+ * Ověří, že hodnota je platné datum a čas ve tvaru `YYYY-MM-DDTHH:mm`
+ * (formát sloupců events.start/end). Stejná logika jako cleanDateOnly_,
+ * navíc s kontrolou hodin a minut.
+ */
+function cleanDateTime_(value, fieldName) {
+  const text = String(value === null || value === undefined ? '' : value).trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(text);
+  if (!match) {
+    throw userError_('Pole „' + fieldName + '" musí být ve tvaru RRRR-MM-DDTHH:mm.');
+  }
+
+  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+  const hour = Number(match[4]), minute = Number(match[5]);
+  const date = new Date(year, month - 1, day, hour, minute);
+  const valid = date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+    && date.getHours() === hour && date.getMinutes() === minute;
+  if (!valid) {
+    throw userError_('Pole „' + fieldName + '" obsahuje neplatné datum nebo čas.');
+  }
+  return text;
+}
