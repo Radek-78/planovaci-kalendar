@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.26 - 02.09.2026 18:24
+- Kalendar - ikony tuzky a kose v chipu udalosti se ted vzdy pritisknou k pravemu okraji (margin-left auto), ne jen hned za kratky nazev - u sirsich (vicedennich) chipu s kratkym nazvem drive viselo mezi textem a okrajem prazdne misto
+
 ## v0.1.25 - 02.09.2026 18:16
 - Kalendář — v mřížce teď až 4 události v jednom dni (dříve 3), zbytek přes +N jako doposud
 - Přímo v chipu události (po najetí myší u pravého okraje) malé ikony tužky a koše pro rychlou editaci/smazání bez otevírání seznamu dne — viditelné jen tomu, kdo danou událost smí spravovat

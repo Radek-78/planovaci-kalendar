@@ -1621,10 +1621,15 @@
      uživatel spravovat (viz canManageEvent/renderChip). Barva úpravy
      dědí barvu chipu, ať v drobném prostoru nepůsobí rušivě — smazání
      zůstává vždy červené (univerzální význam, i tady malé). */
+  /* margin-left: auto — pohltí všechno volné místo nalevo od sebe a
+     přitiskne se tak vždy k pravému okraji chipu, ať je název krátký,
+     nebo chip široký (vícedenní událost s krátkým názvem by jinak
+     nechala ikony viset hned za textem, ne u okraje). */
   .cal-chip-actions {
     display: none;
     flex-shrink: 0;
     gap: 2px;
+    margin-left: auto;
   }
 
   .cal-chip:hover .cal-chip-actions {
