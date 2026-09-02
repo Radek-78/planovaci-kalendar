@@ -6,9 +6,9 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.24 - 02.09.2026 18:08
-- Kalendar - chipy udalosti maji zase kompaktni pevnou velikost (nerostou s volnym mistem v draze), vic odsazeni od horniho i bocnich okraju bunky
-- prazdne misto v bunce zustava dole pod poslednimi chipy diky samostatnemu proznemu radku na konci kazdeho tydne, bunky pritom porad vyplni celou dostupnou vysku mrizky
-- klik na bunku dne ted vzdy otevre modal se seznamem udalosti (i prazdny den), zaloseni nove udalosti jde jen pres tlacitko Nova udalost v tomto modalu - jedno predvidatelne chovani pro cely kalendar
+- Kalendář — chipy událostí mají zase kompaktní pevnou velikost (nerostou s volným místem v dráze), víc odsazení od horního i bočních okrajů buňky
+- Prázdné místo v buňce zůstává dole pod posledními chipy díky samostatnému prázdnému řádku na konci každého týdne, buňky přitom pořád vyplní celou dostupnou výšku mřížky
+- Klik na buňku dne teď vždy otevře modal se seznamem událostí (i prázdný den), založení nové události jde jen přes tlačítko Nová událost v tomto modalu — jedno předvídatelné chování pro celý kalendář
 
 ## v0.1.23 - 02.09.2026 17:43
 - Kalendář — výška buněk dne se vrací k původnímu chování (dráhy se zase roztáhnou a zaplní celou dostupnou výšku mřížky, ne pevných 17px na dráhu)
