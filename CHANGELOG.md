@@ -6,12 +6,12 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.18 - 02.09.2026 12:51
-- Sjednoceni hlavicek sekci - hlavicka obsahu (Uzivatele, Kalendar) je ted presne ve stejne urovni jako logo a nazev aplikace v sidebaru (58px, spodni ramecek)
-- Seznam uzivatelu prepracovan na sloupcovou tabulku - hlavicka se sedmi popisky a kazdy radek presne pod ni (Jmeno, E-mail, Role, Umisteni, Oddeleni, Pozice, Opravneni, Stav), cely v ohraniceném panelu jako u kalendare
-- Nove sloupce a pole Umisteni/Oddeleni/Pozice (zatim volny text, pozdeji navazane na import filialek a spravu seznamu v Nastaveni)
-- Formular uzivatele prepracovan na dvousloupcove siroke okno se skupinami poli, ikonami a kickery
-- Automaticke doplneni uzivatelskeho jmena (e-mailu) ze jmena a prijmeni - bez diakritiky, oddeleno teckou, s domenou @lidl.cz, prestane se prepisovat po rucni uprave
-- Oprava: rozsireni schematu existujici tabulky o nove sloupce (na rozdil od cele chybejici tabulky) se puvodne samo nedoplnilo - ted dbSheet_ kontroluje i shodu hlavicky, ne jen existenci listu
+- Sjednocení hlaviček sekcí — hlavička obsahu (Uživatelé, Kalendář) je teď přesně ve stejné úrovni jako logo a název aplikace v sidebaru (58px, spodní rámeček)
+- Seznam uživatelů přepracován na sloupcovou tabulku — hlavička se sedmi popisky a každý řádek přesně pod ní (Jméno, E-mail, Role, Umístění, Oddělení, Pozice, Oprávnění, Stav), celý v ohraničeném panelu jako u kalendáře
+- Nové sloupce a pole Umístění/Oddělení/Pozice (zatím volný text, později navázané na import filiálek a správu seznamu v Nastavení)
+- Formulář uživatele přepracován na dvousloupcové široké okno se skupinami polí, ikonami a kickery
+- Automatické doplnění uživatelského jména (e-mailu) ze jména a příjmení — bez diakritiky, odděleno tečkou, s doménou @lidl.cz, přestane se přepisovat po ruční úpravě
+- Oprava: rozšíření schématu existující tabulky o nové sloupce (na rozdíl od celé chybějící tabulky) se původně samo nedoplnilo — teď dbSheet_ kontroluje i shodu hlavičky, ne jen existenci listu
 
 ## v0.1.17 - 02.09.2026 12:26
 - Sekce Uživatelé — vytváření nových uživatelů a seznam. Nový endpoint apiGetUsers (seznam seřazený podle jména) a apiSaveUser (vytvoření s validací na serveru — formát a doména e-mailu @lidl.cz, duplicita, roli SUPERADMIN smí přidělit jen SUPERADMIN)
