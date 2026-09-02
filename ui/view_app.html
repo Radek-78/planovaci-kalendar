@@ -224,8 +224,8 @@
         const rowStart = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + row * 7);
         const weekNum = this.isoWeek(rowStart);
         const isCurrentWeek = weekNum === todayWeek && rowStart.getFullYear() === today.getFullYear();
-        html += '<div class="cal-weeknum-cell"><span class="cal-weeknum-chip' +
-          (isCurrentWeek ? ' is-current-week' : '') + '">KT<b>' + weekNum + '</b></span></div>';
+        html += '<div class="cal-weeknum-cell' + (isCurrentWeek ? ' is-current-week' : '') +
+          '">KT<b>' + weekNum + '</b></div>';
 
         for (let col = 0; col < 7; col++) {
           const cellDate = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + row * 7 + col);

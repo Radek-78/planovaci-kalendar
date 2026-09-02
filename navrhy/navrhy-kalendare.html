@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>Návrhy kalendáře</title>
+<style>
+  :root {
+    --lidl-blue: #0050aa;
+    --lidl-dark-blue: #002466;
+    --lidl-yellow: #fff000;
+    --white: #ffffff;
+    --page: #f0f4fa;
+    --line: #dce5f0;
+    --line-soft: #eaeff7;
+    --text: #0d1b3e;
+    --muted: #5e6e8a;
+    --radius: 6px;
+    --font: "Lidl Font Cond Pro", "Lidl Font Pro", "Aptos", "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--page); color: var(--text); font-family: var(--font); font-size: 14px; margin: 0; padding: 24px; }
+  h2 { color: var(--lidl-dark-blue); font-size: 16px; margin: 0 0 4px; }
+  .hint { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
+  .variant { background: var(--white); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px 22px; margin-bottom: 22px; }
+
+  /* ── Společné popisky dnů ── */
+  .row-label { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin: 10px 0 6px; }
+
+  /* ══ VARIANTA A — Upravená karetní (evoluce současného) ══ */
+  .a-grid { display: grid; grid-template-columns: 46px repeat(7, 1fr); gap: 1px; background: var(--line-soft); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .a-head, .a-num { background: var(--white); display: flex; align-items: center; justify-content: center; padding: 6px 4px; }
+  .a-head { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  .a-weekchip { width: 100%; height: 100%; border: 1px solid var(--line-soft); border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); font-size: 10px; font-weight: 700; }
+  .a-weekchip b { color: var(--text); font-size: 13px; }
+  .a-cell { background: var(--white); min-height: 64px; padding: 6px; cursor: pointer; transition: background .12s; }
+  .a-cell:hover { background: #eaf3ff; }
+  .a-cell.other { background: #fbfbfc; color: #c8cdd6; }
+  .a-cell.other:hover { background: #f0f1f4; }
+  .a-cell.weekend { background: var(--page); }
+  .a-cell.weekend:hover { background: #e3ecf8; }
+  .a-cell.today { box-shadow: inset 0 0 0 2px var(--lidl-blue); }
+  .a-daynum { font-size: 12px; font-weight: 700; }
+  .a-cell.other .a-daynum { color: #c8cdd6; }
+
+  /* ══ VARIANTA B — Bez mřížky, minimalistická ══ */
+  .b-grid { display: grid; grid-template-columns: 34px repeat(7, 1fr); }
+  .b-head { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; text-align: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .b-weeknum { display: flex; align-items: center; justify-content: center; color: #b7c0d1; font-size: 11px; font-weight: 700; border-bottom: 1px solid var(--line-soft); }
+  .b-cell { border-bottom: 1px solid var(--line-soft); border-left: 1px solid var(--line-soft); min-height: 64px; padding: 8px; cursor: pointer; transition: background .12s; position: relative; }
+  .b-cell:hover { background: #f2f6fc; }
+  .b-cell.weekend { background: #f8fafd; }
+  .b-cell.weekend:hover { background: #eef3fa; }
+  .b-cell.other .b-daynum { color: #c8cdd6; }
+  .b-daynum { font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; }
+  .b-cell.today .b-daynum { background: var(--lidl-blue); color: var(--white); font-weight: 700; }
+
+  /* ══ VARIANTA C — Výrazná, barevné pásy ══ */
+  .c-grid { display: grid; grid-template-columns: 40px repeat(7, 1fr); gap: 6px; }
+  .c-head { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; text-align: center; padding-bottom: 6px; }
+  .c-weekbar { background: var(--lidl-dark-blue); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: rgba(255,255,255,.65); font-size: 9px; font-weight: 700; min-height: 64px; }
+  .c-weekbar b { color: var(--white); font-size: 14px; }
+  .c-cell { background: var(--white); border: 1px solid var(--line); border-radius: 8px; min-height: 64px; padding: 7px; cursor: pointer; transition: background .12s, border-color .12s; }
+  .c-cell:hover { background: #eaf3ff; border-color: var(--lidl-blue); }
+  .c-cell.other { background: transparent; border-style: dashed; color: #c8cdd6; }
+  .c-cell.weekend { background: #f6f8fc; }
+  .c-cell.weekend:hover { background: #e3ecf8; }
+  .c-daynum { font-size: 12px; font-weight: 700; }
+  .c-cell.today .c-daynum { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--lidl-yellow); color: var(--lidl-dark-blue); }
+  .c-cell.other .c-daynum { color: #c8cdd6; }
+</style>
+</head>
+<body>
+
+<div class="variant">
+  <h2>Varianta A — upravená karetní (oprava současného designu)</h2>
+  <p class="hint">Týdenní čip a hlavička dne roztažené na celou buňku, jemné odsazení, podbarvení při najetí myší.</p>
+  <div class="a-grid">
+    <div class="a-head"></div>
+    <div class="a-head">Po</div><div class="a-head">Út</div><div class="a-head">St</div>
+    <div class="a-head">Čt</div><div class="a-head">Pá</div><div class="a-head">So</div><div class="a-head">Ne</div>
+
+    <div class="a-num"><div class="a-weekchip">KT<b>31</b></div></div>
+    <div class="a-cell other"><span class="a-daynum">28</span></div>
+    <div class="a-cell other"><span class="a-daynum">29</span></div>
+    <div class="a-cell"><span class="a-daynum">1</span></div>
+    <div class="a-cell today"><span class="a-daynum">2</span></div>
+    <div class="a-cell"><span class="a-daynum">3</span></div>
+    <div class="a-cell weekend"><span class="a-daynum">4</span></div>
+    <div class="a-cell weekend"><span class="a-daynum">5</span></div>
+  </div>
+</div>
+
+<div class="variant">
+  <h2>Varianta B — bez mřížky, minimalistická</h2>
+  <p class="hint">Tenké dělicí linky místo rámečků, dnešek jako plné kolečko, hodně vzduchu. Blízké Google Kalendáři.</p>
+  <div class="b-grid">
+    <div class="b-weeknum" style="border-bottom-color:transparent"></div>
+    <div class="b-head">Po</div><div class="b-head">Út</div><div class="b-head">St</div>
+    <div class="b-head">Čt</div><div class="b-head">Pá</div><div class="b-head">So</div><div class="b-head">Ne</div>
+
+    <div class="b-weeknum">31</div>
+    <div class="b-cell other"><span class="b-daynum">28</span></div>
+    <div class="b-cell other"><span class="b-daynum">29</span></div>
+    <div class="b-cell"><span class="b-daynum">1</span></div>
+    <div class="b-cell today"><span class="b-daynum">2</span></div>
+    <div class="b-cell"><span class="b-daynum">3</span></div>
+    <div class="b-cell weekend"><span class="b-daynum">4</span></div>
+    <div class="b-cell weekend"><span class="b-daynum">5</span></div>
+  </div>
+</div>
+
+<div class="variant">
+  <h2>Varianta C — výrazná, barevné pásy</h2>
+  <p class="hint">Sloupec týdne jako tmavý pruh, buňky jako oddělené karty se zaoblením, dnešek žlutým odznakem (firemní akcent).</p>
+  <div class="c-grid">
+    <div class="c-head"></div>
+    <div class="c-head">Po</div><div class="c-head">Út</div><div class="c-head">St</div>
+    <div class="c-head">Čt</div><div class="c-head">Pá</div><div class="c-head">So</div><div class="c-head">Ne</div>
+
+    <div class="c-weekbar">KT<b>31</b></div>
+    <div class="c-cell other"><span class="c-daynum">28</span></div>
+    <div class="c-cell other"><span class="c-daynum">29</span></div>
+    <div class="c-cell"><span class="c-daynum">1</span></div>
+    <div class="c-cell today"><span class="c-daynum">2</span></div>
+    <div class="c-cell"><span class="c-daynum">3</span></div>
+    <div class="c-cell weekend"><span class="c-daynum">4</span></div>
+    <div class="c-cell weekend"><span class="c-daynum">5</span></div>
+  </div>
+</div>
+
+</body>
+</html>
