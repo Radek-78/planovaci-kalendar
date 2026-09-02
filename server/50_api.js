@@ -245,12 +245,19 @@ function _publicComment_(row, user, nameCache) {
    (viz SPECIFIKACE.md kapitola 8, apiDeactivateUser).
    ══════════════════════════════════════════════════════════════════════════ */
 
-/** Seznam všech uživatelů, seřazený podle jména. */
+/**
+ * Seznam všech uživatelů, seřazený podle data vytvoření — nejnovější nahoře,
+ * ať je při testování/přidávání hned vidět poslední založený účet. Řadí se
+ * podle syrového created_at (chráněný textový sloupec, viz TEXT_COLUMNS —
+ * čistý ISO řetězec, bezpečně porovnatelný lexikograficky) ještě PŘED
+ * převodem na veřejnou podobu, takže createdAt nemusí chodit na klienta.
+ */
 function apiGetUsers() {
   return guard_(PERM_KEYS.USERS_MANAGE, () => {
     return dbGetAll_(SHEETS.USERS)
-      .map(_publicUserRow_)
-      .sort((a, b) => a.fullName.localeCompare(b.fullName, 'cs'));
+      .slice()
+      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+      .map(_publicUserRow_);
   });
 }
 

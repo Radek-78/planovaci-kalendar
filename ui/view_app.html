@@ -935,7 +935,10 @@
     renderUserRow(u) {
       const roleLabel = this.ROLE_LABELS[u.role] || u.role;
       const roleClass = u.role === 'SUPERADMIN' ? ' is-superadmin' : u.role === 'ADMIN' ? ' is-admin' : '';
-      const permissionText = u.role === 'USER' ? (u.permission === 'EDITOR' ? 'Zápis' : 'Jen čtení') : '—';
+      // Oprávnění se teď zobrazuje u všech rolí — ADMIN/SUPERADMIN mají na
+      // serveru vždy vynucený EDITOR (apiSaveUser), takže se tu korektně
+      // ukáže "Zápis" i pro ně, ne jen u role Uživatel.
+      const permissionText = u.permission === 'EDITOR' ? 'Zápis' : 'Jen čtení';
 
       return '<div class="user-row' + (u.active ? '' : ' is-inactive') + '">' +
         '<span class="avatar user-avatar">' + Ui.escape(this.initials(u.fullName)) + '</span>' +

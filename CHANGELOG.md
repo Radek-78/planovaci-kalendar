@@ -5,6 +5,11 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.19 - 02.09.2026 13:20
+- Seznam uzivatelu razen podle data vytvoreni (nejnovejsi nahore)
+- sloupec Opravneni se ted zobrazuje i u Admin/Superadmin (Zapis), ne jen u role Uzivatel
+- cele pole dat ted viditelne odděluje i sloupce (ne jen radky), radek pod kurzorem mysi jemne odstineny
+
 ## v0.1.18 - 02.09.2026 12:51
 - Sjednocení hlaviček sekcí — hlavička obsahu (Uživatelé, Kalendář) je teď přesně ve stejné úrovni jako logo a název aplikace v sidebaru (58px, spodní rámeček)
 - Seznam uživatelů přepracován na sloupcovou tabulku — hlavička se sedmi popisky a každý řádek přesně pod ní (Jméno, E-mail, Role, Umístění, Oddělení, Pozice, Oprávnění, Stav), celý v ohraničeném panelu jako u kalendáře

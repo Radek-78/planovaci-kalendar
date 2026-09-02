@@ -1047,11 +1047,24 @@
   }
 
   .user-row {
-    border-bottom: 1px solid var(--line-soft);
+    border-bottom: 1px solid var(--line);
   }
 
   .user-row:last-child {
     border-bottom: none;
+  }
+
+  /* Řádek pod kurzorem myši jemně odlišený odstínem. */
+  .user-row:hover {
+    background: var(--page);
+  }
+
+  /* Svislé oddělovače mezi sloupci — stejná síla čáry jako mezi řádky,
+     aby celé pole dat působilo jako jedna souvislá mřížka. Poslední
+     sloupec bez čáry (nic za ním). */
+  .users-table-head > *:not(:last-child),
+  .user-row > *:not(:last-child) {
+    border-right: 1px solid var(--line-soft);
   }
 
   /* Neaktivní uživatel — celý řádek vybledlý, ale pořád čitelný, ne skrytý. */
