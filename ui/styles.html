@@ -1607,20 +1607,31 @@
     text-overflow: ellipsis;
   }
 
-  /* Odznak "víc událostí, než je drah" — vzácný okrajový případ (přes
-     CAL_LANE_COUNT souběžných událostí v jednom dni), viz renderEvents.
-     Malý roh buňky, ne další řádek — nezabírá trvale místo v mřížce. */
-  .cal-cell-overflow {
-    background: var(--muted);
-    border-radius: 999px;
-    bottom: 4px;
-    color: var(--white);
-    font-size: 8px;
+  /* Odznak "+N" — kolik událostí se do posledního zobrazeného sloupce (dráhy)
+     toho dne už nevešlo (viz renderEvents). Položka mřížky přesně jako
+     .cal-chip, jen pro jeden konkrétní den — v DOM je vykreslený AŽ ZA
+     pruhy, takže v poslední dráze vizuálně leží nad tím, co by se tam
+     jinak zobrazilo. Klik na něj otevře detail dne (viz klik v bindCalendar),
+     kde je vidět úplně všechno. */
+  .cal-chip-more {
+    align-items: center;
+    background: var(--line-soft);
+    border-radius: 4px;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    font-size: 10px;
     font-weight: 700;
-    padding: 1px 5px;
-    position: absolute;
-    right: 4px;
-    z-index: 1;
+    height: 100%;
+    justify-content: center;
+    margin: 0 2px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .cal-chip-more:hover {
+    background: #dfe6f0;
+    color: var(--lidl-blue);
   }
 
   /* ── Modal — detail dne (nativní <dialog>, port z Výchozí aplikace 2.0) ─ */
@@ -1631,7 +1642,7 @@
     border-radius: var(--radius);
     border-top: 4px solid var(--lidl-blue);
     box-shadow: 0 24px 80px rgba(0, 20, 80, 0.28), 0 4px 16px rgba(0, 20, 80, 0.12);
-    max-height: calc(100vh - 48px);
+    max-height: calc(100vh - 20px);
     max-width: min(480px, calc(100vw - 32px));
     overflow: hidden;
     padding: 0;
@@ -1775,13 +1786,14 @@
     padding: 14px 22px;
   }
 
-  /* Pevná výška těla modalu detailu dne — místo pro cca 5 událostí (víc
-     v jednom dni se v praxi nepředpokládá). Míň událostí nechá pod sebou
-     volný prostor, prázdný stav (žádné události) se do něj sám vycentruje. */
+  /* Pevná výška těla modalu detailu dne — přesně na 5 událostí, každá na
+     3 řádky (název+čas / popis / zadavatel — viz .day-event-desc, ořízlý
+     na jeden řádek). Míň událostí nechá pod sebou volný prostor, prázdný
+     stav (žádné události) se do něj sám vycentruje. */
   #dayModal .modal-body {
     display: flex;
     flex-direction: column;
-    height: 350px;
+    height: 430px;
   }
 
   @keyframes backdrop-enter {
@@ -1889,11 +1901,17 @@
     white-space: nowrap;
   }
 
+  /* Jen JEDEN řádek (spolu s title-row a owner tvoří pevné 3 řádky na
+     položku, viz #dayModal .modal-body) — delší popis se neláme na víc
+     řádků, ale uřízne s výpustkou, ať položka má pořád stejnou výšku
+     bez ohledu na délku popisu. */
   .day-event-desc {
     color: var(--muted);
     font-size: 13px;
-    line-height: 1.5;
     margin: 4px 0 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .day-event-owner {
@@ -2225,22 +2243,33 @@
      skupiny. Pevná výška jako u ostatních formulářů — nic se při vyplňování
      nesmí hýbat. ── */
 
-  /* Bez pevné výšky (na rozdíl od formuláře události) — obsah sám o sobě
-     není o moc vyšší než cca 300px, takže fixní 480px zbytečně natahovalo
-     okno a přitom ho na nižších obrazovkách nutilo scrollovat (viz
-     .modal{max-height}, který je tu jediným skutečným limitem). */
+  /* Bez pevné výšky (na rozdíl od formuláře události) — přizpůsobí se
+     skutečnému obsahu; jediný skutečný limit je .modal{max-height}. Mezery
+     a odsazení jsou tu záměrně užší než jinde v appce (viz i .field-group
+     níže), ať se celý formulář i se dvěma sloupci vešel na výšku bez
+     scrollování na běžné obrazovce. overflow-x: hidden natvrdo — bez něj by
+     prohlížeč kvůli overflow-y: auto (viz specifikace CSS Overflow) sám od
+     sebe povolil i vodorovné posouvání, i když ho nikdy není proč zobrazit. */
   .user-form-body {
     display: grid;
-    gap: 16px;
+    gap: 12px;
     grid-template-columns: 1fr 1fr;
+    overflow-x: hidden;
     overflow-y: auto;
-    padding: 18px 22px;
+    padding: 14px 20px;
   }
 
   .user-form-col {
     align-content: start;
     display: grid;
-    gap: 16px;
+    gap: 10px;
+  }
+
+  /* Užší varianta .field-group jen v tomhle formuláři (viz komentář výše) —
+     globální .field-group se nemění, ať se to nedotkne wizardu. */
+  .user-form-body .field-group {
+    gap: 8px;
+    padding: 12px 14px;
   }
 
   /* ── Tooltip události (najetí na chip v mřížce) ───────────────────────

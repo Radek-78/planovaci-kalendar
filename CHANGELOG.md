@@ -5,6 +5,11 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.22 - 02.09.2026 14:26
+- Kalendar - navrat na max 3 udalosti v jedne draze na den, zbytek nahrazuje skutecny odznak +N primo v mrizce (ne jen roh bunky) - klik na nej otevre detail dne se vsim
+- modal okno uzivatele dale zvetseno - uzsi mezery a odsazeni jen v tomto formulari (bez zasahu do wizardu), opravena chyba CSS presahu (overflow-y bez explicitniho overflow-x umoznoval i vodorovny scroll), zmenseny horni okraj modalu (vic dostupne vysky na vsech oknech)
+- modal detailu dne zvetsen na 430px - presne na 5 udalosti po 3 radcich, popis udalosti se ted orizne na jeden radek (misto lamani na vice radku)
+
 ## v0.1.21 - 02.09.2026 13:48
 - Modal okno uživatele zvětšeno a bez zbytečného scrollování — široký formát rozšířen na 720px, pevná výška formuláře nahrazena přirozenou (jen skutečný obsah, žádné prázdné místo navíc)
 - Kalendář — vícedenní události se teď vizuálně spojí v jeden souvislý pruh přes všechny dny v rámci týdne (místo samostatného chipu v každém dni), zaoblení jen na skutečném začátku a konci

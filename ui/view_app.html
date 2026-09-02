@@ -449,7 +449,7 @@
     CAL_HEADER_ROW: 20, // px – úplně první řádek mřížky se zkratkami dnů (Po/Út/…)
     CAL_HEAD_ROW: 20,   // px – řádek s číslem dne v každém týdnu
     CAL_LANE_ROW: 17,   // px – jedna dráha pro chip/pruh události
-    CAL_LANE_COUNT: 5,  // kolik drah (souběžných událostí) se v týdnu zobrazí najednou
+    CAL_LANE_COUNT: 3,  // kolik drah (souběžných událostí) se v týdnu zobrazí najednou — zbytek nahradí "+N" (viz renderEvents)
     CAL_GRID_GAP: 4,    // px – mezera mřížky (řádky i sloupce)
 
     /** Měsíc aktuálně zobrazený v mřížce (den se nepoužívá, jen měsíc/rok). */
@@ -577,6 +577,14 @@
         const chip = e.target.closest('.cal-chip');
         if (chip && chip.dataset.eventId) {
           this.openEventModal(chip.dataset.eventId, chip);
+          return;
+        }
+        // Odznak "+N" (viz renderEvents) není potomek buňky, ale samostatná
+        // položka mřížky se svým vlastním datem — bez téhle větve by klik na
+        // něj propadl skrz (není uvnitř .cal-cell) a nic by se neotevřelo.
+        const more = e.target.closest('.cal-chip-more');
+        if (more && more.dataset.date) {
+          this.openDayModal(more.dataset.date, more);
           return;
         }
         const cell = e.target.closest('.cal-cell');
@@ -1294,8 +1302,9 @@
      * nejnižší volné dráhy, která se nepřekrývá s tím, co už je v ní.
      * Stejná událost tak může mít v různých týdnech jinou dráhu (běžné
      * i v jiných kalendářních appkách). Co se nevejde do CAL_LANE_COUNT
-     * drah, dostane v postižených dnech jen odznak "+N" (viz cellOverflow),
-     * místo aby permanentně zabíralo místo v mřížce.
+     * drah, dostane v postižených dnech jen odznak "+N" v poslední dráze
+     * (viz .cal-chip-more níže), místo aby permanentně zabíralo místo
+     * v mřížce — klik na něj otevře detail dne s úplně vším.
      *
      * Souhrn v hlavičce počítá jen události protínající AKTUÁLNĚ ZOBRAZENÝ
      * MĚSÍC, ne celou 42denní mřížku (ta zasahuje i do sousedních měsíců).
@@ -1307,10 +1316,10 @@
       // Staré pruhy/odznaky přetečení z předchozího vykreslení pryč — buňky
       // dní zůstávají (ty vykresluje renderCalendar), jen se do nich znovu
       // vloží aktuální odznaky a vedle nich nové pruhy.
-      grid.querySelectorAll('.cal-chip, .cal-cell-overflow').forEach((el) => el.remove());
+      grid.querySelectorAll('.cal-chip, .cal-chip-more').forEach((el) => el.remove());
 
       let barsHtml = '';
-      const overflowByDate = {}; // dateIso -> počet událostí navíc nad CAL_LANE_COUNT
+      const overflowByDate = {}; // dateIso -> { count, row, col } — kolik událostí navíc nad CAL_LANE_COUNT ten den má
 
       for (let row = 0; row < 6; row++) {
         const rowStart = new Date(this.calGridStart.getFullYear(), this.calGridStart.getMonth(), this.calGridStart.getDate() + row * 7);
@@ -1351,7 +1360,8 @@
           if (lane >= this.CAL_LANE_COUNT) {
             for (let col = item.startCol; col <= item.endCol; col++) {
               const iso = this.isoDate(new Date(rowStart.getFullYear(), rowStart.getMonth(), rowStart.getDate() + col));
-              overflowByDate[iso] = (overflowByDate[iso] || 0) + 1;
+              if (!overflowByDate[iso]) overflowByDate[iso] = { count: 0, row: row, col: col };
+              overflowByDate[iso].count++;
             }
             return;
           }
@@ -1364,12 +1374,20 @@
         });
       }
 
-      grid.insertAdjacentHTML('beforeend', barsHtml);
-
+      // "+N" odznak je samostatná položka mřížky (stejně jako pruh) v POSLEDNÍ
+      // dráze, jen pro ten konkrétní den — vykreslí se AŽ PO pruzích, takže
+      // v DOM je za nimi a vizuálně tak leží NAD tím, co by se do poslední
+      // dráhy toho dne jinak vykreslilo (typicky pruh, který zabírá i sousední
+      // dny beze zbytku — v nich zůstává vidět, jen v tomhle dni ho odznak
+      // překryje). Přesně to je smysl — "co se nevejde, klikni si na +N".
       Object.keys(overflowByDate).forEach((iso) => {
-        const cell = grid.querySelector('.cal-cell[data-date="' + CSS.escape(iso) + '"]');
-        if (cell) cell.insertAdjacentHTML('beforeend', '<span class="cal-cell-overflow">+' + overflowByDate[iso] + '</span>');
+        const o = overflowByDate[iso];
+        const laneTrack = this.calHeadTrack(o.row) + this.CAL_LANE_COUNT; // poslední dráha
+        barsHtml += '<div class="cal-chip-more" data-date="' + Ui.escape(iso) +
+          '" style="grid-row:' + laneTrack + '; grid-column:' + (o.col + 2) + '">+' + o.count + '</div>';
       });
+
+      grid.insertAdjacentHTML('beforeend', barsHtml);
 
       const monthFirstIso = this.isoDate(monthFirst);
       const monthLastIso = this.isoDate(monthLast);
