@@ -6,8 +6,8 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.7 - 02.09.2026 07:46
-- Novy rucni nastroj TOOLS_vlozTestovaciUdalosti (server/90_tools.js) - vlozi 8 testovacich udalosti pokryvajicich vsechny stavy mrizky: udalost v minulosti, udalost pres hranici mesice, dnesek, celodenni i casova udalost, vicedenni udalost (casova i celodenni), vsech sedm typu
-- spousti se rucne z editoru Apps Scriptu, ne z webu
+- Nový ruční nástroj TOOLS_vlozTestovaciUdalosti (server/90_tools.js) — vloží 8 testovacích událostí pokrývajících všechny stavy mřížky: událost v minulosti, událost přes hranici měsíce, dnešek, celodenní i časová událost, vícedenní událost (časová i celodenní), všech sedm typů
+- Spouští se ručně z editoru Apps Scriptu, ne z webu
 
 ## v0.1.6 - 02.09.2026 07:42
 - Dnešní den výrazněji zvýrazněný — celá karta žlutým rámečkem a jemným podbarvením, ne jen odznak u čísla
