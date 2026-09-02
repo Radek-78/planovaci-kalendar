@@ -5,6 +5,10 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.9 - 02.09.2026 08:03
+- Novy diagnosticky nastroj TOOLS_diagnostikaUdalosti (server/90_tools.js) - vypise syrova data z listu events presne tak, jak je cte server, a u kazdeho radku ukaze typeof start/end a jestli by prosel filtrem apiGetEvents pro aktualni mesic
+- pomaha zjistit, proc kalendar nezobrazuje jiz vlozene udalosti
+
 ## v0.1.8 - 02.09.2026 07:59
 - Oprava: kalendář nezobrazoval už vložené události ani po tvrdém refresh — Apps Script znovupoužil teplou instanci běhu se zastaralou modulovou cache (dbCache_), kterou vložení dat samostatným editorovým TOOLS_ během neinvaliduje
 - navíc kontrola cache brala prázdné pole jako platný zásah (v JS je i prázdné pole pravdivé)

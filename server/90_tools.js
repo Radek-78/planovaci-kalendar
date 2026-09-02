@@ -145,3 +145,53 @@ function TOOLS_vlozTestovaciUdalosti() {
 
   console.log('Hotovo — vloženo ' + events.length + ' testovacích událostí jako ' + ownerEmail + '.');
 }
+
+/**
+ * DIAGNOSTIKA: vypíše syrová data z listu `events` přesně tak, jak je čte
+ * server (dbGetAll_), a u každého řádku ukáže, jestli by prošel stejným
+ * filtrem, jaký používá apiGetEvents pro aktuálně zobrazený měsíc.
+ *
+ * Použití: spustit, pak Zobrazit → Log (nebo Ctrl+Enter) a celý výstup
+ * zkopírovat zpět do konverzace. Nejdůležitější je sloupec "typeof start" —
+ * pokud ukáže "object" místo "string", Sheets si datum tiše převedl na
+ * typ Date navzdory textovému formátu sloupce a to je příčina problému.
+ *
+ * Dočasný nástroj — po vyřešení problému ho lze z projektu smazat.
+ */
+function TOOLS_diagnostikaUdalosti() {
+  const rows = dbGetAll_(SHEETS.EVENTS);
+  console.log('Počet řádků v events (bez hlavičky, bez prázdných řádků): ' + rows.length);
+
+  if (!rows.length) {
+    console.log('List events je z pohledu serveru PRÁZDNÝ — dbGetAll_ nenašel žádný řádek.');
+    console.log('Zkontroluj přes TOOLS_kdeJeSkript, jestli je DB_SPREADSHEET_ID stejný ' +
+      'spreadsheet, do kterého ses díval ručně.');
+    return;
+  }
+
+  const today = new Date();
+  const monthFirst = new Date(today.getFullYear(), today.getMonth(), 1);
+  const monthLast = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  const monthFirstIso = Utilities.formatDate(monthFirst, TIMEZONE, 'yyyy-MM-dd');
+  const monthLastIso = Utilities.formatDate(monthLast, TIMEZONE, 'yyyy-MM-dd');
+  console.log('Aktuální měsíc (pro test filtru): ' + monthFirstIso + ' – ' + monthLastIso);
+  console.log('---');
+
+  rows.forEach((row) => {
+    const startDateOnly = String(row.start).slice(0, 10);
+    const endDateOnly = String(row.end).slice(0, 10);
+    const passesFilter = startDateOnly <= monthLastIso && endDateOnly >= monthFirstIso;
+
+    console.log(
+      'id=' + row.id +
+      ' | title="' + row.title + '"' +
+      ' | typeof start=' + (typeof row.start) + ' hodnota=' + JSON.stringify(row.start) +
+      ' | typeof end=' + (typeof row.end) + ' hodnota=' + JSON.stringify(row.end) +
+      ' | start.slice(0,10)=' + startDateOnly +
+      ' | end.slice(0,10)=' + endDateOnly +
+      ' | type=' + row.type +
+      ' | typeof all_day=' + (typeof row.all_day) + ' hodnota=' + JSON.stringify(row.all_day) +
+      ' | prošlo by filtrem pro tento měsíc: ' + (passesFilter ? 'ANO' : 'NE')
+    );
+  });
+}
