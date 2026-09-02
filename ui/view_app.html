@@ -502,7 +502,7 @@
       // jen u komentářů, které smí smazat přihlášený uživatel (viz canDelete).
       document.querySelector('#eventCommentsList').addEventListener('click', (e) => {
         const button = e.target.closest('.comment-item-delete');
-        if (button && button.dataset.commentId) this.deleteComment(button.dataset.commentId);
+        if (button && button.dataset.commentId) this.deleteComment(button.dataset.commentId, button);
       });
     },
 
@@ -962,11 +962,11 @@
 
       const eventId = document.querySelector('#eventCommentForm').dataset.eventId;
       const submitButton = document.querySelector('#eventCommentSubmit');
-      submitButton.disabled = true;
+      Ui.setButtonLoading(submitButton, true); // jen spinner, bez textu — je to ikonové tlačítko
 
       Ui.call('apiAddEventComment', { eventId: eventId, text: text }, { silent: true })
         .then((comment) => {
-          submitButton.disabled = false;
+          Ui.setButtonLoading(submitButton, false);
           input.value = '';
           input.focus();
 
@@ -977,13 +977,15 @@
           list.scrollTop = list.scrollHeight;
         })
         .catch((error) => {
-          submitButton.disabled = false;
+          Ui.setButtonLoading(submitButton, false);
           Ui.toast(error.message, 'error');
         });
     },
 
     /** Bez potvrzovacího dialogu — tlačítko smazat se stejně zobrazuje jen u vlastních (nebo spravovatelných) komentářů. */
-    deleteComment(commentId) {
+    deleteComment(commentId, button) {
+      if (button) Ui.setButtonLoading(button, true);
+
       Ui.call('apiDeleteEventComment', { id: commentId }, { silent: true })
         .then(() => {
           const item = document.querySelector('.comment-item[data-comment-id="' + CSS.escape(commentId) + '"]');
@@ -991,10 +993,13 @@
 
           const list = document.querySelector('#eventCommentsList');
           if (!list.children.length) {
-            list.innerHTML = '<p class="comments-empty">Zatím žádné komentáře. Buďte první.</p>';
+            list.innerHTML = this.commentsEmptyState('ph-chat-circle-dots', 'Zatím žádné komentáře.<br>Buďte první.');
           }
         })
-        .catch((error) => Ui.toast(error.message, 'error'));
+        .catch((error) => {
+          if (button) Ui.setButtonLoading(button, false);
+          Ui.toast(error.message, 'error');
+        });
     },
 
     /**

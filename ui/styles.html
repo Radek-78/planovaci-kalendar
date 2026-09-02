@@ -166,10 +166,30 @@
     transform: none;
   }
 
+  /* Spinner uvnitř tlačítka — viz Ui.setButtonLoading (ui/core.html).
+     Barva jde vždy z currentColor, takže funguje beze změny na jakémkoli
+     tlačítku (modré pozadí s bílým textem, bílé s modrým, holá ikona). */
+  .btn-spinner {
+    animation: btn-spin 0.7s linear infinite;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    border-right-color: transparent;
+    border-top-color: transparent;
+    display: inline-block;
+    flex-shrink: 0;
+    height: 13px;
+    width: 13px;
+  }
+
+  @keyframes btn-spin {
+    to { transform: rotate(360deg); }
+  }
+
   /* Viditelné zaostření pro ovládání klávesnicí — nikdy nerušit bez náhrady. */
   .button:focus-visible,
   input:focus-visible,
-  textarea:focus-visible {
+  textarea:focus-visible,
+  select:focus-visible {
     box-shadow: 0 0 0 3px rgba(0, 83, 179, 0.2);
     outline: none;
   }
@@ -186,7 +206,11 @@
     text-transform: uppercase;
   }
 
-  input,
+  /* :not([type=checkbox]):not([type=radio]) — jinak by zaškrtávátka/přepínače
+     zdědily bílé pozadí, rámeček a min-height:38px určené pro textová pole
+     a vypadala by rozbitě. Jejich vlastní vzhled řeší specifičtější
+     pravidlo (např. .event-form-checkbox input). */
+  input:not([type="checkbox"]):not([type="radio"]),
   textarea {
     background: var(--white);
     border: 1px solid var(--line);
@@ -211,6 +235,37 @@
   input:disabled {
     background: var(--page);
     color: var(--muted);
+  }
+
+  /* select neměl žádný vlastní styl a zdědil čistě prohlížečový vzhled —
+     appearance: none + vlastní šipka (SVG data URI, barva pevně #5e6e8a =
+     --muted, do data URI nejde vložit CSS proměnná) sjednotí ho s inputy. */
+  select {
+    appearance: none;
+    background-color: var(--white);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%235e6e8a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='5 8 10 13 15 8'/%3E%3C/svg%3E");
+    background-position: right 10px center;
+    background-repeat: no-repeat;
+    background-size: 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 14px;
+    min-height: 38px;
+    padding: 9px 32px 9px 12px;
+    transition: border-color 0.15s;
+  }
+
+  select:focus {
+    border-color: var(--lidl-blue);
+    outline: none;
+  }
+
+  select:disabled {
+    background-color: var(--page);
+    color: var(--muted);
+    cursor: not-allowed;
   }
 
   /* Chybný vstup: červený rámeček + krátké zatřesení, aby si toho šlo všimnout. */
@@ -1743,6 +1798,11 @@
     color: var(--lidl-red);
   }
 
+  .comment-item-delete:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
   .comment-item-delete i {
     font-size: 12px;
   }
@@ -1802,9 +1862,16 @@
      label (viz začátek souboru) — malá verzálková šedá, žádná zvláštní
      třída navíc potřeba. ── */
 
+  /* Pevná výška — zaškrtnutí "Celý den" skryje pole s časem (viz
+     updateEventFormTimeVisibility), ale okno se tím nesmí zmenšit ani
+     zvětšit. align-content: start drží řádky nahoře, ať skrytím jednoho
+     pole nezůstane díra uprostřed. */
   .event-form-body {
+    align-content: start;
     display: grid;
     gap: 14px;
+    height: 420px;
+    overflow-y: auto;
   }
 
   .event-form-row {

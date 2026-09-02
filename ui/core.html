@@ -133,18 +133,28 @@
     },
 
     /**
-     * Přepne tlačítko do stavu „pracuji" a zpět.
-     * Zablokované tlačítko zároveň brání dvojímu odeslání formuláře.
+     * Přepne tlačítko do stavu „pracuji": viditelný točící se kroužek (jako
+     * první, ať je i u úzkých ikonových tlačítek hned vidět) + volitelný
+     * text. Zablokované tlačítko zároveň brání dvojímu odeslání formuláře.
+     *
+     * Kroužek kreslí čistě CSS (.btn-spinner, viz ui/styles.html) přes
+     * currentColor — funguje beze změny na jakékoli barvě pozadí tlačítka
+     * (modré, bílé, ikonové), nikde se pro něj nemusí volit vlastní barva.
+     *
+     * Používat na KAŽDÉM tlačítku, které spouští volání serveru — uživatel
+     * musí vždy vidět, že akce probíhá, ne jen že se tlačítko zablokovalo.
      */
     setButtonLoading(button, isLoading, label) {
       if (!button) return;
 
       if (isLoading) {
-        button.dataset.originalText = button.textContent;
-        button.textContent = label || 'Pracuji…';
+        if (button.dataset.originalHtml === undefined) button.dataset.originalHtml = button.innerHTML;
+        button.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span>' +
+          (label ? '<span>' + this.escape(label) + '</span>' : '');
         button.disabled = true;
       } else {
-        if (button.dataset.originalText) button.textContent = button.dataset.originalText;
+        if (button.dataset.originalHtml !== undefined) button.innerHTML = button.dataset.originalHtml;
+        delete button.dataset.originalHtml;
         button.disabled = false;
       }
     },
