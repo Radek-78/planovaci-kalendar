@@ -6,9 +6,9 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.19 - 02.09.2026 13:20
-- Seznam uzivatelu razen podle data vytvoreni (nejnovejsi nahore)
-- sloupec Opravneni se ted zobrazuje i u Admin/Superadmin (Zapis), ne jen u role Uzivatel
-- cele pole dat ted viditelne odděluje i sloupce (ne jen radky), radek pod kurzorem mysi jemne odstineny
+- Seznam uživatelů řazen podle data vytvoření (nejnovější nahoře)
+- Sloupec Oprávnění se teď zobrazuje i u Admin/Superadmin (Zápis), ne jen u role Uživatel
+- Celé pole dat teď viditelně odděluje i sloupce (ne jen řádky), řádek pod kurzorem myši jemně odstíněný
 
 ## v0.1.18 - 02.09.2026 12:51
 - Sjednocení hlaviček sekcí — hlavička obsahu (Uživatelé, Kalendář) je teď přesně ve stejné úrovni jako logo a název aplikace v sidebaru (58px, spodní rámeček)
