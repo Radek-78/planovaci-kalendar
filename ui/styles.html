@@ -1922,6 +1922,51 @@
     margin-top: 6px;
   }
 
+  /* Tužka/koš u vlastních (nebo spravovatelných) událostí — třetí sloupec
+     v témže flex řádku jako ikona a text (viz .day-event-item), stejný
+     jazyk jako .user-action-btn u uživatelů, jen o něco menší. Klik na ně
+     má v JS přednost před kliknutím na celou položku (viz bindDayModal). */
+  .day-event-actions {
+    display: flex;
+    flex-shrink: 0;
+    gap: 4px;
+  }
+
+  .day-event-action {
+    align-items: center;
+    background: var(--line-soft);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    height: 26px;
+    justify-content: center;
+    transition: background 0.1s, color 0.1s;
+    width: 26px;
+  }
+
+  .day-event-action i {
+    font-size: 13px;
+  }
+
+  .day-event-action.is-edit {
+    color: var(--lidl-blue);
+  }
+
+  .day-event-action.is-edit:hover {
+    background: var(--lidl-blue);
+    color: var(--white);
+  }
+
+  .day-event-action.is-danger {
+    color: var(--lidl-red);
+  }
+
+  .day-event-action.is-danger:hover {
+    background: var(--lidl-red);
+    color: var(--white);
+  }
+
   /* #dayModal .modal-body je teď flex sloupec s pevnou výškou (viz výše) —
      tohle je jeho jediné dítě, takže "flex: 1" ho roztáhne přes celou
      výšku a vycentruje, místo aby zůstal nalepený nahoře s prázdnem pod sebou. */

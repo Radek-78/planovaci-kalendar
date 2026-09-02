@@ -7,9 +7,9 @@
  * Bez guardu by šel endpoint zavolat přímo z konzole prohlížeče, i kdyby
  * v UI žádné tlačítko neexistovalo.
  *
- * Stav: bootstrap, čtení událostí, komentáře k události (čtení/přidání/
- * smazání vlastního). Zápis událostí samotných (vytváření/úprava/mazání)
- * a endpointy pro uživatele a nastavení přibývají v dalších krocích podle
+ * Stav: bootstrap, události (čtení/vytváření/úprava/mazání), komentáře
+ * k události (čtení/přidání/smazání vlastního), uživatelé (čtení/vytváření/
+ * úprava/deaktivace). Nastavení zatím chybí — přibude v dalším kroku podle
  * SPECIFIKACE.md.
  */
 
@@ -32,6 +32,10 @@ function apiGetBootstrap() {
         canManageUsers: isAllowed_(user, PERM_KEYS.USERS_MANAGE),
         canManageSettings: isAllowed_(user, PERM_KEYS.SETTINGS_MANAGE),
         canManageForeignEvents: canManageForeignEvents_(user),
+        // Řídí, jestli klient smí nabídnout editaci/smazání už PROBĚHLÉ
+        // události (viz canEditPastEvents_/nastavení pastEditAdminOnly) —
+        // server si to i tak ověří znovu při každém uložení/smazání.
+        canEditPastEvents: canEditPastEvents_(user, settings),
       },
       settings: {
         appName: settings.appName,
@@ -50,19 +54,37 @@ function apiGetBootstrap() {
 }
 
 /**
- * Vytvoří novou událost. Smí jen ten, kdo má právo zápisu (calendar_write) —
- * VIEWER kalendář jen čte. Vlastník se bere ze SESSION, nikdy z payloadu.
+ * Vytvoří novou událost, nebo upraví existující (payload.id = úprava, stejný
+ * vzor jako apiSaveUser). Smí jen ten, kdo má právo zápisu (calendar_write) —
+ * VIEWER kalendář jen čte. Vlastník se bere ze SESSION, nikdy z payloadu,
+ * a u úpravy zůstává neměnný (není v `fields` níže).
  *
- * Zatím jen VYTVOŘENÍ — úprava a mazání existující události je další krok
- * (potřebuje navíc kontrolu vlastnictví a pravidlo pro proběhlé události,
- * viz SPECIFIKACE.md kapitola 7.2, body 8–9).
+ * Úprava cizí události smí jen ten, kdo smí spravovat cizí události
+ * (ADMIN/SUPERADMIN — canManageForeignEvents_), stejná logika jako
+ * u komentářů. Založit novou událost do minulosti nejde NIKDY (bez ohledu
+ * na roli) — ale upravit/přesunout do minulosti UŽ EXISTUJÍCÍ událost smí
+ * ten, komu to dovolí canEditPastEvents_ (řízené nastavením
+ * pastEditAdminOnly, viz SPECIFIKACE.md kapitola 7.2).
  *
- * @param {Object} payload  { start, end, allDay, type, title, description } —
+ * @param {Object} payload  { id?, start, end, allDay, type, title, description } —
  *                          start/end RRRR-MM-DDTHH:mm
  */
 function apiSaveEvent(payload) {
   return guard_(PERM_KEYS.CALENDAR_WRITE, (user) => {
     const data = payload || {};
+    const id = data.id ? String(data.id) : null;
+    const existing = id ? dbFindById_(SHEETS.EVENTS, id) : null;
+    if (id && !existing) {
+      throw userError_('Událost nebyla nalezena — mohl ji mezitím upravit někdo jiný.');
+    }
+
+    if (existing) {
+      const isOwner = cleanEmail_(existing.owner_email) === user.email;
+      if (!isOwner && !canManageForeignEvents_(user)) {
+        throw userError_('Nemáte oprávnění upravit cizí událost.');
+      }
+    }
+
     const start = cleanDateTime_(data.start, 'Začátek');
     const end = cleanDateTime_(data.end, 'Konec');
     const allDay = data.allDay === true;
@@ -82,23 +104,73 @@ function apiSaveEvent(payload) {
     if (dayCount > LIMITS.EVENT_MAX_DAYS) {
       throw userError_('Událost může trvat nejvýše ' + LIMITS.EVENT_MAX_DAYS + ' dní.');
     }
+
     if (startDate < todayIso_()) {
-      throw userError_('Událost nelze založit do minulosti.');
+      if (!existing) {
+        throw userError_('Událost nelze založit do minulosti.');
+      }
+      if (!canEditPastEvents_(user, settingsAll_())) {
+        throw userError_('Proběhlou událost může upravit jen administrátor.');
+      }
     }
 
-    const record = dbInsert_(SHEETS.EVENTS, {
+    const fields = {
       start: start,
       end: end,
       all_day: allDay,
       type: type,
       title: title,
       description: description,
-      owner_email: user.email,
-    });
+    };
 
-    audit_('event.create', 'Vytvořena událost „' + title + '" (' + start + ' – ' + end + ')');
+    let record;
+    if (existing) {
+      record = dbUpdate_(SHEETS.EVENTS, id, fields);
+      audit_('event.update', 'Upravena událost „' + title + '" (' + start + ' – ' + end + ')');
+    } else {
+      record = dbInsert_(SHEETS.EVENTS, Object.assign({ owner_email: user.email }, fields));
+      audit_('event.create', 'Vytvořena událost „' + title + '" (' + start + ' – ' + end + ')');
+    }
 
     return { id: record.id };
+  });
+}
+
+/**
+ * Smaže událost — vlastní, nebo (kdo smí spravovat cizí události) kteroukoli.
+ * Proběhlou událost smí smazat jen ten, komu to dovolí canEditPastEvents_
+ * (stejné pravidlo jako u úpravy, viz apiSaveEvent). Smaže se i všechny
+ * komentáře k té události — jinak by v `event_comments` zůstaly osiřelé
+ * řádky odkazující na neexistující událost.
+ *
+ * @param {Object} payload  { id }
+ */
+function apiDeleteEvent(payload) {
+  return guard_(PERM_KEYS.CALENDAR_WRITE, (user) => {
+    const data = payload || {};
+    const id = cleanText_(data.id, 'ID události', 100, true);
+
+    const event = dbFindById_(SHEETS.EVENTS, id);
+    if (!event) {
+      throw userError_('Událost nebyla nalezena — možná ji mezitím smazal někdo jiný.');
+    }
+
+    const isOwner = cleanEmail_(event.owner_email) === user.email;
+    if (!isOwner && !canManageForeignEvents_(user)) {
+      throw userError_('Můžete mazat jen vlastní události.');
+    }
+
+    if (String(event.start).slice(0, 10) < todayIso_() && !canEditPastEvents_(user, settingsAll_())) {
+      throw userError_('Proběhlou událost může smazat jen administrátor.');
+    }
+
+    dbGetAll_(SHEETS.EVENT_COMMENTS)
+      .filter((row) => String(row.event_id) === id)
+      .forEach((row) => dbDelete_(SHEETS.EVENT_COMMENTS, row.id));
+
+    dbDelete_(SHEETS.EVENTS, id);
+    audit_('event.delete', 'Smazána událost „' + event.title + '" (' + id + ')');
+    return null;
   });
 }
 

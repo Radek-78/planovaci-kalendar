@@ -196,16 +196,21 @@
   </div>
 </dialog>
 
-<!-- ══ Modal: nová událost ══
-     Datum je předvyplněné podle dne, na který se kliklo (viz
+<!-- ══ Modal: nová/upravovaná událost (jeden formulář pro obojí, viz
+     openEventFormModal) ══
+     Při zakládání je datum předvyplněné podle dne, na který se kliklo (viz
      openCreateEventModal); jde ho přepsat, takže formulář zvládne
-     i vícedenní událost. Zobrazit ho smí jen ten, kdo má právo zápisu —
-     viz podmínka u tlačítek, která ho otevírají. -->
+     i vícedenní událost. Při úpravě (openEditEventModal) je předvyplněné
+     z existující události a e-mail zadavatele se needituje (stejně jako
+     u uživatele) — jméno/kicker/ikona/tlačítko se přepnou v JS podle režimu.
+     Zobrazit ho smí jen ten, kdo má právo zápisu, u úpravy navíc jen
+     vlastník nebo správce cizích událostí — viz podmínky u tlačítek/ikon,
+     která ho otevírají (canCreateOn/canManageEvent). -->
 <dialog class="modal modal-grow" id="eventFormModal">
   <div class="modal-header">
-    <span class="modal-icon"><i class="ph ph-calendar-plus" aria-hidden="true"></i></span>
+    <span class="modal-icon" id="eventFormModalIcon"><i class="ph ph-calendar-plus" aria-hidden="true"></i></span>
     <div class="modal-header-text">
-      <p class="kicker">Nová událost</p>
+      <p class="kicker" id="eventFormKicker">Nová událost</p>
       <h2 id="eventFormDateLabel"></h2>
     </div>
     <button class="modal-close" type="button" id="eventFormClose" aria-label="Zavřít">
@@ -439,8 +444,8 @@
      * Rozměry mřížky kalendáře — každý týdenní řádek má vlastní "hlavu"
      * (číslo dne) a pevný počet "drah" (lanes) pro pruhy událostí pod ním.
      * Víc událostí, než je CAL_LANE_COUNT, dostane v postižených dnech jen
-     * malý odznak „+N" (viz renderEvents) místo další dráhy — pro běžný
-     * provoz (max 5 souběžných událostí v jednom dni) se to nestane.
+     * malý odznak „+N" (viz renderEvents), na který se dá kliknout pro
+     * zobrazení celého dne v modalu.
      * Hodnoty se počítají v JS (ne v CSS), protože se stejná čísla používají
      * na dvou místech, která musí přesně sedět k sobě — rozvržení řádků
      * mřížky (renderCalendar) a umístění pruhů do konkrétní dráhy
@@ -466,6 +471,12 @@
 
     /** Smí uživatel spravovat uživatele? Ze serveru, stejný princip jako canWrite. */
     canManageUsers: false,
+
+    /** Smí uživatel upravit/smazat i CIZÍ událost (ADMIN/SUPERADMIN)? Ze serveru, viz canManageForeignEvents_. */
+    canManageForeignEvents: false,
+
+    /** Smí uživatel upravit/smazat už PROBĚHLOU událost? Ze serveru, viz canEditPastEvents_/nastavení pastEditAdminOnly. */
+    canEditPastEvents: false,
 
     /** Role přihlášeného uživatele — řídí, jestli formulář nabídne i SUPERADMIN (viz fillUserRoleSelect). */
     currentUserRole: '',
@@ -513,6 +524,8 @@
       this.eventTypes = data.eventTypes || {};
       this.canWrite = data.permissions.canWrite === true;
       this.canManageUsers = canManageUsers;
+      this.canManageForeignEvents = data.permissions.canManageForeignEvents === true;
+      this.canEditPastEvents = data.permissions.canEditPastEvents === true;
       this.currentUserRole = data.user.role;
       this.allowedEmailDomain = data.allowedEmailDomain;
       this.fillEventTypeSelect();
@@ -676,6 +689,20 @@
       });
 
       document.querySelector('#dayModalBody').addEventListener('click', (e) => {
+        // Tužka/koš (jen u událostí, které smí uživatel spravovat — viz
+        // canManageEvent/renderDayEventItem) mají přednost před obecným
+        // klikem na položku, jinak by pod nimi prosvítal detail události.
+        const actionBtn = e.target.closest('.day-event-action');
+        if (actionBtn && actionBtn.dataset.eventId) {
+          if (actionBtn.dataset.action === 'edit') {
+            Ui.closeModal(dialog);
+            this.openEditEventModal(actionBtn.dataset.eventId, actionBtn);
+          } else if (actionBtn.dataset.action === 'delete') {
+            this.confirmDeleteEvent(actionBtn.dataset.eventId, actionBtn);
+          }
+          return;
+        }
+
         const item = e.target.closest('.day-event-item');
         if (!item || !item.dataset.eventId) return;
         Ui.closeModal(dialog);
@@ -745,24 +772,45 @@
     },
 
     /**
-     * Otevře formulář nové události s datem předvyplněným podle dne, na
-     * který se kliklo. `originEl` řídí, odkud modal vizuálně "vyjede".
+     * Otevře formulář události — bez parametru event založí novou (datum
+     * předvyplněné podle dne, na který se kliklo), s ním upraví existující
+     * (viz openEditEventModal). `originEl` řídí, odkud modal vizuálně
+     * "vyjede".
      */
-    openCreateEventModal(dateIso, originEl) {
+    openEventFormModal(event, dateIso, originEl) {
       this.hideChipTooltip();
 
-      const date = new Date(dateIso + 'T00:00');
-      Ui.setText('#eventFormDateLabel', date.getDate() + '. ' + this.MONTH_NAMES[date.getMonth()] + ' ' + date.getFullYear());
+      document.querySelector('#eventFormModalIcon').innerHTML =
+        '<i class="ph ' + (event ? 'ph-pencil-simple' : 'ph-calendar-plus') + '" aria-hidden="true"></i>';
+      document.querySelector('#eventFormKicker').textContent = event ? 'Upravit událost' : 'Nová událost';
+      document.querySelector('#eventForm').dataset.editId = event ? event.id : '';
 
-      document.querySelector('#eventFormTitle').value = '';
-      document.querySelector('#eventFormType').value = 'default';
-      document.querySelector('#eventFormAllDay').checked = false;
-      document.querySelector('#eventFormStartDate').value = dateIso;
-      document.querySelector('#eventFormEndDate').value = dateIso;
-      document.querySelector('#eventFormStartTime').value = '09:00';
-      document.querySelector('#eventFormEndTime').value = '10:00';
-      document.querySelector('#eventFormDescription').value = '';
+      if (event) {
+        Ui.setText('#eventFormDateLabel', event.title);
+        document.querySelector('#eventFormTitle').value = event.title;
+        document.querySelector('#eventFormType').value = event.type;
+        document.querySelector('#eventFormAllDay').checked = event.allDay;
+        document.querySelector('#eventFormStartDate').value = event.start.slice(0, 10);
+        document.querySelector('#eventFormEndDate').value = event.end.slice(0, 10);
+        document.querySelector('#eventFormStartTime').value = event.start.slice(11, 16);
+        document.querySelector('#eventFormEndTime').value = event.end.slice(11, 16);
+        document.querySelector('#eventFormDescription').value = event.description || '';
+      } else {
+        const date = new Date(dateIso + 'T00:00');
+        Ui.setText('#eventFormDateLabel', date.getDate() + '. ' + this.MONTH_NAMES[date.getMonth()] + ' ' + date.getFullYear());
+        document.querySelector('#eventFormTitle').value = '';
+        document.querySelector('#eventFormType').value = 'default';
+        document.querySelector('#eventFormAllDay').checked = false;
+        document.querySelector('#eventFormStartDate').value = dateIso;
+        document.querySelector('#eventFormEndDate').value = dateIso;
+        document.querySelector('#eventFormStartTime').value = '09:00';
+        document.querySelector('#eventFormEndTime').value = '10:00';
+        document.querySelector('#eventFormDescription').value = '';
+      }
       this.updateEventFormTimeVisibility();
+
+      document.querySelector('#eventFormSubmit').innerHTML =
+        '<i class="ph ph-check" aria-hidden="true"></i> ' + (event ? 'Uložit' : 'Vytvořit');
 
       const dialog = document.querySelector('#eventFormModal');
       this.setModalOrigin(dialog, originEl);
@@ -771,13 +819,31 @@
       document.querySelector('#eventFormTitle').focus();
     },
 
+    /** Založení nové události — tenký obal nad openEventFormModal, ať se nemusí měnit stávající volání (openDayModal, tlačítko "Nová událost"). */
+    openCreateEventModal(dateIso, originEl) {
+      this.openEventFormModal(null, dateIso, originEl);
+    },
+
+    /** Úprava existující události — bere ji z už načtených dat (this.currentEvents), stejně jako openEventModal. */
+    openEditEventModal(eventId, originEl) {
+      const event = this.currentEvents.find((e) => e.id === eventId);
+      if (!event) {
+        Ui.toast('Událost nebyla nalezena.', 'error');
+        return;
+      }
+      this.openEventFormModal(event, null, originEl);
+    },
+
     /**
-     * Odešle formulář nové události. Validace (povinná pole, rozsah dat,
-     * zákaz minulosti…) probíhá na SERVERU (apiSaveEvent) — tady se jen
-     * poskládá payload a klientsky ověří to nejzákladnější, ať uživatel
-     * nečeká na odpověď serveru kvůli prázdnému názvu.
+     * Odešle formulář události — vytvoření i úpravu (viz apiSaveEvent na
+     * serveru, id v datasetu formuláře rozhoduje o tom, který to je).
+     * Validace (povinná pole, rozsah dat, zákaz minulosti, vlastnictví…)
+     * probíhá na SERVERU — tady se jen poskládá payload a klientsky ověří
+     * to nejzákladnější, ať uživatel nečeká na odpověď serveru kvůli
+     * prázdnému názvu.
      */
     submitEventForm() {
+      const editId = document.querySelector('#eventForm').dataset.editId || '';
       const title = document.querySelector('#eventFormTitle').value.trim();
       if (!title) {
         Ui.toast('Vyplňte název události.', 'error');
@@ -803,6 +869,7 @@
         title: title,
         description: document.querySelector('#eventFormDescription').value.trim(),
       };
+      if (editId) payload.id = editId;
 
       const submitButton = document.querySelector('#eventFormSubmit');
       Ui.setButtonLoading(submitButton, true, 'Ukládám…');
@@ -811,13 +878,41 @@
         .then(() => {
           Ui.setButtonLoading(submitButton, false);
           Ui.closeModal(document.querySelector('#eventFormModal'));
-          Ui.toast('Událost vytvořena.', 'success');
-          this.renderCalendar(); // znovu načte události, ať je nová hned vidět
+          Ui.toast(editId ? 'Událost upravena.' : 'Událost vytvořena.', 'success');
+          this.renderCalendar(); // znovu načte události, ať je změna hned vidět
         })
         .catch((error) => {
           Ui.setButtonLoading(submitButton, false);
           Ui.toast(error.message, 'error');
         });
+    },
+
+    /** Smazání události je nevratné → potvrzovací modal (viz confirmAction, sdílené s deaktivací uživatele). */
+    confirmDeleteEvent(eventId, originEl) {
+      const event = this.currentEvents.find((e) => e.id === eventId);
+      if (!event) return;
+
+      this.confirmAction({
+        title: 'Smazat událost?',
+        body: '„' + event.title + '" (' + this.eventTimeLabel(event) + ') bude nenávratně smazána i se všemi komentáři.',
+        okLabel: 'Smazat',
+        okIcon: 'ph-trash',
+        okClass: 'button-danger',
+        onConfirm: (okBtn, dialog) => {
+          Ui.setButtonLoading(okBtn, true, 'Mažu…');
+          Ui.call('apiDeleteEvent', { id: eventId }, { silent: true })
+            .then(() => {
+              Ui.closeModal(dialog);
+              Ui.closeModal(document.querySelector('#dayModal')); // seznam dne by ukazoval smazanou událost
+              Ui.toast('Událost smazána.', 'success');
+              this.renderCalendar();
+            })
+            .catch((error) => {
+              Ui.setButtonLoading(okBtn, false);
+              Ui.toast(error.message, 'error');
+            });
+        },
+      }, originEl);
     },
 
     /* ── Uživatelé ────────────────────────────────────────────────────── */
@@ -1220,11 +1315,16 @@
 
       const grid = document.querySelector('#calGrid');
 
-      // Řádková šablona: hlavička dnů + pro každý ze 6 týdnů (hlava + drahy).
+      // Řádková šablona: hlavička dnů (pevná) + pro každý ze 6 týdnů hlava
+      // (pevná — jen číslo dne) a drahy. Drahy jsou "minmax(…, 1fr)", ne
+      // pevný px — díky tomu se rovnoměrně roztáhnou a vyplní celou
+      // dostupnou výšku .cal-grid-wrap (stejně jako předchozí návrh
+      // s minmax(64px, 1fr) na celý řádek), místo aby mřížka s méně
+      // drahami (CAL_LANE_COUNT) zůstala menší, než kolik je místa.
       const rowSizes = [this.CAL_HEADER_ROW + 'px'];
       for (let w = 0; w < 6; w++) {
         rowSizes.push(this.CAL_HEAD_ROW + 'px');
-        for (let l = 0; l < this.CAL_LANE_COUNT; l++) rowSizes.push(this.CAL_LANE_ROW + 'px');
+        for (let l = 0; l < this.CAL_LANE_COUNT; l++) rowSizes.push('minmax(' + this.CAL_LANE_ROW + 'px, 1fr)');
       }
       grid.style.gridTemplateRows = rowSizes.join(' ');
 
@@ -1439,6 +1539,21 @@
     },
 
     /**
+     * Smí uživatel upravit/smazat KONKRÉTNÍ událost? Klientská kopie
+     * pravidel ze serveru (apiSaveEvent/apiDeleteEvent) — řídí jen to, jestli
+     * se u položky v seznamu dne vůbec zobrazí tužka/koš (žádná mrtvá
+     * ikona, kterou by server stejně odmítl); server si oprávnění ověří
+     * znovu při každém uložení/smazání.
+     */
+    canManageEvent(event) {
+      if (!this.canWrite) return false;
+      const isOwner = event.ownerEmail === this.currentUserEmail;
+      if (!isOwner && !this.canManageForeignEvents) return false;
+      const isPast = event.start.slice(0, 10) < this.todayIso();
+      return !isPast || this.canEditPastEvents;
+    },
+
+    /**
      * Otevře modal se seznamem událostí daného dne. `originEl` je kliknutý
      * prvek na obrazovce, ze kterého modal vizuálně "vyjede" (viz
      * setModalOrigin a CSS třída .modal-grow).
@@ -1486,9 +1601,23 @@
       Ui.openModal(dialog);
     },
 
-    /** Jedna položka v seznamu událostí dne — klikatelná, otevře detail té události. */
+    /**
+     * Jedna položka v seznamu událostí dne — klikatelná, otevře detail té
+     * události. Tužka/koš se zobrazí, jen když ji smí uživatel spravovat
+     * (viz canManageEvent) — žádná mrtvá ikona, kterou by server stejně
+     * odmítl.
+     */
     renderDayEventItem(event) {
       const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a' };
+
+      const actions = this.canManageEvent(event)
+        ? '<span class="day-event-actions">' +
+            '<button type="button" class="day-event-action is-edit" data-action="edit" data-event-id="' + Ui.escape(event.id) + '" title="Upravit" aria-label="Upravit událost">' +
+              '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>' +
+            '<button type="button" class="day-event-action is-danger" data-action="delete" data-event-id="' + Ui.escape(event.id) + '" title="Smazat" aria-label="Smazat událost">' +
+              '<i class="ph ph-trash" aria-hidden="true"></i></button>' +
+          '</span>'
+        : '';
 
       return '<div class="day-event-item" data-event-id="' + Ui.escape(event.id) + '">' +
         '<span class="day-event-icon" style="--chip-color:' + Ui.escape(type.color) + '">' +
@@ -1498,7 +1627,9 @@
             '<span class="day-event-time">' + Ui.escape(this.eventTimeLabel(event)) + '</span></div>' +
           (event.description ? '<p class="day-event-desc">' + Ui.escape(event.description) + '</p>' : '') +
           '<span class="day-event-owner">' + Ui.escape(event.ownerName) + '</span>' +
-        '</div></div>';
+        '</div>' +
+        actions +
+      '</div>';
     },
 
     /**
