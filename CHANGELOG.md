@@ -6,10 +6,10 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.20 - 02.09.2026 13:32
-- Sloupec Akce u kazdeho uzivatele - tuzka (editace vsech udaju vcetne role a organizace, e-mail uz needitovatelny, je na nem navazana historie udalosti a komentaru) a kos (deaktivace, obnovitelna zpetnou ikonou u neaktivnich)
-- nove endpointy - apiSaveUser ted zvladne i upravu existujiciho uzivatele (drive jen zalozeni), apiSetUserActive na deaktivaci/aktivaci
-- bezpecnostni pojistky - ucet superadmina smi upravit/deaktivovat jen jiny superadmin, sam sebe nejde deaktivovat nikdo, poslednimu aktivnimu superadminovi nejde odebrat roli ani ho deaktivovat
-- nove obecne potvrzovaci okno v designu appky (nahrazuje window.confirm) pro deaktivaci uzivatele
+- Sloupec Akce u každého uživatele — tužka (editace všech údajů včetně role a organizace, e-mail už needitovatelný, je na něj navázaná historie událostí a komentářů) a koš (deaktivace, obnovitelná zpětnou ikonou u neaktivních)
+- Nové endpointy — apiSaveUser teď zvládne i úpravu existujícího uživatele (dříve jen založení), apiSetUserActive na deaktivaci/aktivaci
+- Bezpečnostní pojistky — účet superadmina smí upravit/deaktivovat jen jiný superadmin, sám sebe nejde deaktivovat nikdo, poslednímu aktivnímu superadminovi nejde odebrat roli ani ho deaktivovat
+- Nové obecné potvrzovací okno v designu appky (nahrazuje window.confirm) pro deaktivaci uživatele
 
 ## v0.1.19 - 02.09.2026 13:20
 - Seznam uživatelů řazen podle data vytvoření (nejnovější nahoře)
