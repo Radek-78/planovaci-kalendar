@@ -6,9 +6,9 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.28 - 03.09.2026 07:47
-- Novy system Oznameni - zvonecek v pravem rohu hlavicky kalendare s odznakem poctu, panel pod nim vypise co je noveho od posledni navstevy (nove/upravene/smazane udalosti, nove/smazane komentare, ne od sebe sama)
-- zadna nova tabulka - vyuziva se jiz existujici auditni log a sloupec last_visit_at u uzivatele, ktery se ted konecne skutecne aktualizuje
-- sledovani se deje automaticky pri kazdem otevreni aplikace (bootstrap), ne az kliknutim na zvonecek - uzivatel nemusi nic sam aktivovat
+- Nový systém Oznámení — zvoneček v pravém rohu hlavičky kalendáře s odznakem počtu, panel pod ním vypíše, co je nového od poslední návštěvy (nové/upravené/smazané události, nové/smazané komentáře, ne od sebe sama)
+- Žádná nová tabulka — využívá se už existující auditní log a sloupec last_visit_at u uživatele, který se teď konečně skutečně aktualizuje
+- Sledování se děje automaticky při každém otevření aplikace (bootstrap), ne až kliknutím na zvoneček — uživatel nemusí nic sám aktivovat
 
 ## v0.1.27 - 03.09.2026 07:35
 - Kalendář — ikony tužky a koše v chipu události jsou teď vždy viditelné, ne jen po najetí myší
