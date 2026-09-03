@@ -30,7 +30,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.1.33',
+  version: 'v0.1.34',
   releaseDate: '3.9.2026',
 
   /**
@@ -131,8 +131,9 @@ const NOTIFY_ACTIONS = ['event.create', 'event.update', 'event.delete', 'comment
  * jako ID řádků, ať existující události v `events.type` dál sedí.
  *
  * Ikony jsou názvy Phosphor Icons bez prefixu "ph-", vybírají se jen
- * z whitelistu EVENT_TYPE_ICONS (viz níže) — nikdy volný text. Barva je
- * jen doplňkové odlišení chipů v mřížce — nikdy jediný nositel významu,
+ * z whitelistu EVENT_TYPE_ICONS (viz níže) — nikdy volný text. `color`
+ * a `bgColor` jsou DVĚ NEZÁVISLÉ barvy (ikona/text, resp. podklad) — obě
+ * jen doplňkové odlišení chipů v mřížce, nikdy jediný nositel významu,
  * ten vždy nese i text (bezpečnostní checklist v SPECIFIKACE.md, bod 13).
  *
  * POZOR: „default" je jediný typ, který nejde smazat (viz apiDeleteEventType)
@@ -140,13 +141,13 @@ const NOTIFY_ACTIONS = ['event.create', 'event.update', 'event.delete', 'comment
  * (viz apiGetEvents), takže musí existovat vždycky.
  */
 const DEFAULT_EVENT_TYPES = [
-  { id: 'default', label: 'Běžné', icon: 'chat-circle', color: '#5e6e8a' },
-  { id: 'meeting', label: 'Schůzka', icon: 'users-three', color: '#0050aa' },
-  { id: 'trip', label: 'Služební cesta', icon: 'airplane-tilt', color: '#008cd2' },
-  { id: 'important', label: 'Důležité', icon: 'warning', color: '#e60a14' },
-  { id: 'deadline', label: 'Deadline', icon: 'alarm', color: '#b45309' },
-  { id: 'homeoffice', label: 'Home Office', icon: 'house', color: '#16a34a' },
-  { id: 'party', label: 'Oslava / Teambuilding', icon: 'confetti', color: '#c026d3' },
+  { id: 'default', label: 'Běžné', icon: 'chat-circle', color: '#5e6e8a', bgColor: '#eef0f3' },
+  { id: 'meeting', label: 'Schůzka', icon: 'users-three', color: '#0050aa', bgColor: '#e6eef8' },
+  { id: 'trip', label: 'Služební cesta', icon: 'airplane-tilt', color: '#008cd2', bgColor: '#e5f4fb' },
+  { id: 'important', label: 'Důležité', icon: 'warning', color: '#e60a14', bgColor: '#fce6e7' },
+  { id: 'deadline', label: 'Deadline', icon: 'alarm', color: '#b45309', bgColor: '#f7ece1' },
+  { id: 'homeoffice', label: 'Home Office', icon: 'house', color: '#16a34a', bgColor: '#e5f5ea' },
+  { id: 'party', label: 'Oslava / Teambuilding', icon: 'confetti', color: '#c026d3', bgColor: '#f7e5f9' },
 ];
 
 /**

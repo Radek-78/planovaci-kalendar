@@ -44,9 +44,8 @@ function apiGetBootstrap() {
       },
       eventTypes: _eventTypesMap_(),
       // Co je nového od poslední návštěvy — viz _computeNotifications_.
-      // POZOR: tohle volání zároveň posune last_visit_at na teď, takže se
-      // smí zavolat jen jednou za skutečné otevření appky (viz komentář
-      // u funkce), ne opakovaně z libovolného místa.
+      // Jen ČTENÍ — last_visit_at se posouvá až explicitně kliknutím na
+      // zvoneček (apiMarkNotificationsSeen), ne tady, viz komentář tam.
       notifications: _computeNotifications_(user),
       // Jen pro nápovědu při vyplňování formuláře (automatické doplnění
       // uživatelského jména) — skutečná kontrola domény je vždy na serveru
@@ -65,12 +64,12 @@ function apiGetBootstrap() {
  * akce z whitelistu NOTIFY_ACTIONS (správa uživatelů se do oznámení
  * záměrně nepočítá, viz 00_config.js).
  *
- * `last_visit_at` se aktualizuje na TEĎ rovnou tady, ne až kliknutím na
- * zvoneček — uživatel nemá důvod zvoneček sám od sebe otevírat, takže
- * jediný spolehlivý okamžik, kdy víme, že appku právě používá, je tento
- * bootstrap. Odznak tak ukáže „co je nového od minulé návštěvy" přesně
- * jednou za návštěvu (další apiGetBootstrap přijde až při dalším otevření
- * appky, ne při přepínání sekcí — to je čistě klientská záležitost).
+ * ČISTÉ ČTENÍ — `last_visit_at` NEMĚNÍ (na rozdíl od dřívější verze). Dřív
+ * se posouval už tady, při každém otevření appky, bez ohledu na to, jestli
+ * si uživatel oznámení vůbec všiml — kdo appku jen otevřel a zase zavřel,
+ * o nich nenávratně přišel. Teď se posouvá až explicitním kliknutím na
+ * zvoneček (viz apiMarkNotificationsSeen), takže oznámení čekají, dokud
+ * je uživatel opravdu neuvidí.
  *
  * Prázdný last_visit_at (úplně první návštěva nového uživatele) se bere
  * jako „teď" — nedostane tak nálož oznámení o celé historii appky před sebou.
@@ -100,9 +99,21 @@ function _computeNotifications_(user) {
     entityId: String(r.entity_id || ''),
   }));
 
-  dbUpdate_(SHEETS.USERS, user.id, { last_visit_at: nowLocalIso_() });
-
   return { unseenCount: matching.length, items: items };
+}
+
+/**
+ * Označí oznámení za viděná — posune `last_visit_at` přihlášeného
+ * uživatele na teď. Volá se z klienta přesně v okamžiku, kdy uživatel
+ * OTEVŘE modal se zvonečkem (#notifyModal), ne při každém otevření appky
+ * (viz _computeNotifications_) — teprve tehdy appka ví, že si oznámení
+ * doopravdy prohlédl, ne jen že appku má puštěnou.
+ */
+function apiMarkNotificationsSeen() {
+  return guard_(PERM_KEYS.CALENDAR_READ, (user) => {
+    dbUpdate_(SHEETS.USERS, user.id, { last_visit_at: nowLocalIso_() });
+    return null;
+  });
 }
 
 /**
@@ -582,21 +593,26 @@ function _publicUserRow_(row) {
 function _ensureEventTypesSeeded_() {
   if (dbGetAll_(SHEETS.EVENT_TYPES).length > 0) return;
   DEFAULT_EVENT_TYPES.forEach((t) => {
-    dbInsert_(SHEETS.EVENT_TYPES, { id: t.id, label: t.label, icon: t.icon, color: t.color });
+    dbInsert_(SHEETS.EVENT_TYPES, { id: t.id, label: t.label, icon: t.icon, color: t.color, bg_color: t.bgColor });
   });
 }
 
 /**
- * Typy událostí jako mapa `{ id: { label, icon, color } }` — přesně podoba,
- * kterou čeká klient (this.eventTypes, viz ui/view_app.html) i validace
- * typu v apiSaveEvent (Object.keys). Volá _ensureEventTypesSeeded_, takže
- * funguje i na appce, kde `_event_types` ještě nikdy nikdo nenaplnil.
+ * Typy událostí jako mapa `{ id: { label, icon, color, bgColor } }` —
+ * přesně podoba, kterou čeká klient (this.eventTypes, viz ui/view_app.html)
+ * i validace typu v apiSaveEvent (Object.keys). Volá _ensureEventTypesSeeded_,
+ * takže funguje i na appce, kde `_event_types` ještě nikdy nikdo nenaplnil.
  */
 function _eventTypesMap_() {
   _ensureEventTypesSeeded_();
   const map = {};
   dbGetAll_(SHEETS.EVENT_TYPES).forEach((row) => {
-    map[String(row.id)] = { label: String(row.label), icon: String(row.icon), color: String(row.color) };
+    map[String(row.id)] = {
+      label: String(row.label),
+      icon: String(row.icon),
+      color: String(row.color),
+      bgColor: String(row.bg_color),
+    };
   });
   return map;
 }
@@ -623,9 +639,10 @@ function apiGetEventTypes() {
  * stejný vzor jako apiSaveEvent/apiSaveUser). Ikona jen z whitelistu
  * EVENT_TYPE_ICONS (00_config.js) — volný text by mohl odkázat na
  * neexistující ikonu (nikde by nebyla vidět) nebo mimo Phosphor sadu.
- * Barva musí být platný hex zápis (#rrggbb) — appka ji vkládá přímo do CSS.
+ * `color` (ikona/text) a `bgColor` (podklad) jsou DVĚ NEZÁVISLÉ barvy —
+ * obě musí být platný hex zápis (#rrggbb), appka je vkládá přímo do CSS.
  *
- * @param {Object} payload  { id?, label, icon, color }
+ * @param {Object} payload  { id?, label, icon, color, bgColor }
  */
 function apiSaveEventType(payload) {
   return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
@@ -638,12 +655,16 @@ function apiSaveEventType(payload) {
 
     const label = cleanText_(data.label, 'Popisek', LIMITS.EVENT_TYPE_LABEL_MAX, true);
     const icon = pickFrom_(data.icon, EVENT_TYPE_ICONS, 'Ikona');
-    const color = cleanText_(data.color, 'Barva', 7, true);
+    const color = cleanText_(data.color, 'Barva ikony', 7, true);
     if (!/^#[0-9a-f]{6}$/i.test(color)) {
-      throw userError_('Barva musí být v zápisu #rrggbb.');
+      throw userError_('Barva ikony musí být v zápisu #rrggbb.');
+    }
+    const bgColor = cleanText_(data.bgColor, 'Barva podkladu', 7, true);
+    if (!/^#[0-9a-f]{6}$/i.test(bgColor)) {
+      throw userError_('Barva podkladu musí být v zápisu #rrggbb.');
     }
 
-    const fields = { label: label, icon: icon, color: color };
+    const fields = { label: label, icon: icon, color: color, bg_color: bgColor };
     let record;
     if (existing) {
       record = dbUpdate_(SHEETS.EVENT_TYPES, id, fields);
@@ -693,12 +714,20 @@ function _publicEventType_(row) {
     label: String(row.label),
     icon: String(row.icon),
     color: String(row.color),
+    bgColor: String(row.bg_color),
   };
 }
 
-/** Seznam pracovních pozic pro správu v Nastavení, řazený podle názvu. */
+/**
+ * Seznam pracovních pozic, řazený podle názvu. Guard je záměrně
+ * users_manage, ne settings_manage jako zbytek téhle sekce — ADMIN sice
+ * nesmí pozice spravovat (přidat/upravit/smazat, viz apiSavePosition níže),
+ * ale potřebuje si je aspoň PŘEČÍST pro výběr ve formuláři uživatele
+ * (viz fillPositionSelect na klientovi), jinak by tam s pouhým
+ * settings_manage neviděl vůbec nic.
+ */
 function apiGetPositions() {
-  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+  return guard_(PERM_KEYS.USERS_MANAGE, () => {
     return dbGetAll_(SHEETS.POSITIONS)
       .map(_publicPosition_)
       .sort((a, b) => a.name.localeCompare(b.name, 'cs'));

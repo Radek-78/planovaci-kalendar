@@ -44,7 +44,9 @@ const DB_SCHEMA = {
   // Typy událostí (Nastavení) — id je u výchozích 7 stabilní slug
   // (viz DEFAULT_EVENT_TYPES), u nově založených UUID; obojí je jen
   // opaque klíč uložený v events.type, appce na tom nezáleží.
-  _event_types: ['id', 'label', 'icon', 'color', 'created_at', 'created_by', 'updated_at', 'updated_by'],
+  // color = barva ikony/textu, bg_color = barva podkladu (chip, ikona
+  // v seznamech…) — dvě NEZÁVISLÉ barvy, viz apiSaveEventType.
+  _event_types: ['id', 'label', 'icon', 'color', 'bg_color', 'created_at', 'created_by', 'updated_at', 'updated_by'],
 };
 
 /**

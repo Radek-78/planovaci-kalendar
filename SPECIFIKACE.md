@@ -134,7 +134,7 @@ const DB_SCHEMA = {
   'event_comments': ['id','event_id','author_email','text','created_at'],
   // Nastavení (viz kapitola 9.5) — obojí spravované v appce, ne v kódu.
   '_positions':   ['id','name','created_at','created_by','updated_at','updated_by'],
-  '_event_types': ['id','label','icon','color','created_at','created_by','updated_at','updated_by'],
+  '_event_types': ['id','label','icon','color','bg_color','created_at','created_by','updated_at','updated_by'],
 };
 ```
 
@@ -260,8 +260,9 @@ kde je čitelná, verzovaná a nedá se omylem rozbít editací tabulky.
 
 Od v0.1.33 plně spravované v Nastavení (list `_event_types`, viz kapitola
 9.5) — SUPERADMIN smí přidat/upravit/smazat libovolný typ, ikona jde
-vybrat jen z whitelistu `EVENT_TYPE_ICONS` (00_config.js), barva musí být
-platný hex zápis. Typ `default` nejde smazat nikdy — je to záchranná
+vybrat jen z whitelistu `EVENT_TYPE_ICONS` (00_config.js), `color`
+(ikona/text) a `bgColor` (podklad) musí být platný hex zápis — dvě na
+sobě nezávislé barvy. Typ `default` nejde smazat nikdy — je to záchranná
 varianta pro události, jejichž typ mezitím zmizel (viz `apiGetEvents`).
 
 Tabulka `_event_types` se při první potřebě (appka na ni ještě nikdy
@@ -304,6 +305,10 @@ tutéž událost.
 - že událost pokračuje do dalšího/z předchozího dne, naznačí malé trojúhelníky
   u levého/pravého okraje chipu — místo pro ně je vyhrazené u KAŽDÉHO chipu
   (i jednodenního), ať mají všechny stejnou šířku
+- barevný podklad chipu sahá až k okraji buňky (bez odstupu, hranatý roh)
+  JEN na straně, kde je vidět trojúhelník (`.cal-chip.is-continue-left/
+  -right`) — jednodenní chip bez trojúhelníků je užší, s odstupem od obou
+  okrajů buňky
 - editace i smazání z kteréhokoli dne mění **celou** událost
 - potvrzovací dialog u mazání proto vždy vypíše celý rozsah („Smazat celou
   událost 3. 9. – 5. 9.?"), aby si nikdo nespletl den s akcí
@@ -317,18 +322,19 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 
 | Endpoint | Guard | Vstup | Výstup |
 |---|---|---|---|
-| `apiGetBootstrap()` | `calendar_read` | — | uživatel, jeho práva, nastavení, typy událostí, oznámení (viz 9.4) — POZOR: toto volání zároveň posune `last_visit_at` uživatele na teď |
+| `apiGetBootstrap()` | `calendar_read` | — | uživatel, jeho práva, nastavení, typy událostí, oznámení (viz 9.4) — ČISTÉ ČTENÍ, `last_visit_at` neposouvá |
+| `apiMarkNotificationsSeen()` | `calendar_read` | — | — (posune `last_visit_at` uživatele na teď, viz 9.4) |
 | `apiGetEvents(payload)` | `calendar_read` | `{ startDate, endDate }`, obě `YYYY-MM-DD` | pole událostí protínajících rozsah |
 | `apiSaveEvent(payload)` | `calendar_write` | s `id` = úprava, bez = nová | uložená událost |
 | `apiDeleteEvent(id)` | `calendar_write` | id | — |
 | `apiGetUsers()` | `users_manage` | — | seznam uživatelů, řazený podle data vytvoření (nejnovější nahoře) |
 | `apiSaveUser(payload)` | `users_manage` | s `id` = úprava (e-mail neměnný), bez = nový uživatel | uložený uživatel |
 | `apiSetUserActive(payload)` | `users_manage` | `{ id, active }` | uložený uživatel |
-| `apiGetPositions()` | `settings_manage` | — | seznam pracovních pozic, řazený podle názvu |
+| `apiGetPositions()` | `users_manage` | — | seznam pracovních pozic, řazený podle názvu — čtení smí i ADMIN (výběr ve formuláři uživatele), správa (níže) jen SUPERADMIN |
 | `apiSavePosition(payload)` | `settings_manage` | s `id` = úprava, bez = nová | uložená pozice |
 | `apiDeletePosition(id)` | `settings_manage` | id | — |
-| `apiGetEventTypes()` | `settings_manage` | — | `{ items, availableIcons }` — typy událostí + whitelist ikon pro formulář |
-| `apiSaveEventType(payload)` | `settings_manage` | s `id` = úprava, bez = nový | uložený typ |
+| `apiGetEventTypes()` | `settings_manage` | — | `{ items, availableIcons }` — typy událostí (`color` = ikona/text, `bgColor` = podklad) + whitelist ikon pro formulář |
+| `apiSaveEventType(payload)` | `settings_manage` | s `id` = úprava, bez = nový; `{ label, icon, color, bgColor }` | uložený typ |
 | `apiDeleteEventType(id)` | `settings_manage` | id | — (typ „default" nejde smazat) |
 | `apiGetSettings()` | `settings_manage` | — | mapa nastavení |
 | `apiSaveSettings(payload)` | `settings_manage` | whitelist klíčů | uložená nastavení |
@@ -401,22 +407,24 @@ akce (`App.NOTIFY_TYPE_META`) a je oddělená od dalších spodní linkou.
   (kdo, kdy, jaká akce, popis).
 - `_users.last_visit_at` — kdy byl uživatel v appce naposled.
 
-**Kdy se co počítá/aktualizuje** — vše v `apiGetBootstrap` (přesněji
-`_computeNotifications_`), NE až kliknutím na zvoneček. Uživatel nemá důvod
-zvoneček sám od sebe otevírat, takže jediný spolehlivý okamžik, kdy appka
-ví, že ji zrovna používá, je otevření (bootstrap):
+**Kdy se co počítá** (`apiGetBootstrap` → `_computeNotifications_`, ČISTÉ
+ČTENÍ, žádný zápis):
 
-1. Přečte se STARÉ `last_visit_at` (prázdné u úplně první návštěvy se bere
-   jako „teď" — nikdo nedostane nálož oznámení o celé historii appky).
-2. Spočítají se řádky `_audit_log` novější než ono staré `last_visit_at`,
-   s akcí z whitelistu `NOTIFY_ACTIONS` (`event.create/update/delete`,
+1. Přečte se `last_visit_at` (prázdné u úplně první návštěvy se bere jako
+   „teď" — nikdo nedostane nálož oznámení o celé historii appky).
+2. Spočítají se řádky `_audit_log` novější než `last_visit_at`, s akcí
+   z whitelistu `NOTIFY_ACTIONS` (`event.create/update/delete`,
    `comment.create/delete` — správa uživatelů se do oznámení nepočítá) a
    od NĚKOHO JINÉHO, než je přihlášený (vlastní změny si nikdo nemusí
    připomínat). Omezeno na `LIMITS.NOTIFY_MAX_ITEMS` posledních.
-3. `last_visit_at` se hned posune na teď.
 
-Otevření/zavření panelu je čistě klientská záležitost (data už z bootstrapu)
-a na krok 3 nemá žádný vliv.
+**Kdy se `last_visit_at` posouvá** — teprve `apiMarkNotificationsSeen`,
+kterou klient zavolá přesně v okamžiku, kdy uživatel OTEVŘE `#notifyModal`
+(viz `App.openNotifyModal`). Dřív se posouval už v bootstrapu, při každém
+otevření appky bez ohledu na to, jestli si oznámení vůbec všiml — kdo appku
+jen otevřel a zase zavřel, o ně nenávratně přišel. Teď čekají, dokud je
+uživatel doopravdy neuvidí. Odznak se po úspěšném zavolání hned schová na
+klientovi (`unseenCount = 0`), bez čekání na další bootstrap.
 
 **Text a proklik** — `detail` (uložený v `_audit_log`) je hotová česká věta
 BEZ technického ID — server ho tam nikdy nedává, i kdyby se hodilo (např.
@@ -437,25 +445,30 @@ formátu zobrazovala posunutá o rozdíl Europe/Prague od UTC.
 
 ### 9.5 Nastavení
 
-Přístupné jen SUPERADMINovi (`settings_manage`). Záložky nad sebou sdílenou
-kartou (`.settings-tabs` + `.settings-panel`) — zatím dvě, další přibudou
-stejným vzorem (jeden panel = jeden jednoduchý seznam s vytvořením/úpravou/
-smazáním).
+Správa (přidání/úprava/smazání) přístupná jen SUPERADMINovi
+(`settings_manage`). Záložky nad sebou sdílenou kartou (`.settings-tabs` +
+`.settings-panel`) — zatím dvě, další přibudou stejným vzorem (jeden panel
+= jeden jednoduchý seznam s vytvořením/úpravou/smazáním).
 
-**Pracovní pozice** (`_positions`) — prostý seznam názvů nabízený ve
-formuláři uživatele (pole Pozice, viz `apiSaveUser`). Žádná vazba na
-uživatele: přejmenování/smazání pozice se nepromítne zpětně do těch, kdo
-ji už mají vyplněnou (stejně jako Umístění/Oddělení, které jsou zatím
-pořád volný text).
+**Pracovní pozice** (`_positions`) — prostý seznam názvů nabízený jako
+`<select>` ve formuláři uživatele (pole Pozice, viz `apiSaveUser` a
+`App.fillPositionSelect`). ČTENÍ seznamu (ne správu) smí i ADMIN — jinak by
+neměl, čím ten `<select>` naplnit při vytváření/úpravě uživatele (viz
+`apiGetPositions`, guard `users_manage`). Needituje se: pozice uživatele,
+která mezitím ze seznamu zmizela, zůstane ve formuláři vidět jako volba
+navíc („mimo seznam"), needituje se tiše na prázdno. Žádná vazba na
+uživatele obecně: přejmenování/smazání pozice se nepromítne zpětně do
+těch, kdo ji už mají vyplněnou (stejně jako Umístění/Oddělení, které jsou
+zatím pořád volný text).
 
 **Typy událostí** (`_event_types`, viz 7.1) — plná správa (přidat/upravit/
-smazat), včetně popisku, ikony (výběr z mřížky dlaždic, jen z whitelistu
-`EVENT_TYPE_ICONS`) a barvy (`<input type="color">`, na serveru ověřená
-jako platný hex). Uložení/smazání se hned promítne i do formuláře nové
-události a kalendáře v téže session (`App.refreshEventTypes`), bez nutnosti
-appku znovu načítat — bootstrap se přitom NEVOLÁ znovu (posunul by
-zbytečně `last_visit_at`, viz 9.4), mapa typů se jen přepočítá z právě
-načteného seznamu pro správu.
+smazat): popisek, ikona (výběr z mřížky dlaždic, jen z whitelistu
+`EVENT_TYPE_ICONS`) a DVĚ nezávislé barvy — `color` (ikona/text) a
+`bgColor` (podklad), obě `<input type="color">`, na serveru ověřené jako
+platný hex. Uložení/smazání se hned promítne i do formuláře nové události
+a kalendáře v téže session (`App.refreshEventTypes`), bez nutnosti appku
+znovu načítat — mapa typů se jen přepočítá z právě načteného seznamu pro
+správu, žádné další volání serveru.
 
 ---
 

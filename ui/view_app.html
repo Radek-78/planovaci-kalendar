@@ -397,7 +397,7 @@
             </label>
             <label>
               <span>Pozice</span>
-              <input type="text" id="userFormPosition" maxlength="60">
+              <select id="userFormPosition"><!-- vykresleno JS, viz fillPositionSelect --></select>
             </label>
           </div>
         </div>
@@ -463,15 +463,22 @@
   <form id="eventTypeForm">
     <div class="modal-body event-type-form-body">
       <div class="field-group">
-        <p class="kicker"><i class="ph ph-text-aa" aria-hidden="true"></i> Popisek a barva</p>
+        <p class="kicker"><i class="ph ph-text-aa" aria-hidden="true"></i> Popisek</p>
+        <label>
+          <span>Popisek *</span>
+          <input type="text" id="eventTypeFormLabel" maxlength="40" required>
+        </label>
+      </div>
+      <div class="field-group">
+        <p class="kicker"><i class="ph ph-palette" aria-hidden="true"></i> Barvy</p>
         <div class="event-form-row">
           <label>
-            <span>Popisek *</span>
-            <input type="text" id="eventTypeFormLabel" maxlength="40" required>
+            <span>Barva ikony</span>
+            <input type="color" id="eventTypeFormColor" value="#0050aa">
           </label>
           <label>
-            <span>Barva</span>
-            <input type="color" id="eventTypeFormColor" value="#0050aa">
+            <span>Barva podkladu</span>
+            <input type="color" id="eventTypeFormBgColor" value="#e6eef8">
           </label>
         </div>
       </div>
@@ -745,6 +752,44 @@
         .join('');
     },
 
+    /**
+     * Znovu načte pracovní pozice (this.positions) čerstvě ze serveru a
+     * hned naplní <select> Pozice ve formuláři uživatele — volá se při
+     * každém vstupu do sekce Uživatelé (viz showSection), ať jsou v
+     * nabídce vidět i pozice přidané mezitím v Nastavení. Tichý neúspěch
+     * (silent) — formulář zůstane s tím, co už měl, nic se nerozbije.
+     */
+    loadPositionsForSelect() {
+      Ui.call('apiGetPositions', null, { silent: true })
+        .then((positions) => {
+          this.positions = positions;
+          this.fillPositionSelect(document.querySelector('#userFormPosition').value);
+        })
+        .catch(() => {});
+    },
+
+    /**
+     * Naplní <select> Pozice z this.positions (viz apiGetPositions).
+     * `currentValue` (pozice, kterou má upravovaný uživatel už vyplněnou)
+     * se přidá jako volba navíc, i když v aktuálním seznamu není — jinak
+     * by needitovaný select tiše nahradil neznámou hodnotu prázdnou při
+     * pouhém otevření formuláře, aniž by si toho kdokoli všiml.
+     */
+    fillPositionSelect(currentValue) {
+      const select = document.querySelector('#userFormPosition');
+      const names = this.positions.map((p) => p.name);
+
+      let options = '<option value="">— nevybráno —</option>' +
+        names.map((n) => '<option value="' + Ui.escape(n) + '">' + Ui.escape(n) + '</option>').join('');
+
+      if (currentValue && names.indexOf(currentValue) === -1) {
+        options += '<option value="' + Ui.escape(currentValue) + '">' + Ui.escape(currentValue) + ' (mimo seznam)</option>';
+      }
+
+      select.innerHTML = options;
+      select.value = currentValue || '';
+    },
+
     /** Přepínání panelů kliknutím v postranním menu a navigace v kalendáři. */
     bindNav() {
       document.querySelectorAll('.nav-link').forEach((button) => {
@@ -868,11 +913,33 @@
       });
     },
 
+    /**
+     * Otevřením modalu appka bere oznámení za VIDĚNÁ — pošle
+     * apiMarkNotificationsSeen, který na serveru posune last_visit_at.
+     * Předtím appka jen ukazovala odznak podle stavu z bootstrapu a
+     * last_visit_at se posouval automaticky při každém otevření appky —
+     * kdo si zvoneček nevšiml, o oznámení nenávratně přišel. Teď čekají,
+     * dokud je uživatel doopravdy neuvidí (otevře tenhle modal).
+     *
+     * Odznak se hned schová (unseenCount na 0) — už není co avizovat, i
+     * kdyby appka zůstala otevřená dál. Tichý neúspěch (silent) — nezdaří-li
+     * se zápis, uživatel si oznámení příště jen prohlédne znovu, nic se
+     * nerozbije.
+     */
     openNotifyModal(originEl) {
       this.renderNotifyList();
       const dialog = document.querySelector('#notifyModal');
       this.setModalOrigin(dialog, originEl);
       Ui.openModal(dialog);
+
+      if (this.notifications.unseenCount > 0) {
+        Ui.call('apiMarkNotificationsSeen', null, { silent: true })
+          .then(() => {
+            this.notifications.unseenCount = 0;
+            this.renderNotifyBadge();
+          })
+          .catch(() => {});
+      }
     },
 
     /**
@@ -1341,7 +1408,7 @@
       document.querySelector('#userFormPermission').value = user ? user.permission : 'EDITOR';
       document.querySelector('#userFormLocation').value = user ? user.location : '';
       document.querySelector('#userFormDepartment').value = user ? user.department : '';
-      document.querySelector('#userFormPosition').value = user ? user.position : '';
+      this.fillPositionSelect(user ? user.position : '');
       document.querySelector('#userForm').dataset.editId = user ? user.id : '';
       this.updateUserFormPermissionVisibility();
 
@@ -1798,7 +1865,7 @@
           '<i class="ph ph-trash" aria-hidden="true"></i></button>';
 
       return '<div class="settings-row">' +
-        '<span class="settings-row-icon" style="--type-color:' + Ui.escape(t.color) + '">' +
+        '<span class="settings-row-icon" style="--type-color:' + Ui.escape(t.color) + '; --type-bg:' + Ui.escape(t.bgColor) + '">' +
           '<i class="ph ph-' + Ui.escape(t.icon) + '" aria-hidden="true"></i></span>' +
         '<span class="settings-row-name">' + Ui.escape(t.label) +
           (isDefault ? ' <span class="settings-row-tag">výchozí</span>' : '') + '</span>' +
@@ -1856,6 +1923,7 @@
       document.querySelector('#eventTypeFormModalTitle').textContent = type ? type.label : 'Přidat typ události';
       document.querySelector('#eventTypeFormLabel').value = type ? type.label : '';
       document.querySelector('#eventTypeFormColor').value = type ? type.color : '#0050aa';
+      document.querySelector('#eventTypeFormBgColor').value = type ? type.bgColor : '#e6eef8';
       document.querySelector('#eventTypeForm').dataset.editId = type ? type.id : '';
       this.renderEventTypeIconPicker(type ? type.icon : this.eventTypeIcons[0]);
       document.querySelector('#eventTypeFormSubmit').innerHTML =
@@ -1885,6 +1953,7 @@
         label: label,
         icon: icon,
         color: document.querySelector('#eventTypeFormColor').value,
+        bgColor: document.querySelector('#eventTypeFormBgColor').value,
       };
       if (editId) payload.id = editId;
 
@@ -1939,7 +2008,10 @@
       // Data sekce se načítají, až se na ni skutečně přepne — ne dopředu
       // při startu appky. Při 6 uživatelích je znovunačtení při každém
       // kliknutí levné a zaručí to čerstvá data i po vytvoření nového.
-      if (name === 'users' && this.canManageUsers) this.loadUsers();
+      if (name === 'users' && this.canManageUsers) {
+        this.loadUsers();
+        this.loadPositionsForSelect();
+      }
       if (name === 'settings' && this.canManageSettings) {
         this.loadPositions();
         this.loadEventTypesAdmin();
@@ -2214,7 +2286,7 @@
      * hover) — klik mimo ně pořád otevírá jen detail (čtení).
      */
     renderChip(event, isFirstDay, continuesLeft, continuesRight, laneTrack, colLine) {
-      const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a' };
+      const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a', bgColor: '#eef0f3' };
       const timeLabel = event.allDay ? 'Celý den' : event.start.slice(11, 16);
       const label = isFirstDay ? timeLabel + ' ' + event.title : event.title;
 
@@ -2232,8 +2304,10 @@
           '</span>'
         : '';
 
-      return '<div class="cal-chip" data-event-id="' + Ui.escape(event.id) +
-        '" style="--chip-color:' + Ui.escape(type.color) + '; grid-row:' + laneTrack +
+      const cls = 'cal-chip' + (continuesLeft ? ' is-continue-left' : '') + (continuesRight ? ' is-continue-right' : '');
+
+      return '<div class="' + cls + '" data-event-id="' + Ui.escape(event.id) +
+        '" style="--chip-color:' + Ui.escape(type.color) + '; --chip-bg:' + Ui.escape(type.bgColor) + '; grid-row:' + laneTrack +
         '; grid-column:' + colLine + '">' +
         leftEdge +
         '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i>' +
@@ -2316,7 +2390,7 @@
      * odmítl.
      */
     renderDayEventItem(event) {
-      const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a' };
+      const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a', bgColor: '#eef0f3' };
 
       const actions = this.canManageEvent(event)
         ? '<span class="day-event-actions">' +
@@ -2328,7 +2402,7 @@
         : '';
 
       return '<div class="day-event-item" data-event-id="' + Ui.escape(event.id) + '">' +
-        '<span class="day-event-icon" style="--chip-color:' + Ui.escape(type.color) + '">' +
+        '<span class="day-event-icon" style="--chip-color:' + Ui.escape(type.color) + '; --chip-bg:' + Ui.escape(type.bgColor) + '">' +
           '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i></span>' +
         '<div class="day-event-text">' +
           '<div class="day-event-title-row"><strong>' + Ui.escape(event.title) + '</strong>' +
@@ -2353,13 +2427,14 @@
 
       this.hideChipTooltip();
 
-      const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a' };
+      const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a', bgColor: '#eef0f3' };
 
       // --chip-color na dialogu samotném — díky dědění CSS proměnných ho
       // automaticky použije jak ikona v hlavičce, tak barevný pruh info
       // panelu, bez nutnosti nastavovat ho na obou zvlášť.
       const dialog = document.querySelector('#eventModal');
       dialog.style.setProperty('--chip-color', type.color);
+      dialog.style.setProperty('--chip-bg', type.bgColor);
       document.querySelector('#eventModalIcon').innerHTML =
         '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i>';
 
@@ -2573,10 +2648,11 @@
       const event = this.currentEvents.find((e) => e.id === chip.dataset.eventId);
       if (!event) return;
 
-      const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a' };
+      const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a', bgColor: '#eef0f3' };
       const tooltip = document.querySelector('#eventTooltip');
 
       tooltip.style.setProperty('--chip-color', type.color);
+      tooltip.style.setProperty('--chip-bg', type.bgColor);
       tooltip.innerHTML =
         '<div class="event-tooltip-header">' +
           '<span class="event-tooltip-icon"><i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i></span>' +

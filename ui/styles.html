@@ -1327,7 +1327,7 @@
      .notify-item-icon (--type-color se nastavuje inline, viz renderEventTypeRow). */
   .settings-row-icon {
     align-items: center;
-    background: color-mix(in srgb, var(--type-color, var(--muted)) 16%, white);
+    background: var(--type-bg, var(--page));
     border-radius: 8px;
     color: var(--type-color, var(--muted));
     display: flex;
@@ -1806,7 +1806,7 @@
   .cal-chip {
     align-items: center;
     align-self: start;
-    background: color-mix(in srgb, var(--chip-color) 14%, white);
+    background: var(--chip-bg, var(--page));
     border-radius: 4px;
     color: var(--chip-color);
     display: flex;
@@ -1819,6 +1819,23 @@
     position: relative;
     white-space: nowrap;
     z-index: 1;
+  }
+
+  /* Barevný podklad sahá až k okraji buňky (bez odstupu, hranatý roh) JEN
+     na straně, kde je vidět šipka pokračování (.cal-chip-edge) — jinak
+     zůstává užší, s odstupem od okraje (viz margin/border-radius výše).
+     Díky tomu chip vizuálně "naváže" na sousední den přesně tam, kde to
+     šipka slibuje, a nikde jinde. */
+  .cal-chip.is-continue-left {
+    border-bottom-left-radius: 0;
+    border-top-left-radius: 0;
+    margin-left: 0;
+  }
+
+  .cal-chip.is-continue-right {
+    border-bottom-right-radius: 0;
+    border-top-right-radius: 0;
+    margin-right: 0;
   }
 
   .cal-chip i {
@@ -2000,7 +2017,7 @@
   /* V modalu detailu události je ikona barevná podle typu (--chip-color),
      ne pevně žlutá jako jinde — stejný jazyk barev jako chipy v mřížce. */
   .modal-icon.is-event-color {
-    background: color-mix(in srgb, var(--chip-color) 18%, white);
+    background: var(--chip-bg, var(--page));
     color: var(--chip-color);
   }
 
@@ -2164,7 +2181,7 @@
 
   .day-event-icon {
     align-items: center;
-    background: color-mix(in srgb, var(--chip-color) 16%, white);
+    background: var(--chip-bg, var(--page));
     border-radius: 8px;
     color: var(--chip-color);
     display: flex;
@@ -2747,7 +2764,7 @@
 
   .event-tooltip-icon {
     align-items: center;
-    background: color-mix(in srgb, var(--chip-color) 15%, white);
+    background: var(--chip-bg, var(--page));
     border-radius: 6px;
     color: var(--chip-color);
     display: flex;
