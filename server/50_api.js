@@ -398,17 +398,17 @@ function _activeSuperadminCount_() {
 }
 
 /**
- * Seznam všech uživatelů, seřazený podle data vytvoření — nejnovější nahoře,
- * ať je při testování/přidávání hned vidět poslední založený účet. Řadí se
- * podle syrového created_at (chráněný textový sloupec, viz TEXT_COLUMNS —
- * čistý ISO řetězec, bezpečně porovnatelný lexikograficky) ještě PŘED
- * převodem na veřejnou podobu, takže createdAt nemusí chodit na klienta.
+ * Seznam všech uživatelů, seřazený podle data vytvoření — od nejstaršího.
+ * Řadí se podle syrového created_at (chráněný textový sloupec, viz
+ * TEXT_COLUMNS — čistý ISO řetězec, bezpečně porovnatelný lexikograficky)
+ * ještě PŘED převodem na veřejnou podobu, takže createdAt nemusí chodit
+ * na klienta.
  */
 function apiGetUsers() {
   return guard_(PERM_KEYS.USERS_MANAGE, () => {
     return dbGetAll_(SHEETS.USERS)
       .slice()
-      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+      .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')))
       .map(_publicUserRow_);
   });
 }

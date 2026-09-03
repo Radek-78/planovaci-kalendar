@@ -5,6 +5,10 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.40 - 03.09.2026 14:25
+- Uživatelé — seznam se teď řadí podle data a času vytvoření vzestupně, od nejstaršího (dřív nejnovější nahoře)
+- tichá aktualizace po uložení nového uživatele ho teď proto přidává na konec seznamu, ne na začátek
+
 ## v0.1.39 - 03.09.2026 14:02
 - Drobná oprava komentáře u ORG_FIELD_MAX (00_config.js) — upřesnění, že Oddělení a Pozice se od minulé verze vybírají ze seznamu v Nastavení, i když uložená hodnota je pořád jen text, bez vazby na cizí klíč
 

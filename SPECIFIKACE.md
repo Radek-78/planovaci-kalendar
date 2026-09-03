@@ -330,7 +330,7 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiGetEvents(payload)` | `calendar_read` | `{ startDate, endDate }`, obě `YYYY-MM-DD` | pole událostí protínajících rozsah |
 | `apiSaveEvent(payload)` | `calendar_write` | s `id` = úprava, bez = nová | uložená událost |
 | `apiDeleteEvent(id)` | `calendar_write` | id | — |
-| `apiGetUsers()` | `users_manage` | — | seznam uživatelů, řazený podle data vytvoření (nejnovější nahoře) |
+| `apiGetUsers()` | `users_manage` | — | seznam uživatelů, řazený podle data vytvoření (od nejstaršího) |
 | `apiSaveUser(payload)` | `users_manage` | s `id` = úprava (e-mail neměnný), bez = nový uživatel | uložený uživatel |
 | `apiSetUserActive(payload)` | `users_manage` | `{ id, active }` | uložený uživatel |
 | `apiGetDepartments()` | `users_manage` | — | seznam oddělení, řazený podle názvu — čtení smí i ADMIN (výběr ve formuláři uživatele), správa (níže) jen SUPERADMIN |

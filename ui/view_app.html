@@ -1667,15 +1667,16 @@
      * proč kvůli jednomu řádku znovu tahat celý seznam (to by seznam viditelně
      * probliklo přes "Načítám…", viz loadUsers). Řazení se přitom nemusí
      * přepočítávat: existující záznam zůstává na svém místě (created_at se
-     * needituje) a nový je vždycky nejnovější, tedy patří navrch — server řadí
-     * apiGetUsers sestupně podle created_at (viz komentář tam).
+     * needituje) a nový je vždycky nejnovější, tedy patří navspod — server
+     * řadí apiGetUsers vzestupně podle created_at, od nejstaršího (viz
+     * komentář tam).
      */
     applyUserToCache(record, isNew) {
       if (isNew) {
-        this.usersCache.unshift(record);
+        this.usersCache.push(record);
       } else {
         const idx = this.usersCache.findIndex((u) => u.id === record.id);
-        if (idx === -1) this.usersCache.unshift(record); // pro jistotu, kdyby cache nesouhlasila
+        if (idx === -1) this.usersCache.push(record); // pro jistotu, kdyby cache nesouhlasila
         else this.usersCache[idx] = record;
       }
       this.renderUsersFromCache();
