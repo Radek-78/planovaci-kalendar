@@ -5,6 +5,11 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.35 - 03.09.2026 13:14
+- Typy udalosti - vyber ikony v editacnim formulari ted zobrazuje zivy nahled ve skutecne zvolenych barvach (barva ikony i barva podkladu) misto obecne modre, prebarvi se hned pri zmene barvy nebo vyberu jine ikony
+- opravena i chybejici barva podkladu v mape typu pro kalendar po tiche uprave typu (drive zustala nedefinovana, dokud se appka znovu nenacetla)
+- Uzivatele, Pracovni pozice a Typy udalosti - ulozeni/smazani zaznamu uz nezpusobi viditelne probliknuti "Nacitam..." a znovunacteni celeho seznamu ze serveru, misto toho se vraceny zaznam potichu rovnou promitne do uz zobrazeneho seznamu
+
 ## v0.1.34 - 03.09.2026 12:57
 - Oznámení — opraven způsob evidence přečtení: dříve se last_visit_at posouval automaticky při každém otevření appky (kdo si zvonečku nevšiml, o oznámení nenávratně přišel), teď až explicitním otevřením modalu se zvonečkem (nový endpoint apiMarkNotificationsSeen), odznak se hned schová
 - Typy událostí — barva ikony a barva podkladu jsou teď dvě nezávisle nastavitelné barvy místo jedné počítané

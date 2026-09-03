@@ -1465,11 +1465,11 @@
       Ui.setButtonLoading(submitButton, true, 'Ukládám…');
 
       Ui.call('apiSaveUser', payload, { silent: true })
-        .then(() => {
+        .then((record) => {
           Ui.setButtonLoading(submitButton, false);
           Ui.closeModal(document.querySelector('#userFormModal'));
           Ui.toast(editId ? 'Uživatel upraven.' : 'Uživatel vytvořen.', 'success');
-          this.loadUsers(); // znovu načte seznam, ať je změna hned vidět
+          this.applyUserToCache(record, !editId); // tiché uložení do seznamu, bez znovunačtení z serveru
         })
         .catch((error) => {
           Ui.setButtonLoading(submitButton, false);
@@ -1528,10 +1528,10 @@
         onConfirm: (okBtn, dialog) => {
           Ui.setButtonLoading(okBtn, true, 'Deaktivuji…');
           Ui.call('apiSetUserActive', { id: user.id, active: false }, { silent: true })
-            .then(() => {
+            .then((record) => {
               Ui.closeModal(dialog);
               Ui.toast('Uživatel deaktivován.', 'success');
-              this.loadUsers();
+              this.applyUserToCache(record, false);
             })
             .catch((error) => {
               Ui.setButtonLoading(okBtn, false);
@@ -1546,9 +1546,9 @@
       if (button) Ui.setButtonLoading(button, true);
 
       Ui.call('apiSetUserActive', { id: user.id, active: active }, { silent: true })
-        .then(() => {
+        .then((record) => {
           Ui.toast(active ? 'Uživatel aktivován.' : 'Uživatel deaktivován.', 'success');
-          this.loadUsers();
+          this.applyUserToCache(record, false);
         })
         .catch((error) => {
           if (button) Ui.setButtonLoading(button, false);
@@ -1570,10 +1570,35 @@
 
     renderUsers(users) {
       this.usersCache = users; // pro dohledání dat při kliku na tužku (openEditUserModal)
+      this.renderUsersFromCache();
+    },
+
+    /** Vykreslí #usersList z this.usersCache beze změny — samostatná funkce, ať ji může použít i applyUserToCache. */
+    renderUsersFromCache() {
       const list = document.querySelector('#usersList');
-      list.innerHTML = users.length
-        ? users.map((u) => this.renderUserRow(u)).join('')
+      list.innerHTML = this.usersCache.length
+        ? this.usersCache.map((u) => this.renderUserRow(u)).join('')
         : this.usersPlaceholder('Zatím žádní uživatelé.');
+    },
+
+    /**
+     * Tiché uložení uživatele do this.usersCache BEZ volání serveru navíc —
+     * apiSaveUser/apiSetUserActive už vrací kompletní uložený záznam, není
+     * proč kvůli jednomu řádku znovu tahat celý seznam (to by seznam viditelně
+     * probliklo přes "Načítám…", viz loadUsers). Řazení se přitom nemusí
+     * přepočítávat: existující záznam zůstává na svém místě (created_at se
+     * needituje) a nový je vždycky nejnovější, tedy patří navrch — server řadí
+     * apiGetUsers sestupně podle created_at (viz komentář tam).
+     */
+    applyUserToCache(record, isNew) {
+      if (isNew) {
+        this.usersCache.unshift(record);
+      } else {
+        const idx = this.usersCache.findIndex((u) => u.id === record.id);
+        if (idx === -1) this.usersCache.unshift(record); // pro jistotu, kdyby cache nesouhlasila
+        else this.usersCache[idx] = record;
+      }
+      this.renderUsersFromCache();
     },
 
     /** Prázdný/chybový/načítací stav seznamu — stejný jazyk jako placeholder Nastavení. */
@@ -1717,6 +1742,31 @@
         : this.settingsPlaceholder('Zatím žádné pracovní pozice.');
     },
 
+    /**
+     * Tiché uložení pozice do this.positions BEZ volání serveru navíc
+     * (apiSavePosition už vrací kompletní záznam, viz submitPositionForm).
+     * Seznam je řazený abecedně (stejně jako apiGetPositions na serveru),
+     * proto se po vložení/přejmenování znovu seřadí — jde jen o srovnání
+     * v paměti, žádný další dotaz na server.
+     */
+    applyPositionToCache(record, isNew) {
+      if (isNew) {
+        this.positions.push(record);
+      } else {
+        const idx = this.positions.findIndex((p) => p.id === record.id);
+        if (idx === -1) this.positions.push(record);
+        else this.positions[idx] = record;
+      }
+      this.positions.sort((a, b) => a.name.localeCompare(b.name, 'cs'));
+      this.renderPositions();
+    },
+
+    /** Odebere smazanou pozici z this.positions a znovu vykreslí seznam, bez volání serveru. */
+    removePositionFromCache(id) {
+      this.positions = this.positions.filter((p) => p.id !== id);
+      this.renderPositions();
+    },
+
     renderPositionRow(p) {
       return '<div class="settings-row">' +
         '<span class="settings-row-name">' + Ui.escape(p.name) + '</span>' +
@@ -1778,11 +1828,11 @@
       Ui.setButtonLoading(submitButton, true, 'Ukládám…');
 
       Ui.call('apiSavePosition', payload, { silent: true })
-        .then(() => {
+        .then((record) => {
           Ui.setButtonLoading(submitButton, false);
           Ui.closeModal(document.querySelector('#positionFormModal'));
           Ui.toast(editId ? 'Pozice upravena.' : 'Pozice vytvořena.', 'success');
-          this.loadPositions();
+          this.applyPositionToCache(record, !editId); // tiché uložení do seznamu, bez znovunačtení z serveru
         })
         .catch((error) => {
           Ui.setButtonLoading(submitButton, false);
@@ -1804,7 +1854,7 @@
             .then(() => {
               Ui.closeModal(dialog);
               Ui.toast('Pozice smazána.', 'success');
-              this.loadPositions();
+              this.removePositionFromCache(position.id);
             })
             .catch((error) => {
               Ui.setButtonLoading(okBtn, false);
@@ -1841,7 +1891,7 @@
     refreshEventTypes() {
       const map = {};
       this.eventTypesAdmin.forEach((t) => {
-        map[t.id] = { label: t.label, icon: t.icon, color: t.color };
+        map[t.id] = { label: t.label, icon: t.icon, color: t.color, bgColor: t.bgColor };
       });
       this.eventTypes = map;
       this.fillEventTypeSelect();
@@ -1855,6 +1905,33 @@
       list.innerHTML = this.eventTypesAdmin.length
         ? this.eventTypesAdmin.map((t) => this.renderEventTypeRow(t)).join('')
         : this.settingsPlaceholder('Zatím žádné typy událostí.');
+    },
+
+    /**
+     * Tiché uložení typu události do this.eventTypesAdmin BEZ volání serveru
+     * navíc (apiSaveEventType už vrací kompletní záznam, viz submitEventTypeForm).
+     * Řazení se neřeší — apiGetEventTypes vrací řádky v pořadí tabulky, nový
+     * typ tak přirozeně patří na konec (nový řádek), stejně jako by ho vrátil
+     * server. refreshEventTypes() na závěr promítne změnu i do kalendáře/
+     * formuláře události (this.eventTypes), stejně jako po loadEventTypesAdmin.
+     */
+    applyEventTypeToCache(record, isNew) {
+      if (isNew) {
+        this.eventTypesAdmin.push(record);
+      } else {
+        const idx = this.eventTypesAdmin.findIndex((t) => t.id === record.id);
+        if (idx === -1) this.eventTypesAdmin.push(record);
+        else this.eventTypesAdmin[idx] = record;
+      }
+      this.renderEventTypesAdmin();
+      this.refreshEventTypes();
+    },
+
+    /** Odebere smazaný typ z this.eventTypesAdmin a promítne to i do kalendáře, bez volání serveru. */
+    removeEventTypeFromCache(id) {
+      this.eventTypesAdmin = this.eventTypesAdmin.filter((t) => t.id !== id);
+      this.renderEventTypesAdmin();
+      this.refreshEventTypes();
     },
 
     /** Typ „default" nejde smazat (viz apiDeleteEventType na serveru) — proto bez ikony koše, žádné mrtvé tlačítko. */
@@ -1902,6 +1979,23 @@
         picker.dataset.selected = option.dataset.icon;
         picker.querySelectorAll('.type-icon-option').forEach((el) => el.classList.toggle('is-selected', el === option));
       });
+
+      // Změna kterékoli ze dvou barev hned přebarví vybranou dlaždici — ať je
+      // vidět, jak bude typ vypadat v kalendáři, dřív než se uloží.
+      document.querySelector('#eventTypeFormColor').addEventListener('input', () => this.updateEventTypeIconPreview());
+      document.querySelector('#eventTypeFormBgColor').addEventListener('input', () => this.updateEventTypeIconPreview());
+    },
+
+    /**
+     * Nastaví CSS proměnné --type-preview-bg/--type-preview-color na wrapperu
+     * mřížky ikon podle aktuálních hodnot barevných polí — čte je pravidlo
+     * .type-icon-option.is-selected (viz styles.html). Volá se při otevření
+     * formuláře (renderEventTypeIconPicker) i při každé změně barvy.
+     */
+    updateEventTypeIconPreview() {
+      const picker = document.querySelector('#eventTypeFormIconPicker');
+      picker.style.setProperty('--type-preview-bg', document.querySelector('#eventTypeFormBgColor').value);
+      picker.style.setProperty('--type-preview-color', document.querySelector('#eventTypeFormColor').value);
     },
 
     /** Mřížka dlaždic s ikonami — z whitelistu ze serveru (this.eventTypeIcons, viz apiGetEventTypes), ne z volného textu. */
@@ -1913,6 +2007,7 @@
           '" data-icon="' + Ui.escape(icon) + '" title="' + Ui.escape(icon) + '" aria-label="Ikona ' + Ui.escape(icon) + '">' +
           '<i class="ph ph-' + Ui.escape(icon) + '" aria-hidden="true"></i></button>'
       ).join('');
+      this.updateEventTypeIconPreview(); // barvy polí jsou v tuhle chvíli už vyplněné (viz openEventTypeFormModal)
     },
 
     /** Otevře formulář typu události — bez parametru type založí nový, s ním upraví existující. */
@@ -1961,11 +2056,11 @@
       Ui.setButtonLoading(submitButton, true, 'Ukládám…');
 
       Ui.call('apiSaveEventType', payload, { silent: true })
-        .then(() => {
+        .then((record) => {
           Ui.setButtonLoading(submitButton, false);
           Ui.closeModal(document.querySelector('#eventTypeFormModal'));
           Ui.toast(editId ? 'Typ události upraven.' : 'Typ události vytvořen.', 'success');
-          this.loadEventTypesAdmin(); // znovu načte seznam a rovnou promítne i do kalendáře (viz refreshEventTypes)
+          this.applyEventTypeToCache(record, !editId); // tiché uložení, rovnou promítne i do kalendáře (viz refreshEventTypes)
         })
         .catch((error) => {
           Ui.setButtonLoading(submitButton, false);
@@ -1987,7 +2082,7 @@
             .then(() => {
               Ui.closeModal(dialog);
               Ui.toast('Typ události smazán.', 'success');
-              this.loadEventTypesAdmin();
+              this.removeEventTypeFromCache(type.id);
             })
             .catch((error) => {
               Ui.setButtonLoading(okBtn, false);

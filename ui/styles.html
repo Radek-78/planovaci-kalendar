@@ -1384,10 +1384,18 @@
     background: var(--page);
   }
 
+  /*
+   * Vybraná dlaždice se obarví podle SKUTEČNĚ zvolených barev typu (Barva
+   * ikony/Barva podkladu, viz #eventTypeFormColor/#eventTypeFormBgColor),
+   * ne obecnou modrou — ať výběr v mřížce vypadá stejně jako výsledný chip
+   * v kalendáři. Proměnné nastavuje updateEventTypeIconPreview() na wrapperu
+   * .type-icon-picker, --lidl-blue/--white jsou jen záložní hodnota, kdyby
+   * se picker použil bez JS náhledu.
+   */
   .type-icon-option.is-selected {
-    background: var(--lidl-blue);
-    border-color: var(--lidl-blue);
-    color: var(--white);
+    background: var(--type-preview-bg, var(--lidl-blue));
+    border-color: var(--type-preview-color, var(--lidl-blue));
+    color: var(--type-preview-color, var(--white));
   }
 
   .type-icon-option i {
