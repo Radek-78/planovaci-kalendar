@@ -142,17 +142,20 @@
       </div>
     </section>
 
-    <!-- Panel: Nastavení — zatím dvě záložky (Pracovní pozice, Typy
-         událostí), obě jednoduché seznamy s vytvořením/úpravou/smazáním
-         (viz bindSettingsTabs/loadPositions/loadEventTypesAdmin). Další
-         (Oddělení, obecné nastavení appky…) přibudou stejným vzorem. -->
+    <!-- Panel: Nastavení — tři záložky (Oddělení, Pracovní pozice, Typy
+         událostí), všechny jednoduché seznamy s vytvořením/úpravou/smazáním
+         (viz bindSettings/loadDepartments/loadPositions/loadEventTypesAdmin).
+         Další (obecné nastavení appky…) přibudou stejným vzorem. -->
     <section class="view-panel" data-page-section="settings">
       <div class="section-header">
         <h2>Nastavení</h2>
       </div>
       <div class="settings-wrap">
         <div class="settings-tabs" id="settingsTabs">
-          <button class="settings-tab is-active" type="button" data-settings-tab="positions">
+          <button class="settings-tab is-active" type="button" data-settings-tab="departments">
+            <i class="ph ph-buildings" aria-hidden="true"></i> Oddělení
+          </button>
+          <button class="settings-tab" type="button" data-settings-tab="positions">
             <i class="ph ph-identification-badge" aria-hidden="true"></i> Pracovní pozice
           </button>
           <button class="settings-tab" type="button" data-settings-tab="eventTypes">
@@ -160,9 +163,23 @@
           </button>
         </div>
 
+        <!-- Oddělení — prostý seznam, žádná vazba na uživatele (viz
+             apiSaveDepartment na serveru), stejný vzor jako Pracovní pozice. -->
+        <div class="settings-panel is-active" data-settings-panel="departments">
+          <div class="settings-panel-head">
+            <p class="settings-panel-desc">Seznam oddělení pro výběr ve formuláři uživatele.</p>
+            <button class="button button-primary" type="button" id="departmentsCreateBtn">
+              <i class="ph ph-plus" aria-hidden="true"></i> Přidat oddělení
+            </button>
+          </div>
+          <div class="settings-list-wrap">
+            <div class="settings-list" id="departmentsList"><!-- vykresleno JS --></div>
+          </div>
+        </div>
+
         <!-- Pracovní pozice — prostý seznam, žádná vazba na uživatele
              (viz apiSavePosition na serveru). -->
-        <div class="settings-panel is-active" data-settings-panel="positions">
+        <div class="settings-panel" data-settings-panel="positions">
           <div class="settings-panel-head">
             <p class="settings-panel-desc">Seznam pracovních pozic pro výběr ve formuláři uživatele.</p>
             <button class="button button-primary" type="button" id="positionsCreateBtn">
@@ -393,7 +410,7 @@
           <div class="event-form-row">
             <label>
               <span>Oddělení</span>
-              <input type="text" id="userFormDepartment" maxlength="60">
+              <select id="userFormDepartment"><!-- vykresleno JS, viz fillDepartmentSelect --></select>
             </label>
             <label>
               <span>Pozice</span>
@@ -439,6 +456,36 @@
         <i class="ph ph-x" aria-hidden="true"></i> Zrušit
       </button>
       <button type="submit" class="button button-primary" id="positionFormSubmit">
+        <i class="ph ph-check" aria-hidden="true"></i> Vytvořit
+      </button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ══ Modal: oddělení (nové/upravované) — stejný vzor jako pracovní pozice ══ -->
+<dialog class="modal modal-grow" id="departmentFormModal">
+  <div class="modal-header">
+    <span class="modal-icon" id="departmentFormModalIcon"><i class="ph ph-buildings" aria-hidden="true"></i></span>
+    <div class="modal-header-text">
+      <p class="kicker" id="departmentFormKicker">Nové oddělení</p>
+      <h2 id="departmentFormModalTitle">Přidat oddělení</h2>
+    </div>
+    <button class="modal-close" type="button" id="departmentFormClose" aria-label="Zavřít">
+      <i class="ph ph-x" aria-hidden="true"></i>
+    </button>
+  </div>
+  <form id="departmentForm">
+    <div class="modal-body">
+      <label>
+        <span>Název *</span>
+        <input type="text" id="departmentFormName" maxlength="60" required>
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="button button-secondary" id="departmentFormCancel">
+        <i class="ph ph-x" aria-hidden="true"></i> Zrušit
+      </button>
+      <button type="submit" class="button button-primary" id="departmentFormSubmit">
         <i class="ph ph-check" aria-hidden="true"></i> Vytvořit
       </button>
     </div>
@@ -631,6 +678,9 @@
     /** Smí uživatel spravovat Nastavení (pracovní pozice, typy událostí…)? Ze serveru, stejný princip jako canManageUsers. */
     canManageSettings: false,
 
+    /** Poslední načtený seznam oddělení — pro dohledání dat při otevření editace. */
+    departments: [],
+
     /** Poslední načtený seznam pracovních pozic — pro dohledání dat při otevření editace. */
     positions: [],
 
@@ -778,6 +828,36 @@
     fillPositionSelect(currentValue) {
       const select = document.querySelector('#userFormPosition');
       const names = this.positions.map((p) => p.name);
+
+      let options = '<option value="">— nevybráno —</option>' +
+        names.map((n) => '<option value="' + Ui.escape(n) + '">' + Ui.escape(n) + '</option>').join('');
+
+      if (currentValue && names.indexOf(currentValue) === -1) {
+        options += '<option value="' + Ui.escape(currentValue) + '">' + Ui.escape(currentValue) + ' (mimo seznam)</option>';
+      }
+
+      select.innerHTML = options;
+      select.value = currentValue || '';
+    },
+
+    /**
+     * Znovu načte oddělení (this.departments) čerstvě ze serveru a hned
+     * naplní <select> Oddělení ve formuláři uživatele — stejný vzor jako
+     * loadPositionsForSelect, volá se při každém vstupu do sekce Uživatelé.
+     */
+    loadDepartmentsForSelect() {
+      Ui.call('apiGetDepartments', null, { silent: true })
+        .then((departments) => {
+          this.departments = departments;
+          this.fillDepartmentSelect(document.querySelector('#userFormDepartment').value);
+        })
+        .catch(() => {});
+    },
+
+    /** Naplní <select> Oddělení z this.departments — stejný vzor jako fillPositionSelect. */
+    fillDepartmentSelect(currentValue) {
+      const select = document.querySelector('#userFormDepartment');
+      const names = this.departments.map((d) => d.name);
 
       let options = '<option value="">— nevybráno —</option>' +
         names.map((n) => '<option value="' + Ui.escape(n) + '">' + Ui.escape(n) + '</option>').join('');
@@ -1407,7 +1487,7 @@
       document.querySelector('#userFormRole').value = user ? user.role : 'USER';
       document.querySelector('#userFormPermission').value = user ? user.permission : 'EDITOR';
       document.querySelector('#userFormLocation').value = user ? user.location : '';
-      document.querySelector('#userFormDepartment').value = user ? user.department : '';
+      this.fillDepartmentSelect(user ? user.department : '');
       this.fillPositionSelect(user ? user.position : '');
       document.querySelector('#userForm').dataset.editId = user ? user.id : '';
       this.updateUserFormPermissionVisibility();
@@ -1661,17 +1741,20 @@
     /* ── Nastavení ────────────────────────────────────────────────────── */
 
     /**
-     * Přepínání záložek, otevírání formulářů a mazání — pro obě záložky
-     * Nastavení (Pracovní pozice, Typy událostí) najednou. Volá se jen
-     * jednou z onBootstrap (stejně jako bindUserForm), data se pak
-     * dotahují při každém vstupu do sekce (viz showSection/loadPositions/
-     * loadEventTypesAdmin).
+     * Přepínání záložek, otevírání formulářů a mazání — pro všechny tři
+     * záložky Nastavení (Oddělení, Pracovní pozice, Typy událostí) najednou.
+     * Volá se jen jednou z onBootstrap (stejně jako bindUserForm), data se
+     * pak dotahují při každém vstupu do sekce (viz showSection/loadDepartments/
+     * loadPositions/loadEventTypesAdmin).
      */
     bindSettings() {
       document.querySelectorAll('.settings-tab').forEach((tab) => {
         tab.addEventListener('click', () => this.showSettingsTab(tab.dataset.settingsTab));
       });
 
+      document.querySelector('#departmentsCreateBtn').addEventListener('click', (e) => {
+        this.openDepartmentFormModal(null, e.currentTarget);
+      });
       document.querySelector('#positionsCreateBtn').addEventListener('click', (e) => {
         this.openPositionFormModal(null, e.currentTarget);
       });
@@ -1682,6 +1765,15 @@
       // Delegované listenery na seznamech — přežijí opakované překreslení
       // (stejný vzor jako u uživatelů). Tužka/koš sdílí vzhled i třídu
       // s .user-action-btn, ať appka nemá dvě různé sady stylů pro totéž.
+      document.querySelector('#departmentsList').addEventListener('click', (e) => {
+        const btn = e.target.closest('.user-action-btn');
+        if (!btn || !btn.dataset.id) return;
+        const item = this.departments.find((d) => d.id === btn.dataset.id);
+        if (!item) return;
+        if (btn.dataset.action === 'edit') this.openDepartmentFormModal(item, btn);
+        else if (btn.dataset.action === 'delete') this.confirmDeleteDepartment(item, btn);
+      });
+
       document.querySelector('#positionsList').addEventListener('click', (e) => {
         const btn = e.target.closest('.user-action-btn');
         if (!btn || !btn.dataset.id) return;
@@ -1700,6 +1792,7 @@
         else if (btn.dataset.action === 'delete') this.confirmDeleteEventType(item, btn);
       });
 
+      this.bindDepartmentForm();
       this.bindPositionForm();
       this.bindEventTypeForm();
     },
@@ -1718,6 +1811,148 @@
       return '<div class="view-placeholder">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-settings"></use></svg>' +
         '<p>' + Ui.escape(text) + '</p></div>';
+    },
+
+    loadDepartments() {
+      const list = document.querySelector('#departmentsList');
+      list.innerHTML = this.settingsPlaceholder('Načítám oddělení…');
+
+      Ui.call('apiGetDepartments', null, { silent: true })
+        .then((departments) => {
+          this.departments = departments;
+          this.renderDepartments();
+        })
+        .catch((error) => {
+          list.innerHTML = this.settingsPlaceholder('Oddělení se nepodařilo načíst.');
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    renderDepartments() {
+      const list = document.querySelector('#departmentsList');
+      list.innerHTML = this.departments.length
+        ? this.departments.map((d) => this.renderDepartmentRow(d)).join('')
+        : this.settingsPlaceholder('Zatím žádná oddělení.');
+    },
+
+    renderDepartmentRow(d) {
+      return '<div class="settings-row">' +
+        '<span class="settings-row-name">' + Ui.escape(d.name) + '</span>' +
+        '<span class="settings-row-actions">' +
+          '<button type="button" class="user-action-btn is-edit" data-action="edit" data-id="' + Ui.escape(d.id) + '" title="Upravit" aria-label="Upravit ' + Ui.escape(d.name) + '">' +
+            '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>' +
+          '<button type="button" class="user-action-btn is-danger" data-action="delete" data-id="' + Ui.escape(d.id) + '" title="Smazat" aria-label="Smazat ' + Ui.escape(d.name) + '">' +
+            '<i class="ph ph-trash" aria-hidden="true"></i></button>' +
+        '</span>' +
+      '</div>';
+    },
+
+    /**
+     * Tiché uložení oddělení do this.departments BEZ volání serveru navíc
+     * (apiSaveDepartment už vrací kompletní záznam) — stejný vzor jako
+     * applyPositionToCache, včetně abecedního přeřazení po vložení/přejmenování.
+     */
+    applyDepartmentToCache(record, isNew) {
+      if (isNew) {
+        this.departments.push(record);
+      } else {
+        const idx = this.departments.findIndex((d) => d.id === record.id);
+        if (idx === -1) this.departments.push(record);
+        else this.departments[idx] = record;
+      }
+      this.departments.sort((a, b) => a.name.localeCompare(b.name, 'cs'));
+      this.renderDepartments();
+    },
+
+    /** Odebere smazané oddělení z this.departments a znovu vykreslí seznam, bez volání serveru. */
+    removeDepartmentFromCache(id) {
+      this.departments = this.departments.filter((d) => d.id !== id);
+      this.renderDepartments();
+    },
+
+    bindDepartmentForm() {
+      const dialog = document.querySelector('#departmentFormModal');
+      document.querySelector('#departmentFormClose').addEventListener('click', () => Ui.closeModal(dialog));
+      document.querySelector('#departmentFormCancel').addEventListener('click', () => Ui.closeModal(dialog));
+      dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) Ui.closeModal(dialog);
+      });
+      dialog.addEventListener('cancel', (e) => {
+        e.preventDefault();
+        Ui.closeModal(dialog);
+      });
+      document.querySelector('#departmentForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.submitDepartmentForm();
+      });
+    },
+
+    /** Otevře formulář oddělení — bez parametru department založí nové, s ním upraví existující. */
+    openDepartmentFormModal(department, originEl) {
+      document.querySelector('#departmentFormModalIcon').innerHTML =
+        '<i class="ph ' + (department ? 'ph-pencil-simple' : 'ph-buildings') + '" aria-hidden="true"></i>';
+      document.querySelector('#departmentFormKicker').textContent = department ? 'Upravit oddělení' : 'Nové oddělení';
+      document.querySelector('#departmentFormModalTitle').textContent = department ? department.name : 'Přidat oddělení';
+      document.querySelector('#departmentFormName').value = department ? department.name : '';
+      document.querySelector('#departmentForm').dataset.editId = department ? department.id : '';
+      document.querySelector('#departmentFormSubmit').innerHTML =
+        '<i class="ph ph-check" aria-hidden="true"></i> ' + (department ? 'Uložit' : 'Vytvořit');
+
+      const dialog = document.querySelector('#departmentFormModal');
+      this.setModalOrigin(dialog, originEl);
+      Ui.openModal(dialog);
+      document.querySelector('#departmentFormName').focus();
+    },
+
+    submitDepartmentForm() {
+      const editId = document.querySelector('#departmentForm').dataset.editId || '';
+      const name = document.querySelector('#departmentFormName').value.trim();
+      if (!name) {
+        Ui.toast('Vyplňte název oddělení.', 'error');
+        return;
+      }
+
+      const payload = { name: name };
+      if (editId) payload.id = editId;
+
+      const submitButton = document.querySelector('#departmentFormSubmit');
+      Ui.setButtonLoading(submitButton, true, 'Ukládám…');
+
+      Ui.call('apiSaveDepartment', payload, { silent: true })
+        .then((record) => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.closeModal(document.querySelector('#departmentFormModal'));
+          Ui.toast(editId ? 'Oddělení upraveno.' : 'Oddělení vytvořeno.', 'success');
+          this.applyDepartmentToCache(record, !editId); // tiché uložení do seznamu, bez znovunačtení z serveru
+        })
+        .catch((error) => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    /** Smazání oddělení nemá na nikoho vazbu (viz apiDeleteDepartment na serveru) — přesto přes potvrzovací okno, je to nevratné. */
+    confirmDeleteDepartment(department, originEl) {
+      this.confirmAction({
+        title: 'Smazat oddělení?',
+        body: '„' + department.name + '" zmizí ze seznamu pro výběr. Uživatelé, kteří ho už mají vyplněné, si ho ponechají beze změny.',
+        okLabel: 'Smazat',
+        okIcon: 'ph-trash',
+        okClass: 'button-danger',
+        onConfirm: (okBtn, dialog) => {
+          Ui.setButtonLoading(okBtn, true, 'Mažu…');
+          Ui.call('apiDeleteDepartment', { id: department.id }, { silent: true })
+            .then(() => {
+              Ui.closeModal(dialog);
+              Ui.toast('Oddělení smazáno.', 'success');
+              this.removeDepartmentFromCache(department.id);
+            })
+            .catch((error) => {
+              Ui.setButtonLoading(okBtn, false);
+              Ui.toast(error.message, 'error');
+            });
+        },
+      }, originEl);
     },
 
     loadPositions() {
@@ -2105,9 +2340,11 @@
       // kliknutí levné a zaručí to čerstvá data i po vytvoření nového.
       if (name === 'users' && this.canManageUsers) {
         this.loadUsers();
+        this.loadDepartmentsForSelect();
         this.loadPositionsForSelect();
       }
       if (name === 'settings' && this.canManageSettings) {
+        this.loadDepartments();
         this.loadPositions();
         this.loadEventTypesAdmin();
       }

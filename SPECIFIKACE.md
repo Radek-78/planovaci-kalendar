@@ -132,7 +132,8 @@ const DB_SCHEMA = {
   'events':     ['id','start','end','all_day','type','title','description',
                  'owner_email','created_at','created_by','updated_at','updated_by'],
   'event_comments': ['id','event_id','author_email','text','created_at'],
-  // Nastavení (viz kapitola 9.5) — obojí spravované v appce, ne v kódu.
+  // Nastavení (viz kapitola 9.5) — všechno spravované v appce, ne v kódu.
+  '_departments': ['id','name','created_at','created_by','updated_at','updated_by'],
   '_positions':   ['id','name','created_at','created_by','updated_at','updated_by'],
   '_event_types': ['id','label','icon','color','bg_color','created_at','created_by','updated_at','updated_by'],
 };
@@ -332,6 +333,9 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiGetUsers()` | `users_manage` | — | seznam uživatelů, řazený podle data vytvoření (nejnovější nahoře) |
 | `apiSaveUser(payload)` | `users_manage` | s `id` = úprava (e-mail neměnný), bez = nový uživatel | uložený uživatel |
 | `apiSetUserActive(payload)` | `users_manage` | `{ id, active }` | uložený uživatel |
+| `apiGetDepartments()` | `users_manage` | — | seznam oddělení, řazený podle názvu — čtení smí i ADMIN (výběr ve formuláři uživatele), správa (níže) jen SUPERADMIN |
+| `apiSaveDepartment(payload)` | `settings_manage` | s `id` = úprava, bez = nové | uložené oddělení |
+| `apiDeleteDepartment(id)` | `settings_manage` | id | — |
 | `apiGetPositions()` | `users_manage` | — | seznam pracovních pozic, řazený podle názvu — čtení smí i ADMIN (výběr ve formuláři uživatele), správa (níže) jen SUPERADMIN |
 | `apiSavePosition(payload)` | `settings_manage` | s `id` = úprava, bez = nová | uložená pozice |
 | `apiDeletePosition(id)` | `settings_manage` | id | — |
@@ -449,19 +453,22 @@ formátu zobrazovala posunutá o rozdíl Europe/Prague od UTC.
 
 Správa (přidání/úprava/smazání) přístupná jen SUPERADMINovi
 (`settings_manage`). Záložky nad sebou sdílenou kartou (`.settings-tabs` +
-`.settings-panel`) — zatím dvě, další přibudou stejným vzorem (jeden panel
-= jeden jednoduchý seznam s vytvořením/úpravou/smazáním).
+`.settings-panel`), v pořadí Oddělení / Pracovní pozice / Typy událostí —
+další přibudou stejným vzorem (jeden panel = jeden jednoduchý seznam
+s vytvořením/úpravou/smazáním).
 
-**Pracovní pozice** (`_positions`) — prostý seznam názvů nabízený jako
-`<select>` ve formuláři uživatele (pole Pozice, viz `apiSaveUser` a
-`App.fillPositionSelect`). ČTENÍ seznamu (ne správu) smí i ADMIN — jinak by
-neměl, čím ten `<select>` naplnit při vytváření/úpravě uživatele (viz
-`apiGetPositions`, guard `users_manage`). Needituje se: pozice uživatele,
+**Oddělení** (`_departments`) a **Pracovní pozice** (`_positions`) — dva
+prosté seznamy názvů, stejný vzor (i stejný kód, jen jiná tabulka), oba
+nabízené jako `<select>` ve formuláři uživatele (pole Oddělení/Pozice, viz
+`apiSaveUser` a `App.fillDepartmentSelect`/`App.fillPositionSelect`). ČTENÍ
+seznamu (ne správu) smí i ADMIN — jinak by neměl, čím ten `<select>`
+naplnit při vytváření/úpravě uživatele (viz `apiGetDepartments`/
+`apiGetPositions`, guard `users_manage`). Needituje se: hodnota uživatele,
 která mezitím ze seznamu zmizela, zůstane ve formuláři vidět jako volba
 navíc („mimo seznam"), needituje se tiše na prázdno. Žádná vazba na
-uživatele obecně: přejmenování/smazání pozice se nepromítne zpětně do
-těch, kdo ji už mají vyplněnou (stejně jako Umístění/Oddělení, které jsou
-zatím pořád volný text).
+uživatele: přejmenování/smazání položky seznamu se nepromítne zpětně do
+těch, kdo ji už mají vyplněnou (Umístění zůstává zatím pořád volný text,
+bez seznamu v Nastavení).
 
 **Typy událostí** (`_event_types`, viz 7.1) — plná správa (přidat/upravit/
 smazat): popisek, ikona (výběr z mřížky dlaždic, jen z whitelistu

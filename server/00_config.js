@@ -30,7 +30,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.1.37',
+  version: 'v0.1.38',
   releaseDate: '3.9.2026',
 
   /**
@@ -101,6 +101,7 @@ const SHEETS = {
   EVENT_COMMENTS: 'event_comments',
   POSITIONS: '_positions',
   EVENT_TYPES: '_event_types',
+  DEPARTMENTS: '_departments',
 };
 
 /**
@@ -185,6 +186,8 @@ const LIMITS = {
   NOTIFY_MAX_ITEMS: 30,
   /** Název pracovní pozice (Nastavení). */
   POSITION_NAME_MAX: 60,
+  /** Název oddělení (Nastavení). */
+  DEPARTMENT_NAME_MAX: 60,
   /** Popisek typu události (Nastavení). */
   EVENT_TYPE_LABEL_MAX: 40,
 };

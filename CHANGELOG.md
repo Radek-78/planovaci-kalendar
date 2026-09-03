@@ -5,6 +5,10 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.38 - 03.09.2026 14:01
+- Nastavení — nová záložka Oddělení (na prvním místě, před Pracovní pozice), stejný vzor jako pracovní pozice: jednoduchý seznam s vytvořením/úpravou/smazáním (nová tabulka _departments), bez vazby na uživatele
+- pole Oddělení ve formuláři uživatele je teď výběr z tohoto seznamu místo volného textu, čtení seznamu smí i administrátor, správu jen správce aplikace
+
 ## v0.1.37 - 03.09.2026 13:36
 - Kalendář — barevný pruh chipu (vícedenní událost) je teď skutečně vidět až k okraji buňky i pod ikonou trojúhelníku pokračování, ne jen vedle ní (vyhrazený prostor pro trojúhelník se na aktivní straně obarví stejně jako zbytek chipu)
 - na straně bez pokračování zůstává ten prostor bez barvy, prosvítá skrz něj skutečné pozadí buňky

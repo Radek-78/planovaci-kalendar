@@ -23,9 +23,13 @@ const DB_SCHEMA = {
   _users: [
     'id', 'email', 'firstName', 'lastName', 'role', 'permission', 'active',
     'created_at', 'created_by', 'updated_at', 'last_visit_at',
-    // Organizační údaje — zatím volný text (viz apiSaveUser). Umístění se
-    // později nahradí výběrem z importovaného seznamu logistických center,
-    // Oddělení/Pozice výběrem ze seznamu spravovaného v Nastavení.
+    // Organizační údaje (viz apiSaveUser). Oddělení/Pozice se vybírají ze
+    // seznamu spravovaného v Nastavení (_departments/_positions), uložená
+    // hodnota je ale pořád jen text — žádná cizí klíč vazba, smazání
+    // položky ze seznamu proto uživatele, kteří ji mají vyplněnou, nijak
+    // nepostihne (viz apiDeleteDepartment/apiDeletePosition).
+    // Umístění se později nahradí výběrem z importovaného seznamu
+    // logistických center, zatím je to volný text.
     'location', 'department', 'position',
   ],
   _settings: ['key', 'value', 'updated_at', 'updated_by'],
@@ -41,6 +45,9 @@ const DB_SCHEMA = {
   // Pracovní pozice pro výběr ve formuláři uživatele (Nastavení) — jen
   // název, žádné vazby na ostatní tabulky (viz apiSavePosition/apiDeletePosition).
   _positions: ['id', 'name', 'created_at', 'created_by', 'updated_at', 'updated_by'],
+  // Oddělení pro výběr ve formuláři uživatele (Nastavení) — stejný vzor
+  // jako _positions (viz apiSaveDepartment/apiDeleteDepartment).
+  _departments: ['id', 'name', 'created_at', 'created_by', 'updated_at', 'updated_by'],
   // Typy událostí (Nastavení) — id je u výchozích 7 stabilní slug
   // (viz DEFAULT_EVENT_TYPES), u nově založených UUID; obojí je jen
   // opaque klíč uložený v events.type, appce na tom nezáleží.
@@ -68,6 +75,7 @@ const TEXT_COLUMNS = {
   event_comments: ['created_at'],
   _positions: ['created_at', 'updated_at'],
   _event_types: ['created_at', 'updated_at'],
+  _departments: ['created_at', 'updated_at'],
 };
 
 /**

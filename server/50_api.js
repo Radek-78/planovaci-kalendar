@@ -804,3 +804,85 @@ function _publicPosition_(row) {
     name: String(row.name),
   };
 }
+
+/**
+ * Seznam oddělení, řazený podle názvu — stejný vzor jako apiGetPositions
+ * (guard je záměrně users_manage, ne settings_manage: ADMIN sice oddělení
+ * nesmí spravovat, ale potřebuje si je přečíst pro výběr ve formuláři
+ * uživatele, viz fillDepartmentSelect na klientovi).
+ */
+function apiGetDepartments() {
+  return guard_(PERM_KEYS.USERS_MANAGE, () => {
+    return dbGetAll_(SHEETS.DEPARTMENTS)
+      .map(_publicDepartment_)
+      .sort((a, b) => a.name.localeCompare(b.name, 'cs'));
+  });
+}
+
+/**
+ * Vytvoří nové oddělení, nebo upraví existující (payload.id = úprava) —
+ * stejný vzor jako apiSavePosition, včetně kontroly na duplicitní název
+ * bez ohledu na velikost písmen.
+ *
+ * @param {Object} payload  { id?, name }
+ */
+function apiSaveDepartment(payload) {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    const data = payload || {};
+    const id = data.id ? String(data.id) : null;
+    const existing = id ? dbFindById_(SHEETS.DEPARTMENTS, id) : null;
+    if (id && !existing) {
+      throw userError_('Oddělení nebylo nalezeno — mohl ho mezitím upravit někdo jiný.');
+    }
+
+    const name = cleanText_(data.name, 'Název', LIMITS.DEPARTMENT_NAME_MAX, true);
+
+    const isDuplicate = dbGetAll_(SHEETS.DEPARTMENTS).some((row) =>
+      String(row.id) !== id && String(row.name).toLowerCase() === name.toLowerCase()
+    );
+    if (isDuplicate) {
+      throw userError_('Toto oddělení už v seznamu je.');
+    }
+
+    let record;
+    if (existing) {
+      record = dbUpdate_(SHEETS.DEPARTMENTS, id, { name: name });
+      audit_('department.update', 'Upraveno oddělení „' + name + '"');
+    } else {
+      record = dbInsert_(SHEETS.DEPARTMENTS, { name: name });
+      audit_('department.create', 'Vytvořeno oddělení „' + name + '"');
+    }
+
+    return _publicDepartment_(record);
+  });
+}
+
+/**
+ * Smaže oddělení. Bez dopadu na uživatele, kteří ho mají vyplněné (stejný
+ * princip jako u apiDeletePosition) — proto žádná kontrola použití.
+ *
+ * @param {Object} payload  { id }
+ */
+function apiDeleteDepartment(payload) {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    const data = payload || {};
+    const id = cleanText_(data.id, 'ID oddělení', 100, true);
+
+    const department = dbFindById_(SHEETS.DEPARTMENTS, id);
+    if (!department) {
+      throw userError_('Oddělení nebylo nalezeno — možná ho mezitím smazal někdo jiný.');
+    }
+
+    dbDelete_(SHEETS.DEPARTMENTS, id);
+    audit_('department.delete', 'Smazáno oddělení „' + department.name + '"');
+    return null;
+  });
+}
+
+/** Přemění řádek oddělení na podobu pro klienta. */
+function _publicDepartment_(row) {
+  return {
+    id: String(row.id),
+    name: String(row.name),
+  };
+}
