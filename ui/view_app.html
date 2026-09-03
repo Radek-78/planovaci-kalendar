@@ -710,6 +710,32 @@
           this.closeNotifyPanel();
         }
       });
+
+      // Klik na položku oznámení otevře detail události, ke které se
+      // vztahuje (viz entityId/renderNotifyItem) — jen ty, co ho mají
+      // (nemrtvý klik nikam, viz is-clickable v CSS).
+      document.querySelector('#calNotifyList').addEventListener('click', (e) => {
+        const item = e.target.closest('.cal-notify-item');
+        if (!item || !item.dataset.entityId) return;
+        this.closeNotifyPanel();
+        this.openNotificationTarget(item.dataset.entityId, item);
+      });
+    },
+
+    /**
+     * Otevře událost, ke které se oznámení vztahuje. Bere ji z už načtených
+     * dat pro zobrazený měsíc (this.currentEvents, stejně jako
+     * openEventModal) — když tam není (jiný měsíc, nebo už smazaná, typicky
+     * u oznámení „Smazána…"), appka to řekne rovnou, ne že by klik mlčky
+     * nic neudělal.
+     */
+    openNotificationTarget(eventId, originEl) {
+      const event = this.currentEvents.find((e) => e.id === eventId);
+      if (!event) {
+        Ui.toast('Událost se nepodařilo najít — může být smazaná, nebo mimo aktuálně zobrazený měsíc.', 'error');
+        return;
+      }
+      this.openEventModal(eventId, originEl);
     },
 
     openNotifyPanel() {
@@ -747,17 +773,18 @@
      * český popis z auditního logu (`detail`, viz audit_ v 10_util.js).
      * Žádné vlastní překládání typu akce na klientovi — text ze serveru
      * už je čitelný, netřeba ho duplikovat na dvou místech.
+     *
+     * Klikatelná jen s entityId (viz apiGetBootstrap/_computeNotifications_
+     * na serveru) — bez něj (starší řádky logu z doby před přidáním
+     * entity_id) by klik neměl kam vést, tak se ani netváří jako tlačítko.
      */
     renderNotifyItem(n) {
-      return '<div class="cal-notify-item">' +
+      const clickable = n.entityId ? ' is-clickable' : '';
+      const entityAttr = n.entityId ? ' data-entity-id="' + Ui.escape(n.entityId) + '"' : '';
+      return '<div class="cal-notify-item' + clickable + '"' + entityAttr + '>' +
         '<p class="cal-notify-item-text"><strong>' + Ui.escape(n.actorName) + '</strong> ' + Ui.escape(n.detail) + '</p>' +
-        '<p class="cal-notify-item-meta">' + Ui.escape(this.formatNotifyTime(n.timestamp)) + '</p>' +
+        '<p class="cal-notify-item-meta">' + Ui.escape(this.formatDateTime(n.timestamp)) + '</p>' +
       '</div>';
-    },
-
-    /** Datum a čas oznámení jako „D. M. HH:MM" — kompaktní formát pro seznam. */
-    formatNotifyTime(iso) {
-      return this.formatDateShort(iso.slice(0, 10)) + ' ' + iso.slice(11, 16);
     },
 
     /** Vykreslí rok a mřížku 12 měsíců v panelu; zvýrazní zobrazený i dnešní měsíc. */
@@ -1961,20 +1988,31 @@
 
       if (event.allDay) {
         return isMultiDay
-          ? 'Celý den · ' + this.formatDateShort(startIso) + '–' + this.formatDateShort(endIso)
+          ? 'Celý den · ' + this.formatFullDate(startIso) + ' – ' + this.formatFullDate(endIso)
           : 'Celý den';
       }
       if (isMultiDay) {
-        return this.formatDateShort(startIso) + ' ' + event.start.slice(11, 16) +
-          ' – ' + this.formatDateShort(endIso) + ' ' + event.end.slice(11, 16);
+        return this.formatDateTime(event.start) + ' – ' + this.formatDateTime(event.end);
       }
       return event.start.slice(11, 16) + '–' + event.end.slice(11, 16);
     },
 
-    /** Datum jako „D.M." — krátký formát pro rozsah vícedenní události. */
-    formatDateShort(iso) {
+    /**
+     * Datum jako „D.M.RRRR" a datum+čas jako „D.M.RRRR HH:MM" — JEDINÝ
+     * sdílený formát datumu/času v celé appce (oznámení, rozsah vícedenní
+     * události…), ať se to nepíše na víc místech pokaždé trochu jinak.
+     * Bez úvodních nul u dne/měsíce (české zvyklosti — „3.9.2026", ne
+     * „03.09.2026"). `iso` čeká `YYYY-MM-DD` (formatFullDate), resp.
+     * `YYYY-MM-DDTHH:mm...` (formatDateTime — bere jen prvních 16 znaků,
+     * takže mu nevadí ani plné ISO s vteřinami/Z z auditního logu).
+     */
+    formatFullDate(iso) {
       const parts = iso.split('-');
-      return Number(parts[2]) + '.' + Number(parts[1]) + '.';
+      return Number(parts[2]) + '.' + Number(parts[1]) + '.' + parts[0];
+    },
+
+    formatDateTime(iso) {
+      return this.formatFullDate(iso.slice(0, 10)) + ' ' + iso.slice(11, 16);
     },
 
     /**

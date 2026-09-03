@@ -77,7 +77,10 @@ function apiGetBootstrap() {
  */
 function _computeNotifications_(user) {
   const row = dbFindById_(SHEETS.USERS, user.id);
-  const previousVisit = row && row.last_visit_at ? String(row.last_visit_at) : nowIso_();
+  // MÍSTNÍ čas (ne nowIso_/UTC) — _audit_log.timestamp je taky v místním
+  // čase (viz audit_() v 10_util.js), jinak by textové porovnání o řádek
+  // níž bylo posunuté o časový rozdíl Europe/Prague od UTC.
+  const previousVisit = row && row.last_visit_at ? String(row.last_visit_at) : nowLocalIso_();
 
   const matching = dbGetAll_(SHEETS.AUDIT)
     .filter((r) => NOTIFY_ACTIONS.indexOf(String(r.action)) !== -1)
@@ -91,9 +94,13 @@ function _computeNotifications_(user) {
     detail: String(r.detail),
     actorName: _resolveUserName_(r.user, nameCache),
     timestamp: String(r.timestamp),
+    // Id UDÁLOSTI, ke které se oznámení vztahuje — proklik na klientovi
+    // (viz #calNotifyList) jím otevře detail té konkrétní události.
+    // Prázdné jen u starších řádků logu z doby před přidáním entity_id.
+    entityId: String(r.entity_id || ''),
   }));
 
-  dbUpdate_(SHEETS.USERS, user.id, { last_visit_at: nowIso_() });
+  dbUpdate_(SHEETS.USERS, user.id, { last_visit_at: nowLocalIso_() });
 
   return { unseenCount: matching.length, items: items };
 }
@@ -168,13 +175,14 @@ function apiSaveEvent(payload) {
       description: description,
     };
 
+    const whenText = formatDateTimeCz_(start) + ' – ' + formatDateTimeCz_(end);
     let record;
     if (existing) {
       record = dbUpdate_(SHEETS.EVENTS, id, fields);
-      audit_('event.update', 'Upravena událost „' + title + '" (' + start + ' – ' + end + ')');
+      audit_('event.update', 'Upravena událost „' + title + '" (' + whenText + ')', id);
     } else {
       record = dbInsert_(SHEETS.EVENTS, Object.assign({ owner_email: user.email }, fields));
-      audit_('event.create', 'Vytvořena událost „' + title + '" (' + start + ' – ' + end + ')');
+      audit_('event.create', 'Vytvořena událost „' + title + '" (' + whenText + ')', record.id);
     }
 
     return { id: record.id };
@@ -214,7 +222,7 @@ function apiDeleteEvent(payload) {
       .forEach((row) => dbDelete_(SHEETS.EVENT_COMMENTS, row.id));
 
     dbDelete_(SHEETS.EVENTS, id);
-    audit_('event.delete', 'Smazána událost „' + event.title + '" (' + id + ')');
+    audit_('event.delete', 'Smazána událost „' + event.title + '"', id);
     return null;
   });
 }
@@ -303,7 +311,8 @@ function apiAddEventComment(payload) {
     const text = cleanText_(data.text, 'Komentář', LIMITS.COMMENT_MAX, true);
 
     // Nejde komentovat neexistující (např. smazanou) událost.
-    if (!dbFindById_(SHEETS.EVENTS, eventId)) {
+    const event = dbFindById_(SHEETS.EVENTS, eventId);
+    if (!event) {
       throw userError_('Událost nebyla nalezena.');
     }
 
@@ -313,7 +322,7 @@ function apiAddEventComment(payload) {
       text: text,
     });
 
-    audit_('comment.create', 'Komentář k události ' + eventId + ': ' + text.slice(0, 80));
+    audit_('comment.create', 'Nový komentář k události „' + event.title + '": ' + text.slice(0, 80), eventId);
 
     return _publicComment_(comment, user, {});
   });
@@ -335,8 +344,11 @@ function apiDeleteEventComment(payload) {
       throw userError_('Můžete mazat jen vlastní komentáře.');
     }
 
+    const parentEvent = dbFindById_(SHEETS.EVENTS, comment.event_id);
+    const eventTitle = parentEvent ? parentEvent.title : '(smazaná událost)';
+
     dbDelete_(SHEETS.EVENT_COMMENTS, id);
-    audit_('comment.delete', 'Smazán komentář ' + id + ' k události ' + comment.event_id);
+    audit_('comment.delete', 'Smazán komentář k události „' + eventTitle + '"', comment.event_id);
     return null;
   });
 }

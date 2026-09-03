@@ -29,7 +29,10 @@ const DB_SCHEMA = {
     'location', 'department', 'position',
   ],
   _settings: ['key', 'value', 'updated_at', 'updated_by'],
-  _audit_log: ['timestamp', 'user', 'action', 'detail'],
+  // entity_id = id záznamu, ke kterému se akce vztahuje (u komentářů id
+  // UDÁLOSTI, ne komentáře) — proklik ze zvonečku s oznámeními vždy vede
+  // na konkrétní událost, viz audit_() v 10_util.js a apiGetBootstrap.
+  _audit_log: ['timestamp', 'user', 'action', 'detail', 'entity_id'],
   events: [
     'id', 'start', 'end', 'all_day', 'type', 'title', 'description',
     'owner_email', 'created_at', 'created_by', 'updated_at', 'updated_by',

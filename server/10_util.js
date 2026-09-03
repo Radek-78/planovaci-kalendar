@@ -83,6 +83,19 @@ function nowLocalIso_() {
   return Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd'T'HH:mm");
 }
 
+/**
+ * Formátuje místní datum a čas (tvar `YYYY-MM-DDTHH:mm`, stejný jako
+ * events.start/end nebo nowLocalIso_()) na čitelné „D.M.RRRR HH:mm" —
+ * jednotný formát datumu a času v celé appce (na klientovi App.formatDateTime
+ * v ui/view_app.html). Používá se v textech pro audit log/oznámení, ať
+ * v nich není syrové ISO.
+ */
+function formatDateTimeCz_(localIso) {
+  const text = String(localIso);
+  const dateParts = text.slice(0, 10).split('-');
+  return Number(dateParts[2]) + '.' + Number(dateParts[1]) + '.' + dateParts[0] + ' ' + text.slice(11, 16);
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    FORMÁTOVÁNÍ LISTŮ
    ══════════════════════════════════════════════════════════════════════════ */
@@ -110,22 +123,34 @@ function applySheetFont_(sheet) {
    ══════════════════════════════════════════════════════════════════════════ */
 
 /**
- * Zapíše řádek do listu `_audit_log` — kdo, kdy, co.
+ * Zapíše řádek do listu `_audit_log` — kdo, kdy, co (a k čemu — entityId).
+ *
+ * `timestamp` je v MÍSTNÍM čase (nowLocalIso_, ne nowIso_) — appka zobrazuje
+ * jednotný formát „D.M.RRRR HH:MM" (viz App.formatDateTime), a UTC čas
+ * z nowIso_() by se pod tímhle formátem zobrazil o 1–2 hodiny posunutý
+ * (rozdíl Europe/Prague od UTC), takže musí sedět místní.
+ *
+ * `detail` NIKDY nesmí obsahovat technické ID (viz zvoneček s oznámeními) —
+ * je to čitelný text pro člověka, ne data pro appku. Cokoli, na co appka
+ * potřebuje odkázat (např. proklik z oznámení na konkrétní událost), patří
+ * do `entityId`, ne do textu.
  *
  * Selhání auditu NIKDY neshodí hlavní operaci: kdyby zápis do logu shodil
  * uložení události, přišel by uživatel o data kvůli vedlejšímu zápisu.
  * Neúspěch se proto jen zaloguje do Stackdriveru.
  *
- * @param {string} action  krátký kód akce, např. 'setup', 'user.create', 'event.delete'
- * @param {string} detail  lidsky čitelný popis změny
+ * @param {string} action    krátký kód akce, např. 'setup', 'user.create', 'event.delete'
+ * @param {string} detail    lidsky čitelný popis změny — bez ID
+ * @param {string} [entityId] id záznamu, kterého se akce týká (u komentářů id UDÁLOSTI, ne komentáře — proklik vždy vede na událost)
  */
-function audit_(action, detail) {
+function audit_(action, detail, entityId) {
   try {
     dbAppend_(SHEETS.AUDIT, {
-      timestamp: nowIso_(),
+      timestamp: nowLocalIso_(),
       user: currentEmail_() || 'system',
       action: String(action || ''),
       detail: String(detail || ''),
+      entity_id: entityId ? String(entityId) : '',
     });
   } catch (e) {
     console.error('Zápis do auditního logu selhal: ' + e);

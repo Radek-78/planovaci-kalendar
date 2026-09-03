@@ -182,13 +182,18 @@ function _toolsInsertEvents_(events) {
  * skript zrovna pouští). Jen pro seedovací nástroje níže, kde je potřeba
  * simulovat akce různých uživatelů, ne jen jednoho (toho, kdo je spustil
  * z editoru).
+ *
+ * `timestamp` MÍSTNÍM časem (nowLocalIso_, ne nowIso_) — stejně jako
+ * audit_() v 10_util.js, ať se s ostrými audit řádky dobře řadí a porovnává.
+ * `detail` bez ID (viz audit_()); odkaz na konkrétní záznam nese `entityId`.
  */
-function _toolsAuditAs_(actorEmail, action, detail) {
+function _toolsAuditAs_(actorEmail, action, detail, entityId) {
   dbAppend_(SHEETS.AUDIT, {
-    timestamp: nowIso_(),
+    timestamp: nowLocalIso_(),
     user: actorEmail,
     action: action,
     detail: detail,
+    entity_id: entityId ? String(entityId) : '',
   });
 }
 
@@ -201,7 +206,7 @@ function _toolsAuditAs_(actorEmail, action, detail) {
  * doplnit samo.
  */
 function _toolsInsertAs_(table, record) {
-  const now = nowIso_();
+  const now = nowLocalIso_();
   const complete = Object.assign({ id: uuid_(), created_at: now, updated_at: now }, record);
   dbAppend_(table, complete);
   return complete;
@@ -249,7 +254,9 @@ function _toolsSeedNotifyBatch_(actorPool) {
       owner_email: owner, created_by: owner, updated_by: owner,
     });
     created.push({ id: record.id, title: p.title, owner: owner });
-    _toolsAuditAs_(owner, 'event.create', 'Vytvořena událost „' + p.title + '" (' + start + ' – ' + end + ')');
+    _toolsAuditAs_(owner, 'event.create',
+      'Vytvořena událost „' + p.title + '" (' + formatDateTimeCz_(start) + ' – ' + formatDateTimeCz_(end) + ')',
+      record.id);
     console.log('Vytvořena událost „' + p.title + '" jako ' + owner);
   });
 
@@ -261,7 +268,7 @@ function _toolsSeedNotifyBatch_(actorPool) {
     const comment = _toolsInsertAs_(SHEETS.EVENT_COMMENTS, {
       event_id: ev.id, author_email: commenter, text: text,
     });
-    _toolsAuditAs_(commenter, 'comment.create', 'Komentář k události ' + ev.id + ': ' + text);
+    _toolsAuditAs_(commenter, 'comment.create', 'Nový komentář k události „' + ev.title + '": ' + text, ev.id);
     console.log('Přidán komentář k „' + ev.title + '" jako ' + commenter + ' (id=' + comment.id + ')');
   });
 
@@ -273,7 +280,7 @@ function _toolsSeedNotifyBatch_(actorPool) {
       description: 'Upraveno — změna místa konání.',
       updated_by: editor,
     });
-    _toolsAuditAs_(editor, 'event.update', 'Upravena událost „' + target.title + '"');
+    _toolsAuditAs_(editor, 'event.update', 'Upravena událost „' + target.title + '"', target.id);
     console.log('Upravena událost „' + target.title + '" jako ' + editor);
   }
 
@@ -287,7 +294,7 @@ function _toolsSeedNotifyBatch_(actorPool) {
   });
   const deleter = actorPool.find((u) => u !== throwawayOwner) || actorPool[0];
   dbDelete_(SHEETS.EVENTS, throwaway.id);
-  _toolsAuditAs_(deleter, 'event.delete', 'Smazána událost „Zrušená schůzka" (' + throwaway.id + ')');
+  _toolsAuditAs_(deleter, 'event.delete', 'Smazána událost „Zrušená schůzka"', throwaway.id);
   console.log('Smazána zkušební událost „Zrušená schůzka" jako ' + deleter);
 
   console.log('Hotovo — vytvořeno ' + created.length + ' událostí, 2 komentáře, 1 úprava, 1 smazání.');
@@ -373,7 +380,11 @@ function TOOLS_simulujOznameniProMe() {
 
   const pastVisit = new Date();
   pastVisit.setDate(pastVisit.getDate() - 3);
-  dbUpdate_(SHEETS.USERS, myRow.id, { last_visit_at: pastVisit.toISOString() });
+  // Utilities.formatDate (místní čas), ne toISOString() (UTC) — last_visit_at
+  // se porovnává s _audit_log.timestamp, který je taky v místním čase
+  // (viz audit_()/_toolsAuditAs_ výše), jinak by porovnání bylo o časový
+  // rozdíl Europe/Prague od UTC mimo.
+  dbUpdate_(SHEETS.USERS, myRow.id, { last_visit_at: Utilities.formatDate(pastVisit, TIMEZONE, "yyyy-MM-dd'T'HH:mm") });
 
   console.log('---');
   console.log('Tvůj last_visit_at (' + me + ') je nastavený 3 dny do minulosti.');

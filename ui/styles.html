@@ -1390,7 +1390,13 @@
     padding: 8px;
   }
 
-  .cal-notify-item:hover {
+  /* Jen s entityId (viz renderNotifyItem) — bez něj by klik neměl kam
+     vést, tak se ani netváří jako tlačítko (žádný ukazatel, žádný hover). */
+  .cal-notify-item.is-clickable {
+    cursor: pointer;
+  }
+
+  .cal-notify-item.is-clickable:hover {
     background: var(--page);
   }
 

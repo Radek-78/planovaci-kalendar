@@ -125,11 +125,13 @@ je čistě pro přehlednost člověka.
 ```js
 const DB_SCHEMA = {
   '_users':     ['id','email','firstName','lastName','role','permission','active',
-                 'created_at','created_by','updated_at','last_visit_at'],
+                 'created_at','created_by','updated_at','last_visit_at',
+                 'location','department','position'],
   '_settings':  ['key','value','updated_at','updated_by'],
-  '_audit_log': ['timestamp','user','action','detail'],
+  '_audit_log': ['timestamp','user','action','detail','entity_id'],
   'events':     ['id','start','end','all_day','type','title','description',
                  'owner_email','created_at','created_by','updated_at','updated_by'],
+  'event_comments': ['id','event_id','author_email','text','created_at'],
 };
 ```
 
@@ -396,6 +398,23 @@ ví, že ji zrovna používá, je otevření (bootstrap):
 
 Otevření/zavření panelu je čistě klientská záležitost (data už z bootstrapu)
 a na krok 3 nemá žádný vliv.
+
+**Text a proklik** — `detail` (uložený v `_audit_log`) je hotová česká věta
+BEZ technického ID — server ho tam nikdy nedává, i kdyby se hodilo (např.
+u komentáře radši jméno události než její ID). Odkaz na konkrétní záznam,
+na který klik v panelu vede, nese samostatný sloupec `_audit_log.entity_id`
+(u komentářů id UDÁLOSTI, ne komentáře — proklik vždy vede na událost).
+Klik funguje, jen když je událost mezi už načtenými pro zobrazený měsíc
+(`this.currentEvents`) — jinak (jiný měsíc, nebo už smazaná) appka jasně
+řekne, že ji nenašla, místo tichého kliku do prázdna.
+
+**Formát data a času** — `D.M.RRRR HH:MM` (bez úvodních nul, české
+zvyklosti) je jediný formát v celé appce, kdekoli se datum zobrazuje spolu
+s časem (oznámení, rozsah vícedenní události…) — na klientovi
+`App.formatDateTime`/`formatFullDate`, na serveru `formatDateTimeCz_`
+(do textu `detail`). Časová razítka v `_audit_log`/`last_visit_at` jsou
+MÍSTNÍ čas (`nowLocalIso_`), ne UTC (`nowIso_`) — jinak by se vůči tomuto
+formátu zobrazovala posunutá o rozdíl Europe/Prague od UTC.
 
 ---
 
