@@ -6,9 +6,9 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.35 - 03.09.2026 13:14
-- Typy udalosti - vyber ikony v editacnim formulari ted zobrazuje zivy nahled ve skutecne zvolenych barvach (barva ikony i barva podkladu) misto obecne modre, prebarvi se hned pri zmene barvy nebo vyberu jine ikony
-- opravena i chybejici barva podkladu v mape typu pro kalendar po tiche uprave typu (drive zustala nedefinovana, dokud se appka znovu nenacetla)
-- Uzivatele, Pracovni pozice a Typy udalosti - ulozeni/smazani zaznamu uz nezpusobi viditelne probliknuti "Nacitam..." a znovunacteni celeho seznamu ze serveru, misto toho se vraceny zaznam potichu rovnou promitne do uz zobrazeneho seznamu
+- Typy událostí — výběr ikony v editačním formuláři teď zobrazuje živý náhled ve skutečně zvolených barvách (barva ikony i barva podkladu) místo obecné modré, přebarví se hned při změně barvy nebo výběru jiné ikony
+- Opravena i chybějící barva podkladu v mapě typů pro kalendář po tiché úpravě typu (dříve zůstala nedefinovaná, dokud se appka znovu nenačetla)
+- Uživatelé, Pracovní pozice a Typy událostí — uložení/smazání záznamu už nezpůsobí viditelné probliknutí „Načítám…" a znovunačtení celého seznamu ze serveru, místo toho se vrácený záznam potichu rovnou promítne do už zobrazeného seznamu
 
 ## v0.1.34 - 03.09.2026 12:57
 - Oznámení — opraven způsob evidence přečtení: dříve se last_visit_at posouval automaticky při každém otevření appky (kdo si zvonečku nevšiml, o oznámení nenávratně přišel), teď až explicitním otevřením modalu se zvonečkem (nový endpoint apiMarkNotificationsSeen), odznak se hned schová
