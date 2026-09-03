@@ -42,7 +42,7 @@ function apiGetBootstrap() {
         appSubtitle: settings.appSubtitle,
         holidaysEnabled: settings.holidaysEnabled,
       },
-      eventTypes: EVENT_TYPES,
+      eventTypes: _eventTypesMap_(),
       // Co je nového od poslední návštěvy — viz _computeNotifications_.
       // POZOR: tohle volání zároveň posune last_visit_at na teď, takže se
       // smí zavolat jen jednou za skutečné otevření appky (viz komentář
@@ -140,7 +140,7 @@ function apiSaveEvent(payload) {
     const start = cleanDateTime_(data.start, 'Začátek');
     const end = cleanDateTime_(data.end, 'Konec');
     const allDay = data.allDay === true;
-    const type = pickFrom_(data.type, Object.keys(EVENT_TYPES), 'Typ');
+    const type = pickFrom_(data.type, Object.keys(_eventTypesMap_()), 'Typ');
     const title = cleanText_(data.title, 'Název', LIMITS.TITLE_MAX, true);
     const description = cleanText_(data.description, 'Popis', LIMITS.DESCRIPTION_MAX, false);
 
@@ -243,6 +243,7 @@ function apiGetEvents(payload) {
     if (from > to) throw userError_('Rozsah dat je neplatný.');
 
     const nameCache = {};
+    const eventTypes = _eventTypesMap_();
 
     return dbGetAll_(SHEETS.EVENTS)
       .filter((row) => {
@@ -255,8 +256,10 @@ function apiGetEvents(payload) {
         start: String(row.start),
         end: String(row.end),
         allDay: toBool_(row.all_day),
-        // Neplatný/starý typ v datech se nezobrazí rozbitě — spadne do "default".
-        type: EVENT_TYPES[row.type] ? String(row.type) : 'default',
+        // Neplatný/starý typ v datech (např. mezitím smazaný v Nastavení)
+        // se nezobrazí rozbitě — spadne do "default", který nejde smazat
+        // (viz apiDeleteEventType) a existuje tak vždycky.
+        type: eventTypes[row.type] ? String(row.type) : 'default',
         title: String(row.title || ''),
         description: String(row.description || ''),
         ownerEmail: String(row.owner_email || ''),
@@ -556,5 +559,219 @@ function _publicUserRow_(row) {
     location: String(row.location || ''),
     department: String(row.department || ''),
     position: String(row.position || ''),
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   NASTAVENÍ — TYPY UDÁLOSTÍ A PRACOVNÍ POZICE
+
+   Obojí přístupné jen SUPERADMINovi (settings_manage — viz matice v
+   30_auth.js). Typy událostí bývaly napevno v kódu (00_config.js); od
+   téhle verze je plná správa (přidat/upravit/smazat) v appce — jediná
+   zbylá pojistka z kódu je EVENT_TYPE_ICONS (whitelist ikon) a to, že typ
+   „default" nejde smazat (viz apiDeleteEventType).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Zajistí, že `_event_types` NENÍ prázdná — jednorázově ji naseje výchozím
+ * obsahem (DEFAULT_EVENT_TYPES, 00_config.js). Typicky se uplatní buď při
+ * první instalaci, nebo u appky, která už běžela před touto verzí (typy
+ * dřív žily jen v kódu, ne v databázi). Bezpečné volat opakovaně — jakmile
+ * list není prázdný, dál nic nedělá.
+ */
+function _ensureEventTypesSeeded_() {
+  if (dbGetAll_(SHEETS.EVENT_TYPES).length > 0) return;
+  DEFAULT_EVENT_TYPES.forEach((t) => {
+    dbInsert_(SHEETS.EVENT_TYPES, { id: t.id, label: t.label, icon: t.icon, color: t.color });
+  });
+}
+
+/**
+ * Typy událostí jako mapa `{ id: { label, icon, color } }` — přesně podoba,
+ * kterou čeká klient (this.eventTypes, viz ui/view_app.html) i validace
+ * typu v apiSaveEvent (Object.keys). Volá _ensureEventTypesSeeded_, takže
+ * funguje i na appce, kde `_event_types` ještě nikdy nikdo nenaplnil.
+ */
+function _eventTypesMap_() {
+  _ensureEventTypesSeeded_();
+  const map = {};
+  dbGetAll_(SHEETS.EVENT_TYPES).forEach((row) => {
+    map[String(row.id)] = { label: String(row.label), icon: String(row.icon), color: String(row.color) };
+  });
+  return map;
+}
+
+/**
+ * Seznam typů událostí pro správu v Nastavení (na rozdíl od _eventTypesMap_
+ * vrací pole, ne mapu, a v pořadí, jak jsou v tabulce) plus whitelist ikon
+ * pro výběr ve formuláři (EVENT_TYPE_ICONS z 00_config.js) — appka ho posílá
+ * ze serveru, ne aby ho měla natvrdo i v klientském JS a obě verze se
+ * časem rozešly.
+ */
+function apiGetEventTypes() {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    _ensureEventTypesSeeded_();
+    return {
+      items: dbGetAll_(SHEETS.EVENT_TYPES).map(_publicEventType_),
+      availableIcons: EVENT_TYPE_ICONS,
+    };
+  });
+}
+
+/**
+ * Vytvoří nový typ události, nebo upraví existující (payload.id = úprava,
+ * stejný vzor jako apiSaveEvent/apiSaveUser). Ikona jen z whitelistu
+ * EVENT_TYPE_ICONS (00_config.js) — volný text by mohl odkázat na
+ * neexistující ikonu (nikde by nebyla vidět) nebo mimo Phosphor sadu.
+ * Barva musí být platný hex zápis (#rrggbb) — appka ji vkládá přímo do CSS.
+ *
+ * @param {Object} payload  { id?, label, icon, color }
+ */
+function apiSaveEventType(payload) {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    const data = payload || {};
+    const id = data.id ? String(data.id) : null;
+    const existing = id ? dbFindById_(SHEETS.EVENT_TYPES, id) : null;
+    if (id && !existing) {
+      throw userError_('Typ události nebyl nalezen — mohl ho mezitím upravit někdo jiný.');
+    }
+
+    const label = cleanText_(data.label, 'Popisek', LIMITS.EVENT_TYPE_LABEL_MAX, true);
+    const icon = pickFrom_(data.icon, EVENT_TYPE_ICONS, 'Ikona');
+    const color = cleanText_(data.color, 'Barva', 7, true);
+    if (!/^#[0-9a-f]{6}$/i.test(color)) {
+      throw userError_('Barva musí být v zápisu #rrggbb.');
+    }
+
+    const fields = { label: label, icon: icon, color: color };
+    let record;
+    if (existing) {
+      record = dbUpdate_(SHEETS.EVENT_TYPES, id, fields);
+      audit_('eventType.update', 'Upraven typ události „' + label + '"');
+    } else {
+      record = dbInsert_(SHEETS.EVENT_TYPES, fields);
+      audit_('eventType.create', 'Vytvořen typ události „' + label + '"');
+    }
+
+    return _publicEventType_(record);
+  });
+}
+
+/**
+ * Smaže typ události. Typ „default" nejde smazat NIKDY — je to záchranná
+ * varianta pro události, jejichž typ mezitím zmizel (viz apiGetEvents),
+ * takže musí existovat vždycky. Existující události s tímto typem se
+ * po smazání zobrazí jako „default" (stejná záchranná logika) — nejde
+ * o chybu, jen o vědomý důsledek, appka ho proto sama neblokuje.
+ *
+ * @param {Object} payload  { id }
+ */
+function apiDeleteEventType(payload) {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    const data = payload || {};
+    const id = cleanText_(data.id, 'ID typu události', 100, true);
+
+    if (id === 'default') {
+      throw userError_('Výchozí typ „Běžné" nejde smazat.');
+    }
+
+    const type = dbFindById_(SHEETS.EVENT_TYPES, id);
+    if (!type) {
+      throw userError_('Typ události nebyl nalezen — možná ho mezitím smazal někdo jiný.');
+    }
+
+    dbDelete_(SHEETS.EVENT_TYPES, id);
+    audit_('eventType.delete', 'Smazán typ události „' + type.label + '"');
+    return null;
+  });
+}
+
+/** Přemění řádek typu události na podobu pro klienta (seznam v Nastavení). */
+function _publicEventType_(row) {
+  return {
+    id: String(row.id),
+    label: String(row.label),
+    icon: String(row.icon),
+    color: String(row.color),
+  };
+}
+
+/** Seznam pracovních pozic pro správu v Nastavení, řazený podle názvu. */
+function apiGetPositions() {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    return dbGetAll_(SHEETS.POSITIONS)
+      .map(_publicPosition_)
+      .sort((a, b) => a.name.localeCompare(b.name, 'cs'));
+  });
+}
+
+/**
+ * Vytvoří novou pracovní pozici, nebo upraví existující (payload.id =
+ * úprava). Uložený název je jen volný text nabízený ve formuláři uživatele
+ * (viz apiSaveUser) — přejmenování/smazání pozice se NEPROMÍTNE zpětně do
+ * uživatelů, kteří ji už mají vyplněnou (stejně jako Umístění/Oddělení),
+ * takže tu není žádná vazba, kterou by bylo nutné hlídat.
+ *
+ * @param {Object} payload  { id?, name }
+ */
+function apiSavePosition(payload) {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    const data = payload || {};
+    const id = data.id ? String(data.id) : null;
+    const existing = id ? dbFindById_(SHEETS.POSITIONS, id) : null;
+    if (id && !existing) {
+      throw userError_('Pozice nebyla nalezena — mohl ji mezitím upravit někdo jiný.');
+    }
+
+    const name = cleanText_(data.name, 'Název', LIMITS.POSITION_NAME_MAX, true);
+
+    const isDuplicate = dbGetAll_(SHEETS.POSITIONS).some((row) =>
+      String(row.id) !== id && String(row.name).toLowerCase() === name.toLowerCase()
+    );
+    if (isDuplicate) {
+      throw userError_('Tato pozice už v seznamu je.');
+    }
+
+    let record;
+    if (existing) {
+      record = dbUpdate_(SHEETS.POSITIONS, id, { name: name });
+      audit_('position.update', 'Upravena pracovní pozice „' + name + '"');
+    } else {
+      record = dbInsert_(SHEETS.POSITIONS, { name: name });
+      audit_('position.create', 'Vytvořena pracovní pozice „' + name + '"');
+    }
+
+    return _publicPosition_(record);
+  });
+}
+
+/**
+ * Smaže pracovní pozici. Bez dopadu na uživatele, kteří ji mají vyplněnou
+ * (viz komentář u apiSavePosition) — proto žádná kontrola použití, prosté
+ * smazání jako u jiných jednoduchých seznamů.
+ *
+ * @param {Object} payload  { id }
+ */
+function apiDeletePosition(payload) {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    const data = payload || {};
+    const id = cleanText_(data.id, 'ID pozice', 100, true);
+
+    const position = dbFindById_(SHEETS.POSITIONS, id);
+    if (!position) {
+      throw userError_('Pozice nebyla nalezena — možná ji mezitím smazal někdo jiný.');
+    }
+
+    dbDelete_(SHEETS.POSITIONS, id);
+    audit_('position.delete', 'Smazána pracovní pozice „' + position.name + '"');
+    return null;
+  });
+}
+
+/** Přemění řádek pracovní pozice na podobu pro klienta. */
+function _publicPosition_(row) {
+  return {
+    id: String(row.id),
+    name: String(row.name),
   };
 }

@@ -26,7 +26,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.1.32',
+  version: 'v0.1.33',
   releaseDate: '3.9.2026',
 
   /**
@@ -95,6 +95,8 @@ const SHEETS = {
   AUDIT: '_audit_log',
   EVENTS: 'events',
   EVENT_COMMENTS: 'event_comments',
+  POSITIONS: '_positions',
+  EVENT_TYPES: '_event_types',
 };
 
 /**
@@ -117,21 +119,46 @@ const PERM_KEYS = {
 const NOTIFY_ACTIONS = ['event.create', 'event.update', 'event.delete', 'comment.create', 'comment.delete'];
 
 /**
- * Typy událostí. Klíč se ukládá do databáze, popisek/ikona/barva slouží jen
- * k zobrazení. Cokoliv mimo tento seznam server odmítne — proto whitelist.
- * Ikony jsou názvy Phosphor Icons bez prefixu "ph-". Barva je jen doplňkové
- * odlišení chipů v mřížce — nikdy jediný nositel významu, ten vždy nese
- * i text (bezpečnostní checklist v SPECIFIKACE.md, bod 13).
+ * Typy událostí — od v0.1.33 plně spravované v Nastavení (list `_event_types`
+ * v databázi), ne napevno v kódu. Tohle je jen VÝCHOZÍ obsah, kterým se
+ * tabulka jednorázově naseje, když je prázdná (viz _ensureEventTypesSeeded_
+ * v 50_api.js) — typicky při první instalaci, nebo u už běžící appky při
+ * prvním nasazení téhle verze. Klíče („default", „meeting"…) se použijí
+ * jako ID řádků, ať existující události v `events.type` dál sedí.
+ *
+ * Ikony jsou názvy Phosphor Icons bez prefixu "ph-", vybírají se jen
+ * z whitelistu EVENT_TYPE_ICONS (viz níže) — nikdy volný text. Barva je
+ * jen doplňkové odlišení chipů v mřížce — nikdy jediný nositel významu,
+ * ten vždy nese i text (bezpečnostní checklist v SPECIFIKACE.md, bod 13).
+ *
+ * POZOR: „default" je jediný typ, který nejde smazat (viz apiDeleteEventType)
+ * — je to záchranná varianta pro události, jejichž typ mezitím zmizel
+ * (viz apiGetEvents), takže musí existovat vždycky.
  */
-const EVENT_TYPES = {
-  default: { label: 'Běžné', icon: 'chat-circle', color: '#5e6e8a' },
-  meeting: { label: 'Schůzka', icon: 'users-three', color: '#0050aa' },
-  trip: { label: 'Služební cesta', icon: 'airplane-tilt', color: '#008cd2' },
-  important: { label: 'Důležité', icon: 'warning', color: '#e60a14' },
-  deadline: { label: 'Deadline', icon: 'alarm', color: '#b45309' },
-  homeoffice: { label: 'Home Office', icon: 'house', color: '#16a34a' },
-  party: { label: 'Oslava / Teambuilding', icon: 'confetti', color: '#c026d3' },
-};
+const DEFAULT_EVENT_TYPES = [
+  { id: 'default', label: 'Běžné', icon: 'chat-circle', color: '#5e6e8a' },
+  { id: 'meeting', label: 'Schůzka', icon: 'users-three', color: '#0050aa' },
+  { id: 'trip', label: 'Služební cesta', icon: 'airplane-tilt', color: '#008cd2' },
+  { id: 'important', label: 'Důležité', icon: 'warning', color: '#e60a14' },
+  { id: 'deadline', label: 'Deadline', icon: 'alarm', color: '#b45309' },
+  { id: 'homeoffice', label: 'Home Office', icon: 'house', color: '#16a34a' },
+  { id: 'party', label: 'Oslava / Teambuilding', icon: 'confetti', color: '#c026d3' },
+];
+
+/**
+ * Whitelist ikon nabízených při vytváření/úpravě typu události (viz
+ * apiSaveEventType). Volný text by šel zneužít k vložení neexistujícího
+ * názvu (ikona by nikde nešla vidět) nebo něčeho mimo Phosphor sadu —
+ * proto výběr jen z předem prověřeného seznamu, stejný princip jako
+ * u EVENT_TYPES dřív. Názvy bez prefixu "ph-" (ten si doplňuje UI).
+ */
+const EVENT_TYPE_ICONS = [
+  'chat-circle', 'users-three', 'airplane-tilt', 'warning', 'alarm', 'house',
+  'confetti', 'calendar-check', 'briefcase', 'phone-call', 'video-camera',
+  'coffee', 'graduation-cap', 'heart', 'star', 'flag', 'bell', 'gear',
+  'wrench', 'book-open', 'medal', 'target', 'umbrella', 'gift', 'first-aid-kit',
+  'car', 'clock-user', 'chart-line-up',
+];
 
 /**
  * Limity vstupů. Vynucují se na serveru — hodnoty v UI jsou jen pohodlí
@@ -151,6 +178,10 @@ const LIMITS = {
   ORG_FIELD_MAX: 60,
   /** Nejvíc oznámení, které apiGetBootstrap vrátí najednou — pojistka proti obřímu seznamu (např. hodně starý last_visit_at). */
   NOTIFY_MAX_ITEMS: 30,
+  /** Název pracovní pozice (Nastavení). */
+  POSITION_NAME_MAX: 60,
+  /** Popisek typu události (Nastavení). */
+  EVENT_TYPE_LABEL_MAX: 40,
 };
 
 /**

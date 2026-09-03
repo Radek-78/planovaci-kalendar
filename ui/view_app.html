@@ -142,11 +142,51 @@
       </div>
     </section>
 
-    <!-- Panel: Nastavení (placeholder — plná funkce ve fázi 5) -->
+    <!-- Panel: Nastavení — zatím dvě záložky (Pracovní pozice, Typy
+         událostí), obě jednoduché seznamy s vytvořením/úpravou/smazáním
+         (viz bindSettingsTabs/loadPositions/loadEventTypesAdmin). Další
+         (Oddělení, obecné nastavení appky…) přibudou stejným vzorem. -->
     <section class="view-panel" data-page-section="settings">
-      <div class="view-placeholder">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-settings"></use></svg>
-        <p>Tato sekce bude dostupná v další fázi vývoje.</p>
+      <div class="section-header">
+        <h2>Nastavení</h2>
+      </div>
+      <div class="settings-wrap">
+        <div class="settings-tabs" id="settingsTabs">
+          <button class="settings-tab is-active" type="button" data-settings-tab="positions">
+            <i class="ph ph-identification-badge" aria-hidden="true"></i> Pracovní pozice
+          </button>
+          <button class="settings-tab" type="button" data-settings-tab="eventTypes">
+            <i class="ph ph-tag" aria-hidden="true"></i> Typy událostí
+          </button>
+        </div>
+
+        <!-- Pracovní pozice — prostý seznam, žádná vazba na uživatele
+             (viz apiSavePosition na serveru). -->
+        <div class="settings-panel is-active" data-settings-panel="positions">
+          <div class="settings-panel-head">
+            <p class="settings-panel-desc">Seznam pracovních pozic pro výběr ve formuláři uživatele.</p>
+            <button class="button button-primary" type="button" id="positionsCreateBtn">
+              <i class="ph ph-plus" aria-hidden="true"></i> Přidat pozici
+            </button>
+          </div>
+          <div class="settings-list-wrap">
+            <div class="settings-list" id="positionsList"><!-- vykresleno JS --></div>
+          </div>
+        </div>
+
+        <!-- Typy událostí — ikona/barva/popisek, nabízí se ve formuláři
+             nové/upravené události (viz fillEventTypeSelect). -->
+        <div class="settings-panel" data-settings-panel="eventTypes">
+          <div class="settings-panel-head">
+            <p class="settings-panel-desc">Typy událostí dostupné při zakládání a úpravě události v kalendáři.</p>
+            <button class="button button-primary" type="button" id="eventTypesCreateBtn">
+              <i class="ph ph-plus" aria-hidden="true"></i> Přidat typ
+            </button>
+          </div>
+          <div class="settings-list-wrap">
+            <div class="settings-list" id="eventTypesAdminList"><!-- vykresleno JS --></div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -375,6 +415,82 @@
   </form>
 </dialog>
 
+<!-- ══ Modal: pracovní pozice (nová/upravovaná) ══ -->
+<dialog class="modal modal-grow" id="positionFormModal">
+  <div class="modal-header">
+    <span class="modal-icon" id="positionFormModalIcon"><i class="ph ph-identification-badge" aria-hidden="true"></i></span>
+    <div class="modal-header-text">
+      <p class="kicker" id="positionFormKicker">Nová pozice</p>
+      <h2 id="positionFormModalTitle">Přidat pracovní pozici</h2>
+    </div>
+    <button class="modal-close" type="button" id="positionFormClose" aria-label="Zavřít">
+      <i class="ph ph-x" aria-hidden="true"></i>
+    </button>
+  </div>
+  <form id="positionForm">
+    <div class="modal-body">
+      <label>
+        <span>Název *</span>
+        <input type="text" id="positionFormName" maxlength="60" required>
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="button button-secondary" id="positionFormCancel">
+        <i class="ph ph-x" aria-hidden="true"></i> Zrušit
+      </button>
+      <button type="submit" class="button button-primary" id="positionFormSubmit">
+        <i class="ph ph-check" aria-hidden="true"></i> Vytvořit
+      </button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ══ Modal: typ události (nový/upravovaný) ══
+     Ikona se vybírá z mřížky (viz renderEventTypeIconPicker) — ne z volného
+     textu, ať nejde vybrat neexistující/mimo whitelist ikonu (viz
+     EVENT_TYPE_ICONS na serveru, stejný whitelist appka jen zobrazuje). -->
+<dialog class="modal modal-wide modal-grow" id="eventTypeFormModal">
+  <div class="modal-header">
+    <span class="modal-icon" id="eventTypeFormModalIcon"><i class="ph ph-tag" aria-hidden="true"></i></span>
+    <div class="modal-header-text">
+      <p class="kicker" id="eventTypeFormKicker">Nový typ</p>
+      <h2 id="eventTypeFormModalTitle">Přidat typ události</h2>
+    </div>
+    <button class="modal-close" type="button" id="eventTypeFormClose" aria-label="Zavřít">
+      <i class="ph ph-x" aria-hidden="true"></i>
+    </button>
+  </div>
+  <form id="eventTypeForm">
+    <div class="modal-body event-type-form-body">
+      <div class="field-group">
+        <p class="kicker"><i class="ph ph-text-aa" aria-hidden="true"></i> Popisek a barva</p>
+        <div class="event-form-row">
+          <label>
+            <span>Popisek *</span>
+            <input type="text" id="eventTypeFormLabel" maxlength="40" required>
+          </label>
+          <label>
+            <span>Barva</span>
+            <input type="color" id="eventTypeFormColor" value="#0050aa">
+          </label>
+        </div>
+      </div>
+      <div class="field-group">
+        <p class="kicker"><i class="ph ph-shapes" aria-hidden="true"></i> Ikona *</p>
+        <div class="type-icon-picker" id="eventTypeFormIconPicker" data-selected=""><!-- vykresleno JS --></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="button button-secondary" id="eventTypeFormCancel">
+        <i class="ph ph-x" aria-hidden="true"></i> Zrušit
+      </button>
+      <button type="submit" class="button button-primary" id="eventTypeFormSubmit">
+        <i class="ph ph-check" aria-hidden="true"></i> Vytvořit
+      </button>
+    </div>
+  </form>
+</dialog>
+
 <!-- ══ Modal: obecné potvrzení citlivé/nevratné akce ══
      Nativní window.confirm/alert se v appce záměrně nepoužívá (jiný vzhled
      než zbytek aplikace i nejisté chování v sandboxované iframe Apps
@@ -505,6 +621,18 @@
     /** Smí uživatel spravovat uživatele? Ze serveru, stejný princip jako canWrite. */
     canManageUsers: false,
 
+    /** Smí uživatel spravovat Nastavení (pracovní pozice, typy událostí…)? Ze serveru, stejný princip jako canManageUsers. */
+    canManageSettings: false,
+
+    /** Poslední načtený seznam pracovních pozic — pro dohledání dat při otevření editace. */
+    positions: [],
+
+    /** Poslední načtený seznam typů událostí pro správu v Nastavení (pole, ne mapa — na rozdíl od this.eventTypes). */
+    eventTypesAdmin: [],
+
+    /** Whitelist ikon pro výběr typu události — ze serveru (apiGetEventTypes), stejný jako EVENT_TYPE_ICONS v 00_config.js. */
+    eventTypeIcons: [],
+
     /**
      * Oznámení „co je nového od poslední návštěvy" — ze serveru
      * (apiGetBootstrap, viz _computeNotifications_), naplní se jednou při
@@ -559,12 +687,14 @@
       // nezobrazí — server o právu už rozhodl, klient jen skrývá odkaz na
       // sekci, kterou by stejně nesměl otevřít.
       const canManageUsers = data.permissions.canManageUsers === true;
+      const canManageSettings = data.permissions.canManageSettings === true;
       if (!canManageUsers) document.querySelector('#navUsers').classList.add('is-hidden');
-      if (!data.permissions.canManageSettings) document.querySelector('#navSettings').classList.add('is-hidden');
+      if (!canManageSettings) document.querySelector('#navSettings').classList.add('is-hidden');
 
       this.eventTypes = data.eventTypes || {};
       this.canWrite = data.permissions.canWrite === true;
       this.canManageUsers = canManageUsers;
+      this.canManageSettings = canManageSettings;
       this.canManageForeignEvents = data.permissions.canManageForeignEvents === true;
       this.canEditPastEvents = data.permissions.canEditPastEvents === true;
       this.currentUserRole = data.user.role;
@@ -582,6 +712,7 @@
       this.bindEventForm();
       this.bindChipTooltip();
       if (canManageUsers) this.bindUserForm();
+      if (canManageSettings) this.bindSettings();
       this.renderCalendar();
 
       document.querySelector('#appShell').classList.remove('is-hidden');
@@ -1435,6 +1566,368 @@
       '</div>';
     },
 
+    /* ── Nastavení ────────────────────────────────────────────────────── */
+
+    /**
+     * Přepínání záložek, otevírání formulářů a mazání — pro obě záložky
+     * Nastavení (Pracovní pozice, Typy událostí) najednou. Volá se jen
+     * jednou z onBootstrap (stejně jako bindUserForm), data se pak
+     * dotahují při každém vstupu do sekce (viz showSection/loadPositions/
+     * loadEventTypesAdmin).
+     */
+    bindSettings() {
+      document.querySelectorAll('.settings-tab').forEach((tab) => {
+        tab.addEventListener('click', () => this.showSettingsTab(tab.dataset.settingsTab));
+      });
+
+      document.querySelector('#positionsCreateBtn').addEventListener('click', (e) => {
+        this.openPositionFormModal(null, e.currentTarget);
+      });
+      document.querySelector('#eventTypesCreateBtn').addEventListener('click', (e) => {
+        this.openEventTypeFormModal(null, e.currentTarget);
+      });
+
+      // Delegované listenery na seznamech — přežijí opakované překreslení
+      // (stejný vzor jako u uživatelů). Tužka/koš sdílí vzhled i třídu
+      // s .user-action-btn, ať appka nemá dvě různé sady stylů pro totéž.
+      document.querySelector('#positionsList').addEventListener('click', (e) => {
+        const btn = e.target.closest('.user-action-btn');
+        if (!btn || !btn.dataset.id) return;
+        const item = this.positions.find((p) => p.id === btn.dataset.id);
+        if (!item) return;
+        if (btn.dataset.action === 'edit') this.openPositionFormModal(item, btn);
+        else if (btn.dataset.action === 'delete') this.confirmDeletePosition(item, btn);
+      });
+
+      document.querySelector('#eventTypesAdminList').addEventListener('click', (e) => {
+        const btn = e.target.closest('.user-action-btn');
+        if (!btn || !btn.dataset.id) return;
+        const item = this.eventTypesAdmin.find((t) => t.id === btn.dataset.id);
+        if (!item) return;
+        if (btn.dataset.action === 'edit') this.openEventTypeFormModal(item, btn);
+        else if (btn.dataset.action === 'delete') this.confirmDeleteEventType(item, btn);
+      });
+
+      this.bindPositionForm();
+      this.bindEventTypeForm();
+    },
+
+    showSettingsTab(tabName) {
+      document.querySelectorAll('.settings-tab').forEach((tab) => {
+        tab.classList.toggle('is-active', tab.dataset.settingsTab === tabName);
+      });
+      document.querySelectorAll('[data-settings-panel]').forEach((panel) => {
+        panel.classList.toggle('is-active', panel.dataset.settingsPanel === tabName);
+      });
+    },
+
+    /** Prázdný/chybový/načítací stav seznamu v Nastavení — stejný jazyk jako u uživatelů. */
+    settingsPlaceholder(text) {
+      return '<div class="view-placeholder">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-settings"></use></svg>' +
+        '<p>' + Ui.escape(text) + '</p></div>';
+    },
+
+    loadPositions() {
+      const list = document.querySelector('#positionsList');
+      list.innerHTML = this.settingsPlaceholder('Načítám pozice…');
+
+      Ui.call('apiGetPositions', null, { silent: true })
+        .then((positions) => {
+          this.positions = positions;
+          this.renderPositions();
+        })
+        .catch((error) => {
+          list.innerHTML = this.settingsPlaceholder('Pozice se nepodařilo načíst.');
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    renderPositions() {
+      const list = document.querySelector('#positionsList');
+      list.innerHTML = this.positions.length
+        ? this.positions.map((p) => this.renderPositionRow(p)).join('')
+        : this.settingsPlaceholder('Zatím žádné pracovní pozice.');
+    },
+
+    renderPositionRow(p) {
+      return '<div class="settings-row">' +
+        '<span class="settings-row-name">' + Ui.escape(p.name) + '</span>' +
+        '<span class="settings-row-actions">' +
+          '<button type="button" class="user-action-btn is-edit" data-action="edit" data-id="' + Ui.escape(p.id) + '" title="Upravit" aria-label="Upravit ' + Ui.escape(p.name) + '">' +
+            '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>' +
+          '<button type="button" class="user-action-btn is-danger" data-action="delete" data-id="' + Ui.escape(p.id) + '" title="Smazat" aria-label="Smazat ' + Ui.escape(p.name) + '">' +
+            '<i class="ph ph-trash" aria-hidden="true"></i></button>' +
+        '</span>' +
+      '</div>';
+    },
+
+    bindPositionForm() {
+      const dialog = document.querySelector('#positionFormModal');
+      document.querySelector('#positionFormClose').addEventListener('click', () => Ui.closeModal(dialog));
+      document.querySelector('#positionFormCancel').addEventListener('click', () => Ui.closeModal(dialog));
+      dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) Ui.closeModal(dialog);
+      });
+      dialog.addEventListener('cancel', (e) => {
+        e.preventDefault();
+        Ui.closeModal(dialog);
+      });
+      document.querySelector('#positionForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.submitPositionForm();
+      });
+    },
+
+    /** Otevře formulář pozice — bez parametru position založí novou, s ním upraví existující. */
+    openPositionFormModal(position, originEl) {
+      document.querySelector('#positionFormModalIcon').innerHTML =
+        '<i class="ph ' + (position ? 'ph-pencil-simple' : 'ph-identification-badge') + '" aria-hidden="true"></i>';
+      document.querySelector('#positionFormKicker').textContent = position ? 'Upravit pozici' : 'Nová pozice';
+      document.querySelector('#positionFormModalTitle').textContent = position ? position.name : 'Přidat pracovní pozici';
+      document.querySelector('#positionFormName').value = position ? position.name : '';
+      document.querySelector('#positionForm').dataset.editId = position ? position.id : '';
+      document.querySelector('#positionFormSubmit').innerHTML =
+        '<i class="ph ph-check" aria-hidden="true"></i> ' + (position ? 'Uložit' : 'Vytvořit');
+
+      const dialog = document.querySelector('#positionFormModal');
+      this.setModalOrigin(dialog, originEl);
+      Ui.openModal(dialog);
+      document.querySelector('#positionFormName').focus();
+    },
+
+    submitPositionForm() {
+      const editId = document.querySelector('#positionForm').dataset.editId || '';
+      const name = document.querySelector('#positionFormName').value.trim();
+      if (!name) {
+        Ui.toast('Vyplňte název pozice.', 'error');
+        return;
+      }
+
+      const payload = { name: name };
+      if (editId) payload.id = editId;
+
+      const submitButton = document.querySelector('#positionFormSubmit');
+      Ui.setButtonLoading(submitButton, true, 'Ukládám…');
+
+      Ui.call('apiSavePosition', payload, { silent: true })
+        .then(() => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.closeModal(document.querySelector('#positionFormModal'));
+          Ui.toast(editId ? 'Pozice upravena.' : 'Pozice vytvořena.', 'success');
+          this.loadPositions();
+        })
+        .catch((error) => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    /** Smazání pozice nemá na nikoho vazbu (viz apiDeletePosition na serveru) — přesto přes potvrzovací okno, je to nevratné. */
+    confirmDeletePosition(position, originEl) {
+      this.confirmAction({
+        title: 'Smazat pozici?',
+        body: '„' + position.name + '" zmizí ze seznamu pro výběr. Uživatelé, kteří ji už mají vyplněnou, si ji ponechají beze změny.',
+        okLabel: 'Smazat',
+        okIcon: 'ph-trash',
+        okClass: 'button-danger',
+        onConfirm: (okBtn, dialog) => {
+          Ui.setButtonLoading(okBtn, true, 'Mažu…');
+          Ui.call('apiDeletePosition', { id: position.id }, { silent: true })
+            .then(() => {
+              Ui.closeModal(dialog);
+              Ui.toast('Pozice smazána.', 'success');
+              this.loadPositions();
+            })
+            .catch((error) => {
+              Ui.setButtonLoading(okBtn, false);
+              Ui.toast(error.message, 'error');
+            });
+        },
+      }, originEl);
+    },
+
+    /**
+     * Načte typy událostí pro správu (pole s id, na rozdíl od this.eventTypes,
+     * což je mapa pro kalendář/formulář události) a rovnou promítne i do
+     * nich (viz refreshEventTypes) — ať se úprava/smazání typu hned projeví
+     * všude, ne až po znovunačtení appky.
+     */
+    loadEventTypesAdmin() {
+      const list = document.querySelector('#eventTypesAdminList');
+      list.innerHTML = this.settingsPlaceholder('Načítám typy událostí…');
+
+      Ui.call('apiGetEventTypes', null, { silent: true })
+        .then((data) => {
+          this.eventTypesAdmin = data.items;
+          this.eventTypeIcons = data.availableIcons;
+          this.renderEventTypesAdmin();
+          this.refreshEventTypes();
+        })
+        .catch((error) => {
+          list.innerHTML = this.settingsPlaceholder('Typy událostí se nepodařilo načíst.');
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    /** Přepočítá this.eventTypes (mapu pro kalendář/formulář události) z už načteného this.eventTypesAdmin — žádné další volání serveru. */
+    refreshEventTypes() {
+      const map = {};
+      this.eventTypesAdmin.forEach((t) => {
+        map[t.id] = { label: t.label, icon: t.icon, color: t.color };
+      });
+      this.eventTypes = map;
+      this.fillEventTypeSelect();
+      if (document.querySelector('[data-page-section="calendar"]').classList.contains('is-active')) {
+        this.renderCalendar();
+      }
+    },
+
+    renderEventTypesAdmin() {
+      const list = document.querySelector('#eventTypesAdminList');
+      list.innerHTML = this.eventTypesAdmin.length
+        ? this.eventTypesAdmin.map((t) => this.renderEventTypeRow(t)).join('')
+        : this.settingsPlaceholder('Zatím žádné typy událostí.');
+    },
+
+    /** Typ „default" nejde smazat (viz apiDeleteEventType na serveru) — proto bez ikony koše, žádné mrtvé tlačítko. */
+    renderEventTypeRow(t) {
+      const isDefault = t.id === 'default';
+      const deleteBtn = isDefault ? '' :
+        '<button type="button" class="user-action-btn is-danger" data-action="delete" data-id="' + Ui.escape(t.id) + '" title="Smazat" aria-label="Smazat ' + Ui.escape(t.label) + '">' +
+          '<i class="ph ph-trash" aria-hidden="true"></i></button>';
+
+      return '<div class="settings-row">' +
+        '<span class="settings-row-icon" style="--type-color:' + Ui.escape(t.color) + '">' +
+          '<i class="ph ph-' + Ui.escape(t.icon) + '" aria-hidden="true"></i></span>' +
+        '<span class="settings-row-name">' + Ui.escape(t.label) +
+          (isDefault ? ' <span class="settings-row-tag">výchozí</span>' : '') + '</span>' +
+        '<span class="settings-row-actions">' +
+          '<button type="button" class="user-action-btn is-edit" data-action="edit" data-id="' + Ui.escape(t.id) + '" title="Upravit" aria-label="Upravit ' + Ui.escape(t.label) + '">' +
+            '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>' +
+          deleteBtn +
+        '</span>' +
+      '</div>';
+    },
+
+    bindEventTypeForm() {
+      const dialog = document.querySelector('#eventTypeFormModal');
+      document.querySelector('#eventTypeFormClose').addEventListener('click', () => Ui.closeModal(dialog));
+      document.querySelector('#eventTypeFormCancel').addEventListener('click', () => Ui.closeModal(dialog));
+      dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) Ui.closeModal(dialog);
+      });
+      dialog.addEventListener('cancel', (e) => {
+        e.preventDefault();
+        Ui.closeModal(dialog);
+      });
+      document.querySelector('#eventTypeForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.submitEventTypeForm();
+      });
+
+      // Klik na dlaždici v mřížce ikon ji označí — uloženo v data-selected
+      // na wrapperu, čte submitEventTypeForm (žádné skryté pole navíc).
+      document.querySelector('#eventTypeFormIconPicker').addEventListener('click', (e) => {
+        const option = e.target.closest('.type-icon-option');
+        if (!option) return;
+        const picker = document.querySelector('#eventTypeFormIconPicker');
+        picker.dataset.selected = option.dataset.icon;
+        picker.querySelectorAll('.type-icon-option').forEach((el) => el.classList.toggle('is-selected', el === option));
+      });
+    },
+
+    /** Mřížka dlaždic s ikonami — z whitelistu ze serveru (this.eventTypeIcons, viz apiGetEventTypes), ne z volného textu. */
+    renderEventTypeIconPicker(selectedIcon) {
+      const picker = document.querySelector('#eventTypeFormIconPicker');
+      picker.dataset.selected = selectedIcon || '';
+      picker.innerHTML = this.eventTypeIcons.map((icon) =>
+        '<button type="button" class="type-icon-option' + (icon === selectedIcon ? ' is-selected' : '') +
+          '" data-icon="' + Ui.escape(icon) + '" title="' + Ui.escape(icon) + '" aria-label="Ikona ' + Ui.escape(icon) + '">' +
+          '<i class="ph ph-' + Ui.escape(icon) + '" aria-hidden="true"></i></button>'
+      ).join('');
+    },
+
+    /** Otevře formulář typu události — bez parametru type založí nový, s ním upraví existující. */
+    openEventTypeFormModal(type, originEl) {
+      document.querySelector('#eventTypeFormModalIcon').innerHTML =
+        '<i class="ph ' + (type ? 'ph-pencil-simple' : 'ph-tag') + '" aria-hidden="true"></i>';
+      document.querySelector('#eventTypeFormKicker').textContent = type ? 'Upravit typ' : 'Nový typ';
+      document.querySelector('#eventTypeFormModalTitle').textContent = type ? type.label : 'Přidat typ události';
+      document.querySelector('#eventTypeFormLabel').value = type ? type.label : '';
+      document.querySelector('#eventTypeFormColor').value = type ? type.color : '#0050aa';
+      document.querySelector('#eventTypeForm').dataset.editId = type ? type.id : '';
+      this.renderEventTypeIconPicker(type ? type.icon : this.eventTypeIcons[0]);
+      document.querySelector('#eventTypeFormSubmit').innerHTML =
+        '<i class="ph ph-check" aria-hidden="true"></i> ' + (type ? 'Uložit' : 'Vytvořit');
+
+      const dialog = document.querySelector('#eventTypeFormModal');
+      this.setModalOrigin(dialog, originEl);
+      Ui.openModal(dialog);
+      document.querySelector('#eventTypeFormLabel').focus();
+    },
+
+    submitEventTypeForm() {
+      const editId = document.querySelector('#eventTypeForm').dataset.editId || '';
+      const label = document.querySelector('#eventTypeFormLabel').value.trim();
+      if (!label) {
+        Ui.toast('Vyplňte popisek typu.', 'error');
+        return;
+      }
+
+      const icon = document.querySelector('#eventTypeFormIconPicker').dataset.selected;
+      if (!icon) {
+        Ui.toast('Vyberte ikonu.', 'error');
+        return;
+      }
+
+      const payload = {
+        label: label,
+        icon: icon,
+        color: document.querySelector('#eventTypeFormColor').value,
+      };
+      if (editId) payload.id = editId;
+
+      const submitButton = document.querySelector('#eventTypeFormSubmit');
+      Ui.setButtonLoading(submitButton, true, 'Ukládám…');
+
+      Ui.call('apiSaveEventType', payload, { silent: true })
+        .then(() => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.closeModal(document.querySelector('#eventTypeFormModal'));
+          Ui.toast(editId ? 'Typ události upraven.' : 'Typ události vytvořen.', 'success');
+          this.loadEventTypesAdmin(); // znovu načte seznam a rovnou promítne i do kalendáře (viz refreshEventTypes)
+        })
+        .catch((error) => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    /** Typ „default" se v seznamu vůbec nenabízí ke smazání (viz renderEventTypeRow) — sem se tak nikdy nedostane. */
+    confirmDeleteEventType(type, originEl) {
+      this.confirmAction({
+        title: 'Smazat typ události?',
+        body: '„' + type.label + '" bude odstraněn. Existující události s tímto typem se pak zobrazí jako výchozí „Běžné".',
+        okLabel: 'Smazat',
+        okIcon: 'ph-trash',
+        okClass: 'button-danger',
+        onConfirm: (okBtn, dialog) => {
+          Ui.setButtonLoading(okBtn, true, 'Mažu…');
+          Ui.call('apiDeleteEventType', { id: type.id }, { silent: true })
+            .then(() => {
+              Ui.closeModal(dialog);
+              Ui.toast('Typ události smazán.', 'success');
+              this.loadEventTypesAdmin();
+            })
+            .catch((error) => {
+              Ui.setButtonLoading(okBtn, false);
+              Ui.toast(error.message, 'error');
+            });
+        },
+      }, originEl);
+    },
+
     showSection(name) {
       document.querySelectorAll('.nav-link').forEach((item) => {
         item.classList.toggle('is-active', item.dataset.section === name);
@@ -1447,6 +1940,10 @@
       // při startu appky. Při 6 uživatelích je znovunačtení při každém
       // kliknutí levné a zaručí to čerstvá data i po vytvoření nového.
       if (name === 'users' && this.canManageUsers) this.loadUsers();
+      if (name === 'settings' && this.canManageSettings) {
+        this.loadPositions();
+        this.loadEventTypesAdmin();
+      }
     },
 
     navigateMonth(delta) {

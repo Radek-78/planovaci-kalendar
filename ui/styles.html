@@ -970,8 +970,8 @@
     display: flex;
   }
 
-  /* Prázdný/načítací/chybový stav — sekce bez obsahu (Nastavení), ale i
-     Uživatelé při načítání nebo prázdném seznamu (viz usersPlaceholder). */
+  /* Prázdný/načítací/chybový stav — Uživatelé i Nastavení při načítání
+     nebo prázdném seznamu (viz usersPlaceholder/settingsPlaceholder). */
   .view-placeholder {
     align-items: center;
     color: var(--muted);
@@ -1208,6 +1208,190 @@
   .user-action-btn.is-restore:hover {
     background: var(--green);
     color: var(--white);
+  }
+
+  /* ── Nastavení — záložky (Pracovní pozice, Typy událostí…) ────────────
+     Tužka/koš u řádků sdílí vzhled i třídu s .user-action-btn výše, ať
+     appka nemá dvě sady stylů pro totéž. ── */
+
+  .settings-wrap {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    margin: 16px 20px 20px;
+    min-height: 0;
+  }
+
+  .settings-tabs {
+    display: flex;
+    flex-shrink: 0;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .settings-tab {
+    align-items: center;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--muted);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 13px;
+    font-weight: 700;
+    gap: 7px;
+    padding: 9px 16px;
+  }
+
+  .settings-tab:hover {
+    background: var(--page);
+  }
+
+  .settings-tab.is-active {
+    background: var(--lidl-blue);
+    border-color: var(--lidl-blue);
+    color: var(--white);
+  }
+
+  .settings-tab i {
+    font-size: 14px;
+  }
+
+  /* Skryté display:none místo .is-hidden — .settings-panel je zároveň flex
+     kontejner (viz .is-active), potřebuje se přepínat display, ne jen
+     viditelnost. */
+  .settings-panel {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .settings-panel.is-active {
+    display: flex;
+  }
+
+  .settings-panel-head {
+    align-items: center;
+    display: flex;
+    flex-shrink: 0;
+    gap: 12px;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .settings-panel-desc {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0;
+  }
+
+  /* Karta kolem seznamu — stejný jazyk jako .users-panel-wrap/.cal-grid-wrap. */
+  .settings-list-wrap {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 4px;
+  }
+
+  .settings-row {
+    align-items: center;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex;
+    gap: 12px;
+    padding: 10px;
+  }
+
+  .settings-row:last-child {
+    border-bottom: none;
+  }
+
+  .settings-row-name {
+    color: var(--text);
+    flex: 1;
+    font-size: 13.5px;
+    font-weight: 700;
+    min-width: 0;
+  }
+
+  .settings-row-actions {
+    display: flex;
+    flex-shrink: 0;
+    gap: 6px;
+  }
+
+  /* Barevná dlaždice s ikonou typu — stejný jazyk jako .day-event-icon/
+     .notify-item-icon (--type-color se nastavuje inline, viz renderEventTypeRow). */
+  .settings-row-icon {
+    align-items: center;
+    background: color-mix(in srgb, var(--type-color, var(--muted)) 16%, white);
+    border-radius: 8px;
+    color: var(--type-color, var(--muted));
+    display: flex;
+    flex-shrink: 0;
+    height: 32px;
+    justify-content: center;
+    width: 32px;
+  }
+
+  .settings-row-icon i {
+    font-size: 15px;
+  }
+
+  .settings-row-tag {
+    background: var(--line-soft);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    margin-left: 6px;
+    padding: 2px 7px;
+    text-transform: uppercase;
+    vertical-align: middle;
+  }
+
+  /* ── Formulář typu události — mřížka dlaždic s ikonou (výběr místo
+     volného textu, viz renderEventTypeIconPicker/EVENT_TYPE_ICONS). ── */
+
+  .event-type-form-body {
+    display: grid;
+    gap: 16px;
+  }
+
+  .type-icon-picker {
+    display: grid;
+    gap: 6px;
+    grid-template-columns: repeat(7, 1fr);
+  }
+
+  .type-icon-option {
+    align-items: center;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--muted);
+    cursor: pointer;
+    display: inline-flex;
+    height: 36px;
+    justify-content: center;
+  }
+
+  .type-icon-option:hover {
+    background: var(--page);
+  }
+
+  .type-icon-option.is-selected {
+    background: var(--lidl-blue);
+    border-color: var(--lidl-blue);
+    color: var(--white);
+  }
+
+  .type-icon-option i {
+    font-size: 16px;
   }
 
   /* ── Kalendář — hlavička s navigací měsíců ────────────────────────────

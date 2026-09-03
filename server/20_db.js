@@ -38,6 +38,13 @@ const DB_SCHEMA = {
     'owner_email', 'created_at', 'created_by', 'updated_at', 'updated_by',
   ],
   event_comments: ['id', 'event_id', 'author_email', 'text', 'created_at'],
+  // Pracovní pozice pro výběr ve formuláři uživatele (Nastavení) — jen
+  // název, žádné vazby na ostatní tabulky (viz apiSavePosition/apiDeletePosition).
+  _positions: ['id', 'name', 'created_at', 'created_by', 'updated_at', 'updated_by'],
+  // Typy událostí (Nastavení) — id je u výchozích 7 stabilní slug
+  // (viz DEFAULT_EVENT_TYPES), u nově založených UUID; obojí je jen
+  // opaque klíč uložený v events.type, appce na tom nezáleží.
+  _event_types: ['id', 'label', 'icon', 'color', 'created_at', 'created_by', 'updated_at', 'updated_by'],
 };
 
 /**
@@ -57,6 +64,8 @@ const TEXT_COLUMNS = {
   _audit_log: ['timestamp'],
   events: ['start', 'end', 'created_at', 'updated_at'],
   event_comments: ['created_at'],
+  _positions: ['created_at', 'updated_at'],
+  _event_types: ['created_at', 'updated_at'],
 };
 
 /**

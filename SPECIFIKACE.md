@@ -132,6 +132,9 @@ const DB_SCHEMA = {
   'events':     ['id','start','end','all_day','type','title','description',
                  'owner_email','created_at','created_by','updated_at','updated_by'],
   'event_comments': ['id','event_id','author_email','text','created_at'],
+  // Nastavení (viz kapitola 9.5) — obojí spravované v appce, ne v kódu.
+  '_positions':   ['id','name','created_at','created_by','updated_at','updated_by'],
+  '_event_types': ['id','label','icon','color','created_at','created_by','updated_at','updated_by'],
 };
 ```
 
@@ -255,9 +258,17 @@ kde je čitelná, verzovaná a nedá se omylem rozbít editací tabulky.
 
 ### 7.1 Typy
 
-Přebírají se z PMS plannerru beze změny:
+Od v0.1.33 plně spravované v Nastavení (list `_event_types`, viz kapitola
+9.5) — SUPERADMIN smí přidat/upravit/smazat libovolný typ, ikona jde
+vybrat jen z whitelistu `EVENT_TYPE_ICONS` (00_config.js), barva musí být
+platný hex zápis. Typ `default` nejde smazat nikdy — je to záchranná
+varianta pro události, jejichž typ mezitím zmizel (viz `apiGetEvents`).
 
-| Klíč | Popisek | Ikona |
+Tabulka `_event_types` se při první potřebě (appka na ni ještě nikdy
+nesáhla) sama naseje tímhle výchozím obsahem (`DEFAULT_EVENT_TYPES`,
+00_config.js) — původní sada, dřív napevno v kódu:
+
+| Klíč (id) | Popisek | Ikona |
 |---|---|---|
 | `default` | Běžné | `chat-circle` |
 | `meeting` | Schůzka | `users-three` |
@@ -271,7 +282,7 @@ Přebírají se z PMS plannerru beze změny:
 
 1. `title` po `trim()` neprázdný, max 120 znaků
 2. `description` max 2000 znaků
-3. `type` musí být klíč z `EVENT_TYPES`
+3. `type` musí být existující id z `_event_types` (viz 7.1)
 4. `start` i `end` odpovídají `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$` **a** jsou to
    platná data (ověří se zpětným složením, aby neprošlo `2026-02-31T10:00`)
 5. `end > start`
@@ -313,6 +324,12 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiGetUsers()` | `users_manage` | — | seznam uživatelů, řazený podle data vytvoření (nejnovější nahoře) |
 | `apiSaveUser(payload)` | `users_manage` | s `id` = úprava (e-mail neměnný), bez = nový uživatel | uložený uživatel |
 | `apiSetUserActive(payload)` | `users_manage` | `{ id, active }` | uložený uživatel |
+| `apiGetPositions()` | `settings_manage` | — | seznam pracovních pozic, řazený podle názvu |
+| `apiSavePosition(payload)` | `settings_manage` | s `id` = úprava, bez = nová | uložená pozice |
+| `apiDeletePosition(id)` | `settings_manage` | id | — |
+| `apiGetEventTypes()` | `settings_manage` | — | `{ items, availableIcons }` — typy událostí + whitelist ikon pro formulář |
+| `apiSaveEventType(payload)` | `settings_manage` | s `id` = úprava, bez = nový | uložený typ |
+| `apiDeleteEventType(id)` | `settings_manage` | id | — (typ „default" nejde smazat) |
 | `apiGetSettings()` | `settings_manage` | — | mapa nastavení |
 | `apiSaveSettings(payload)` | `settings_manage` | whitelist klíčů | uložená nastavení |
 | `apiGetAuditLog(limit)` | `settings_manage` | limit | posledních N záznamů |
@@ -344,7 +361,7 @@ mřížce chyběla. Podmínka: `start <= to && end >= from`.
 | **Bez přístupu** | pro přihlášeného, který není v `_users` nebo je neaktivní |
 | **Kalendář** | měsíční mřížka + panel detailu dne |
 | **Uživatelé** | tabulka, přidání, změna role/oprávnění, deaktivace |
-| **Nastavení** | název aplikace, svátky, notifikace, audit log |
+| **Nastavení** | záložky: Pracovní pozice, Typy událostí (viz 9.5); později přibudou Oddělení, obecné nastavení appky, svátky, audit log |
 
 ### 9.2 Kalendář
 
@@ -418,6 +435,28 @@ s časem (oznámení, rozsah vícedenní události…) — na klientovi
 MÍSTNÍ čas (`nowLocalIso_`), ne UTC (`nowIso_`) — jinak by se vůči tomuto
 formátu zobrazovala posunutá o rozdíl Europe/Prague od UTC.
 
+### 9.5 Nastavení
+
+Přístupné jen SUPERADMINovi (`settings_manage`). Záložky nad sebou sdílenou
+kartou (`.settings-tabs` + `.settings-panel`) — zatím dvě, další přibudou
+stejným vzorem (jeden panel = jeden jednoduchý seznam s vytvořením/úpravou/
+smazáním).
+
+**Pracovní pozice** (`_positions`) — prostý seznam názvů nabízený ve
+formuláři uživatele (pole Pozice, viz `apiSaveUser`). Žádná vazba na
+uživatele: přejmenování/smazání pozice se nepromítne zpětně do těch, kdo
+ji už mají vyplněnou (stejně jako Umístění/Oddělení, které jsou zatím
+pořád volný text).
+
+**Typy událostí** (`_event_types`, viz 7.1) — plná správa (přidat/upravit/
+smazat), včetně popisku, ikony (výběr z mřížky dlaždic, jen z whitelistu
+`EVENT_TYPE_ICONS`) a barvy (`<input type="color">`, na serveru ověřená
+jako platný hex). Uložení/smazání se hned promítne i do formuláře nové
+události a kalendáře v téže session (`App.refreshEventTypes`), bez nutnosti
+appku znovu načítat — bootstrap se přitom NEVOLÁ znovu (posunul by
+zbytečně `last_visit_at`, viz 9.4), mapa typů se jen přepočítá z právě
+načteného seznamu pro správu.
+
 ---
 
 ## 10. Wizard — detailní specifikace
@@ -479,7 +518,7 @@ spreadsheet smazán, property se vynuluje a wizard se spustí znovu.
 | 4 | Identita ze session, nikdy z payloadu | `currentEmail_` |
 | 5 | Vlastnictví se ověřuje proti DB, ne proti klientovi | `apiSaveEvent`, `apiDeleteEvent` |
 | 6 | Validace a normalizace všech vstupů | validační vrstva v `50_api.js` |
-| 7 | Whitelist hodnot (role, oprávnění, typ události, klíče nastavení) | `00_config.js` |
+| 7 | Whitelist hodnot (role, oprávnění, klíče nastavení, ikony typů událostí) | `00_config.js`; typ události samotný je od v0.1.33 spravovaný v `_event_types` (viz 9.5), ne pevný whitelist |
 | 8 | Escapování všeho uživatelského textu před vložením do DOM | `escapeHtml` v `core.html` |
 | 9 | Zápisy pod `LockService`, dávkově | `20_db.js` |
 | 10 | Audit každé změny — kdo, kdy, co | `audit_` |

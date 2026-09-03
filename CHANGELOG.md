@@ -5,6 +5,13 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.33 - 03.09.2026 09:32
+- Zaklad sekce Nastaveni - dve zalozky, Pracovni pozice a Typy udalosti, obe jako prehledny seznam s vytvorenim/upravou/smazanim ve stejnem stylu jako appka pouziva jinde (modal formular, potvrzovaci okno na mazani, tuzka/kos)
+- Typy udalosti byly drive napevno v kodu, ted jsou plne spravovane v databazi (nova tabulka _event_types) - popisek, ikona (vyber z mrizky dlazdic, jen z bezpecneho seznamu ikon) a barva
+- existujici udalosti se smazanym typem se zobrazi jako vychozi Bezne (ten se smazat neda)
+- zmena typu se hned projevi i v kalendari a formulari nove udalosti bez nutnosti nacist appku znovu
+- Pracovni pozice jsou jednoduchy seznam nazvu pro vyber ve formulari uzivatele, bez vazby na jiz vyplnene uzivatele
+
 ## v0.1.32 - 03.09.2026 09:01
 - Oznámení přepracována na plnohodnotný modal (stejný jazyk jako ostatní okna appky — hlavička s ikonou, větší a přehlednější tělo s pevnou výškou) místo malého dropdown panelu
 - Každá položka má barevnou ikonu a kicker popisek podle typu akce (nová/upravená/smazaná událost, nový/smazaný komentář — zelená/modrá/červená stejně jako jinde v appce) a je od dalších viditelně oddělena spodní linkou místo pouhého podbarvení na hover
