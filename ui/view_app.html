@@ -97,6 +97,23 @@
             <i class="ph ph-calendar-check" aria-hidden="true"></i>
             <span id="calSummaryText"></span>
           </span>
+
+          <!-- Zvoneček s oznámeními — úplně vpravo, za souhrnem. Odznak
+               s počtem se ukáže, jen když je od poslední návštěvy něco
+               nového (viz renderNotifyBadge); panel pod ním se otevírá/
+               zavírá stejným vzorem jako přepínač měsíce/roku výše
+               (bindNotifications/openNotifyPanel). -->
+          <span class="cal-notify-wrap">
+            <button class="cal-notify-btn" type="button" id="calNotifyBtn" aria-label="Oznámení">
+              <i class="ph ph-bell" aria-hidden="true"></i>
+              <span class="cal-notify-badge is-hidden" id="calNotifyBadge"></span>
+            </button>
+
+            <div class="cal-notify-panel is-hidden" id="calNotifyPanel">
+              <p class="cal-notify-panel-head">Oznámení</p>
+              <div class="cal-notify-list" id="calNotifyList"><!-- vykresleno JS --></div>
+            </div>
+          </span>
         </div>
       </div>
       <div class="cal-grid-wrap">
@@ -472,6 +489,14 @@
     /** Smí uživatel spravovat uživatele? Ze serveru, stejný princip jako canWrite. */
     canManageUsers: false,
 
+    /**
+     * Oznámení „co je nového od poslední návštěvy" — ze serveru
+     * (apiGetBootstrap, viz _computeNotifications_), naplní se jednou při
+     * otevření appky. { unseenCount, items: [{ action, detail, actorName,
+     * timestamp }] }.
+     */
+    notifications: { unseenCount: 0, items: [] },
+
     /** Smí uživatel upravit/smazat i CIZÍ událost (ADMIN/SUPERADMIN)? Ze serveru, viz canManageForeignEvents_. */
     canManageForeignEvents: false,
 
@@ -528,11 +553,14 @@
       this.canEditPastEvents = data.permissions.canEditPastEvents === true;
       this.currentUserRole = data.user.role;
       this.allowedEmailDomain = data.allowedEmailDomain;
+      this.notifications = data.notifications || { unseenCount: 0, items: [] };
       this.fillEventTypeSelect();
       this.fillUserRoleSelect();
 
       this.bindNav();
       this.bindMonthPicker();
+      this.bindNotifications();
+      this.renderNotifyBadge();
       this.bindDayModal();
       this.bindEventModal();
       this.bindEventForm();
@@ -658,6 +686,78 @@
 
     closeMonthPicker() {
       document.querySelector('#calMonthPicker').classList.add('is-hidden');
+    },
+
+    /**
+     * Otevírání/zavírání panelu s oznámeními — stejný vzor jako přepínač
+     * měsíce/roku výše (klik mimo panel ho zavře). Data už jsou z bootstrapu
+     * (this.notifications) — panel je jen zobrazí, žádné další volání
+     * serveru. „last_visit_at" se posouvá na serveru už při bootstrapu
+     * (viz _computeNotifications_), ne tady — otevření panelu je čistě
+     * vizuální, na to, co appka počítá za „viděné", nemá žádný vliv.
+     */
+    bindNotifications() {
+      const btn = document.querySelector('#calNotifyBtn');
+      const panel = document.querySelector('#calNotifyPanel');
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation(); // ať to hned nezavře posluchač na document níže
+        panel.classList.contains('is-hidden') ? this.openNotifyPanel() : this.closeNotifyPanel();
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!panel.classList.contains('is-hidden') && !panel.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+          this.closeNotifyPanel();
+        }
+      });
+    },
+
+    openNotifyPanel() {
+      this.renderNotifyList();
+      document.querySelector('#calNotifyPanel').classList.remove('is-hidden');
+    },
+
+    closeNotifyPanel() {
+      document.querySelector('#calNotifyPanel').classList.add('is-hidden');
+    },
+
+    /** Odznak s počtem u zvonečku — skrytý, když je unseenCount 0. */
+    renderNotifyBadge() {
+      const badge = document.querySelector('#calNotifyBadge');
+      const count = this.notifications.unseenCount;
+      if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : String(count);
+        badge.classList.remove('is-hidden');
+      } else {
+        badge.classList.add('is-hidden');
+      }
+    },
+
+    /** Seznam v panelu oznámení — vykreslí se až při otevření (data má appka už z bootstrapu). */
+    renderNotifyList() {
+      const list = document.querySelector('#calNotifyList');
+      const items = this.notifications.items;
+      list.innerHTML = items.length
+        ? items.map((n) => this.renderNotifyItem(n)).join('')
+        : '<div class="cal-notify-empty"><i class="ph ph-bell-slash" aria-hidden="true"></i><p>Od poslední návštěvy nic nového.</p></div>';
+    },
+
+    /**
+     * Jedna položka oznámení — jméno toho, kdo změnu udělal, a hotový
+     * český popis z auditního logu (`detail`, viz audit_ v 10_util.js).
+     * Žádné vlastní překládání typu akce na klientovi — text ze serveru
+     * už je čitelný, netřeba ho duplikovat na dvou místech.
+     */
+    renderNotifyItem(n) {
+      return '<div class="cal-notify-item">' +
+        '<p class="cal-notify-item-text"><strong>' + Ui.escape(n.actorName) + '</strong> ' + Ui.escape(n.detail) + '</p>' +
+        '<p class="cal-notify-item-meta">' + Ui.escape(this.formatNotifyTime(n.timestamp)) + '</p>' +
+      '</div>';
+    },
+
+    /** Datum a čas oznámení jako „D. M. HH:MM" — kompaktní formát pro seznam. */
+    formatNotifyTime(iso) {
+      return this.formatDateShort(iso.slice(0, 10)) + ' ' + iso.slice(11, 16);
     },
 
     /** Vykreslí rok a mřížku 12 měsíců v panelu; zvýrazní zobrazený i dnešní měsíc. */

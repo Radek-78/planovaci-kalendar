@@ -287,8 +287,10 @@ Vícedenní událost se vykreslí jako **samostatný chip v každém dni**, kter
 pokrývá. Všechny chipy nesou stejné `data-event-id`, takže klik kdekoli otevře
 tutéž událost.
 
-- čas se vypíše jen na **prvním** dni; prostřední a poslední den nesou značku
-  pokračování
+- čas se vypíše jen na **prvním** dni; ostatní dny nesou jen název
+- že událost pokračuje do dalšího/z předchozího dne, naznačí malé trojúhelníky
+  u levého/pravého okraje chipu — místo pro ně je vyhrazené u KAŽDÉHO chipu
+  (i jednodenního), ať mají všechny stejnou šířku
 - editace i smazání z kteréhokoli dne mění **celou** událost
 - potvrzovací dialog u mazání proto vždy vypíše celý rozsah („Smazat celou
   událost 3. 9. – 5. 9.?"), aby si nikdo nespletl den s akcí
@@ -302,7 +304,7 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 
 | Endpoint | Guard | Vstup | Výstup |
 |---|---|---|---|
-| `apiGetBootstrap()` | `calendar_read` | — | uživatel, jeho práva, nastavení, typy událostí |
+| `apiGetBootstrap()` | `calendar_read` | — | uživatel, jeho práva, nastavení, typy událostí, oznámení (viz 9.4) — POZOR: toto volání zároveň posune `last_visit_at` uživatele na teď |
 | `apiGetEvents(payload)` | `calendar_read` | `{ startDate, endDate }`, obě `YYYY-MM-DD` | pole událostí protínajících rozsah |
 | `apiSaveEvent(payload)` | `calendar_write` | s `id` = úprava, bez = nová | uložená událost |
 | `apiDeleteEvent(id)` | `calendar_write` | id | — |
@@ -364,6 +366,36 @@ u těch, na které má uživatel právo.
 Prázdný kalendář, chyba načtení dat, uživatel bez práva zápisu (žádná mrtvá
 tlačítka — akce, kterou nelze provést, se nezobrazuje), probíhající ukládání
 (zablokované tlačítko proti dvojímu odeslání).
+
+### 9.4 Oznámení
+
+Zvoneček v hlavičce kalendáře (`.cal-nav`, úplně vpravo) — jen tam, appka
+nemá jednu společnou horní lištu přes všechny sekce. Odznak s počtem se
+ukáže, jen když je od poslední návštěvy něco nového; panel pod zvonečkem
+vypíše, co přesně.
+
+**Zdroj dat** — žádná nová tabulka. Využívá se, co appka už měla:
+
+- `_audit_log` — každý zápis/smazání do něj už zapisuje `audit_()`
+  (kdo, kdy, jaká akce, popis).
+- `_users.last_visit_at` — kdy byl uživatel v appce naposled.
+
+**Kdy se co počítá/aktualizuje** — vše v `apiGetBootstrap` (přesněji
+`_computeNotifications_`), NE až kliknutím na zvoneček. Uživatel nemá důvod
+zvoneček sám od sebe otevírat, takže jediný spolehlivý okamžik, kdy appka
+ví, že ji zrovna používá, je otevření (bootstrap):
+
+1. Přečte se STARÉ `last_visit_at` (prázdné u úplně první návštěvy se bere
+   jako „teď" — nikdo nedostane nálož oznámení o celé historii appky).
+2. Spočítají se řádky `_audit_log` novější než ono staré `last_visit_at`,
+   s akcí z whitelistu `NOTIFY_ACTIONS` (`event.create/update/delete`,
+   `comment.create/delete` — správa uživatelů se do oznámení nepočítá) a
+   od NĚKOHO JINÉHO, než je přihlášený (vlastní změny si nikdo nemusí
+   připomínat). Omezeno na `LIMITS.NOTIFY_MAX_ITEMS` posledních.
+3. `last_visit_at` se hned posune na teď.
+
+Otevření/zavření panelu je čistě klientská záležitost (data už z bootstrapu)
+a na krok 3 nemá žádný vliv.
 
 ---
 

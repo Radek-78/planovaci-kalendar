@@ -43,6 +43,11 @@ function apiGetBootstrap() {
         holidaysEnabled: settings.holidaysEnabled,
       },
       eventTypes: EVENT_TYPES,
+      // Co je nového od poslední návštěvy — viz _computeNotifications_.
+      // POZOR: tohle volání zároveň posune last_visit_at na teď, takže se
+      // smí zavolat jen jednou za skutečné otevření appky (viz komentář
+      // u funkce), ne opakovaně z libovolného místa.
+      notifications: _computeNotifications_(user),
       // Jen pro nápovědu při vyplňování formuláře (automatické doplnění
       // uživatelského jména) — skutečná kontrola domény je vždy na serveru
       // v apiSaveUser, klient si ji tady jen zobrazuje/napovídá.
@@ -51,6 +56,46 @@ function apiGetBootstrap() {
       releaseDate: CONFIG.releaseDate,
     };
   });
+}
+
+/**
+ * Spočítá oznámení pro přihlášeného uživatele — všechno z auditního logu
+ * (`_audit_log`), co se stalo PO jeho posledním `last_visit_at`, kromě
+ * jeho vlastních akcí (svoje změny si nikdo nepotřebuje připomínat), a jen
+ * akce z whitelistu NOTIFY_ACTIONS (správa uživatelů se do oznámení
+ * záměrně nepočítá, viz 00_config.js).
+ *
+ * `last_visit_at` se aktualizuje na TEĎ rovnou tady, ne až kliknutím na
+ * zvoneček — uživatel nemá důvod zvoneček sám od sebe otevírat, takže
+ * jediný spolehlivý okamžik, kdy víme, že appku právě používá, je tento
+ * bootstrap. Odznak tak ukáže „co je nového od minulé návštěvy" přesně
+ * jednou za návštěvu (další apiGetBootstrap přijde až při dalším otevření
+ * appky, ne při přepínání sekcí — to je čistě klientská záležitost).
+ *
+ * Prázdný last_visit_at (úplně první návštěva nového uživatele) se bere
+ * jako „teď" — nedostane tak nálož oznámení o celé historii appky před sebou.
+ */
+function _computeNotifications_(user) {
+  const row = dbFindById_(SHEETS.USERS, user.id);
+  const previousVisit = row && row.last_visit_at ? String(row.last_visit_at) : nowIso_();
+
+  const matching = dbGetAll_(SHEETS.AUDIT)
+    .filter((r) => NOTIFY_ACTIONS.indexOf(String(r.action)) !== -1)
+    .filter((r) => String(r.timestamp) > previousVisit)
+    .filter((r) => cleanEmail_(r.user) !== user.email)
+    .sort((a, b) => (a.timestamp < b.timestamp ? 1 : a.timestamp > b.timestamp ? -1 : 0)); // nejnovější nahoře
+
+  const nameCache = {};
+  const items = matching.slice(0, LIMITS.NOTIFY_MAX_ITEMS).map((r) => ({
+    action: String(r.action),
+    detail: String(r.detail),
+    actorName: _resolveUserName_(r.user, nameCache),
+    timestamp: String(r.timestamp),
+  }));
+
+  dbUpdate_(SHEETS.USERS, user.id, { last_visit_at: nowIso_() });
+
+  return { unseenCount: matching.length, items: items };
 }
 
 /**

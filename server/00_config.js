@@ -26,7 +26,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.1.27',
+  version: 'v0.1.28',
   releaseDate: '3.9.2026',
 
   /**
@@ -109,6 +109,14 @@ const PERM_KEYS = {
 };
 
 /**
+ * Akce z auditního logu (`_audit_log`), které se počítají jako "oznámení"
+ * (viz apiGetBootstrap/zvoneček v kalendáři). Whitelist, ne "všechno kromě"
+ * — třeba změny uživatelů (user.*) se sem záměrně nedávají, oznámení mají
+ * nosit jen to, co se přímo týká sdíleného kalendáře.
+ */
+const NOTIFY_ACTIONS = ['event.create', 'event.update', 'event.delete', 'comment.create', 'comment.delete'];
+
+/**
  * Typy událostí. Klíč se ukládá do databáze, popisek/ikona/barva slouží jen
  * k zobrazení. Cokoliv mimo tento seznam server odmítne — proto whitelist.
  * Ikony jsou názvy Phosphor Icons bez prefixu "ph-". Barva je jen doplňkové
@@ -141,6 +149,8 @@ const LIMITS = {
   COMMENT_MAX: 500,
   /** Organizační údaje uživatele (Umístění/Oddělení/Pozice) — zatím volný text. */
   ORG_FIELD_MAX: 60,
+  /** Nejvíc oznámení, které apiGetBootstrap vrátí najednou — pojistka proti obřímu seznamu (např. hodně starý last_visit_at). */
+  NOTIFY_MAX_ITEMS: 30,
 };
 
 /**
