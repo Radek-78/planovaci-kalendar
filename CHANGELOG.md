@@ -6,8 +6,8 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.32 - 03.09.2026 09:01
-- Oznameni prepracovana na plnohodnotny modal (stejny jazyk jako ostatni okna appky - hlavicka s ikonou, vetsi a prehlednejsi telo s pevnou vyskou) misto maleho dropdown panelu
-- kazda polozka ma barevnou ikonu a kicker popisek podle typu akce (nova/upravena/smazana udalost, novy/smazany komentar - zelena/modra/cervena stejne jako jinde v appce) a je od dalsich viditelne oddelena spodni linkou misto pouheho podbarveni na hover
+- Oznámení přepracována na plnohodnotný modal (stejný jazyk jako ostatní okna appky — hlavička s ikonou, větší a přehlednější tělo s pevnou výškou) místo malého dropdown panelu
+- Každá položka má barevnou ikonu a kicker popisek podle typu akce (nová/upravená/smazaná událost, nový/smazaný komentář — zelená/modrá/červená stejně jako jinde v appce) a je od dalších viditelně oddělena spodní linkou místo pouhého podbarvení na hover
 
 ## v0.1.31 - 03.09.2026 08:42
 - Opravy vzhledu Oznámení — z textu oznámení už nikdy nejde žádné technické ID (místo něj jméno události, např. u komentáře), nový sloupec _audit_log.entity_id nese jen odkaz pro prokliknutí
