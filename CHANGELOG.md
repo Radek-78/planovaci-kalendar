@@ -6,8 +6,8 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.30 - 03.09.2026 08:17
-- Novy rucni nastroj TOOLS_simulujOznameniProMe (server/90_tools.js) - protoze se do appky neda fyzicky prihlasit pod cizim uzivatelem (Apps Script pusti vzdy jen prihlaseny ucet v prohlizeci), tento nastroj nasimuluje cizi aktivitu pro toho, kdo skript spousti - vsechny testovaci udalosti/komentare/upravy/smazani zapise jako OSTATNI uzivatele a hned nato posune jeho vlastni last_visit_at 3 dny do minulosti, takze po prihlaseni pod vlastnim uctem uvidi vse jako nove ve zvonecku
-- sdilena logika seedovani vytazena do _toolsSeedNotifyBatch_, pouziva ji i puvodni TOOLS_vlozOznamovaciTestData
+- Nový ruční nástroj TOOLS_simulujOznameniProMe (server/90_tools.js) — protože se do appky nedá fyzicky přihlásit pod cizím uživatelem (Apps Script pustí vždy jen přihlášený účet v prohlížeči), tento nástroj nasimuluje cizí aktivitu pro toho, kdo skript spustí — všechny testovací události/komentáře/úpravy/smazání zapíše jako OSTATNÍ uživatelé a hned nato posune jeho vlastní last_visit_at 3 dny do minulosti, takže po přihlášení pod vlastním účtem uvidí vše jako nové ve zvonečku
+- Sdílená logika seedování vytažena do _toolsSeedNotifyBatch_, používá ji i původní TOOLS_vlozOznamovaciTestData
 
 ## v0.1.29 - 03.09.2026 08:03
 - Nový ruční nástroj TOOLS_vlozOznamovaciTestData (server/90_tools.js) — vygeneruje testovací události, komentáře, úpravu události i smazání události připsané RŮZNÝM reálným uživatelům z _users (ne jen tomu, kdo skript pustí z editoru) — pro ruční ověření systému Oznámení, který musí ukázat cizí akce, ne vlastní
