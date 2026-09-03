@@ -440,3 +440,32 @@ function TOOLS_diagnostikaUdalosti() {
     );
   });
 }
+
+/**
+ * Jednorázová oprava barev u výchozích typů událostí (`_event_types`)
+ * v ŽIVÉ databázi. Sloupec `bg_color` přibyl do schématu později než
+ * appka poprvé naseje tabulku (viz `_ensureEventTypesSeeded_` v 50_api.js)
+ * — self-healing schéma (`dbEnsureSchema_`) doplní chybějící sloupec, ale
+ * NEVYPLNÍ hodnoty u řádků, které v tabulce už byly, takže appka spuštěná
+ * ještě před rozdělením na dvě barvy může mít u výchozích typů prázdnou
+ * nebo neladící barvu podkladu, dokud se ručně nedosadí.
+ *
+ * Bezpečné spustit i opakovaně — přepíše `color`/`bg_color` jen u řádků,
+ * jejichž ID odpovídá některému z DEFAULT_EVENT_TYPES (00_config.js).
+ * Vlastní typy přidané v appce (Nastavení → Typy událostí) nechá beze
+ * změny, ty svoje barvy dostaly rovnou při vytvoření.
+ */
+function TOOLS_dosaditBarvyTypuUdalosti() {
+  let count = 0;
+  DEFAULT_EVENT_TYPES.forEach((t) => {
+    const existing = dbFindById_(SHEETS.EVENT_TYPES, t.id);
+    if (!existing) {
+      console.log('Přeskočeno — typ „' + t.id + '" zatím v databázi není (naseje se sám při prvním použití).');
+      return;
+    }
+    dbUpdate_(SHEETS.EVENT_TYPES, t.id, { color: t.color, bg_color: t.bgColor });
+    count++;
+    console.log('Dosazeno: ' + t.label + ' (' + t.id + ') — barva ikony ' + t.color + ', barva podkladu ' + t.bgColor);
+  });
+  console.log('Hotovo — upraveno typů: ' + count);
+}

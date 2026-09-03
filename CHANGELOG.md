@@ -5,6 +5,10 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.36 - 03.09.2026 13:22
+- Nový jednorázový nástroj TOOLS_dosaditBarvyTypuUdalosti v 90_tools.js — dosadí barvu ikony i barvu podkladu přímo do živé databáze u výchozích typů událostí (podle DEFAULT_EVENT_TYPES), protože sloupec bg_color přibyl do schématu později než appka poprvé naseje tabulku a u starších instalací tak mohl zůstat prázdný nebo neladit
+- nástroj se spouští ručně z editoru Apps Script, je bezpečné ho spustit i opakovaně, vlastní typy vytvořené v appce nechává beze změny
+
 ## v0.1.35 - 03.09.2026 13:14
 - Typy událostí — výběr ikony v editačním formuláři teď zobrazuje živý náhled ve skutečně zvolených barvách (barva ikony i barva podkladu) místo obecné modré, přebarví se hned při změně barvy nebo výběru jiné ikony
 - Opravena i chybějící barva podkladu v mapě typů pro kalendář po tiché úpravě typu (dříve zůstala nedefinovaná, dokud se appka znovu nenačetla)
