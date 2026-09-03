@@ -6,8 +6,8 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.29 - 03.09.2026 08:03
-- Novy rucni nastroj TOOLS_vlozOznamovaciTestData (server/90_tools.js) - vygeneruje testovaci udalosti, komentare, upravu udalosti i smazani udalosti pripsane RUZNYM realnym uzivatelum z _users (ne jen tomu, kdo skript pousti z editoru) - pro rucni overeni systemu Oznameni, ktery musi ukazat cizi akce, ne vlastni
-- spusti se rucne z editoru Apps Scriptu, ne z webu
+- Nový ruční nástroj TOOLS_vlozOznamovaciTestData (server/90_tools.js) — vygeneruje testovací události, komentáře, úpravu události i smazání události připsané RŮZNÝM reálným uživatelům z _users (ne jen tomu, kdo skript pustí z editoru) — pro ruční ověření systému Oznámení, který musí ukázat cizí akce, ne vlastní
+- Spustí se ručně z editoru Apps Scriptu, ne z webu
 
 ## v0.1.28 - 03.09.2026 07:47
 - Nový systém Oznámení — zvoneček v pravém rohu hlavičky kalendáře s odznakem počtu, panel pod ním vypíše, co je nového od poslední návštěvy (nové/upravené/smazané události, nové/smazané komentáře, ne od sebe sama)
