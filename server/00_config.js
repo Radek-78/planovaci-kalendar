@@ -8,8 +8,12 @@
  * svátky), žijí v listu `_settings` v databázi, ne tady.
  *
  * Proč konstanty v kódu a ne v tabulce:
- * Whitelisty (role, oprávnění, typy událostí) jsou bezpečnostní prvek. V kódu
- * jsou verzované, projdou revizí a nikdo je omylem nerozbije editací tabulky.
+ * Whitelisty (role, oprávnění, klíče nastavení, ikony typů událostí) jsou
+ * bezpečnostní prvek. V kódu jsou verzované, projdou revizí a nikdo je
+ * omylem nerozbije editací tabulky. Samotné typy událostí jsou od v0.1.33
+ * výjimka — plná správa v Nastavení (viz DEFAULT_EVENT_TYPES níže a
+ * SPECIFIKACE.md kapitola 9.5), to je vědomý ústupek z tohoto pravidla,
+ * ne přehlédnutí.
  */
 
 /** Základní identita a vzhled aplikace. */

@@ -6,11 +6,11 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.33 - 03.09.2026 09:32
-- Zaklad sekce Nastaveni - dve zalozky, Pracovni pozice a Typy udalosti, obe jako prehledny seznam s vytvorenim/upravou/smazanim ve stejnem stylu jako appka pouziva jinde (modal formular, potvrzovaci okno na mazani, tuzka/kos)
-- Typy udalosti byly drive napevno v kodu, ted jsou plne spravovane v databazi (nova tabulka _event_types) - popisek, ikona (vyber z mrizky dlazdic, jen z bezpecneho seznamu ikon) a barva
-- existujici udalosti se smazanym typem se zobrazi jako vychozi Bezne (ten se smazat neda)
-- zmena typu se hned projevi i v kalendari a formulari nove udalosti bez nutnosti nacist appku znovu
-- Pracovni pozice jsou jednoduchy seznam nazvu pro vyber ve formulari uzivatele, bez vazby na jiz vyplnene uzivatele
+- Základ sekce Nastavení — dvě záložky, Pracovní pozice a Typy událostí, obě jako přehledný seznam s vytvořením/úpravou/smazáním ve stejném stylu jako appka používá jinde (modal formulář, potvrzovací okno na mazání, tužka/koš)
+- Typy událostí byly dříve napevno v kódu, teď jsou plně spravované v databázi (nová tabulka _event_types) — popisek, ikona (výběr z mřížky dlaždic, jen z bezpečného seznamu ikon) a barva
+- Existující události se smazaným typem se zobrazí jako výchozí Běžné (ten se smazat nedá)
+- Změna typu se hned projeví i v kalendáři a formuláři nové události bez nutnosti načíst appku znovu
+- Pracovní pozice jsou jednoduchý seznam názvů pro výběr ve formuláři uživatele, bez vazby na už vyplněné uživatele
 
 ## v0.1.32 - 03.09.2026 09:01
 - Oznámení přepracována na plnohodnotný modal (stejný jazyk jako ostatní okna appky — hlavička s ikonou, větší a přehlednější tělo s pevnou výškou) místo malého dropdown panelu
