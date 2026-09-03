@@ -1210,6 +1210,163 @@
     color: var(--white);
   }
 
+  /* ── Filiálky / LC ──────────────────────────────────────────────────
+     Stejný vizuální jazyk jako Uživatelé (.users-panel-wrap výše, buňky
+     .user-cell-name/.user-cell-muted) — jen jiný počet sloupců, ten
+     nastavuje .data-table-head/.data-row obecně a .stores-table-head/
+     .lc-table-head konkrétně (grid-template-columns). ── */
+
+  .data-table-head,
+  .data-row {
+    align-items: center;
+    display: grid;
+    gap: 12px;
+    padding: 10px 16px;
+  }
+
+  .data-table-head {
+    background: var(--page);
+    border-bottom: 1px solid var(--line);
+    color: var(--muted);
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    position: sticky;
+    text-transform: uppercase;
+    top: 0;
+    z-index: 1;
+  }
+
+  .data-table-body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .data-row {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .data-row:last-child {
+    border-bottom: none;
+  }
+
+  .data-row:hover {
+    background: var(--page);
+  }
+
+  .data-table-head > *:not(:last-child),
+  .data-row > *:not(:last-child) {
+    border-right: 1px solid var(--line-soft);
+  }
+
+  .stores-table-head,
+  .store-row {
+    grid-template-columns: 64px 1.6fr 0.9fr 0.9fr 1fr 1fr 140px;
+  }
+
+  /* Celý řádek filiálky je klikací (otevře detail, viz openStoreDetailModal) — na rozdíl od Uživatelé/LC, kde klik nese jen tlačítko Akce. */
+  .store-row {
+    cursor: pointer;
+  }
+
+  .store-status {
+    color: var(--green);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .store-status.is-closed {
+    align-items: center;
+    color: var(--lidl-red);
+    display: inline-flex;
+    gap: 4px;
+  }
+
+  .lc-table-head,
+  .lc-row {
+    grid-template-columns: 70px 90px 1.7fr 90px 60px;
+  }
+
+  /* Filtr filiálek (section-header, viz #storesFilterInput) — obecné
+     pravidlo pro input by se roztáhlo na celou šířku hlavičky, appka ho
+     chce jen přiměřeně široký. */
+  .section-header input[type="search"] {
+    min-height: 34px;
+    width: 280px;
+  }
+
+  /* ── Detail filiálky (modal, klik na řádek v sekci Filiálky) ── */
+
+  .store-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .store-detail-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .store-detail-badge {
+    background: var(--page);
+    border-radius: 999px;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+  }
+
+  .store-detail-badge.is-closed {
+    align-items: center;
+    background: #fce6e7;
+    color: var(--lidl-red);
+    display: inline-flex;
+    gap: 4px;
+  }
+
+  .store-detail-block .kicker {
+    margin-bottom: 6px;
+  }
+
+  .store-detail-row {
+    display: flex;
+    font-size: 13.5px;
+    gap: 8px;
+    padding: 3px 0;
+  }
+
+  .store-detail-label {
+    color: var(--muted);
+    flex-shrink: 0;
+    width: 130px;
+  }
+
+  .store-detail-empty {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0;
+  }
+
+  .store-detail-hours {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  .store-detail-hours td {
+    border-bottom: 1px solid var(--line-soft);
+    font-size: 13px;
+    padding: 5px 4px;
+  }
+
+  .store-detail-hours td:first-child {
+    color: var(--muted);
+    width: 100px;
+  }
+
   /* ── Nastavení — záložky (Pracovní pozice, Typy událostí…) ────────────
      Tužka/koš u řádků sdílí vzhled i třídu s .user-action-btn výše, ať
      appka nemá dvě sady stylů pro totéž. ── */

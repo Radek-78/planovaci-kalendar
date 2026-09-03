@@ -5,6 +5,11 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.2.1 - 03.09.2026 14:59
+- Import dat filiálek — etapa 2: nové sekce Filiálky a LC v menu, vidí je každý přihlášený uživatel (appka slouží i jako firemní adresář)
+- Filiálky jsou čtecí přehled řazený podle Čísla s filtrem nad tabulkou, klik na řádek otevře detail s adresou, kontakty a otevírací dobou po dnech, u zavřené pobočky odznak s termínem
+- LC jsou řazené podle Čísla (bez čísla na konec), u každého vidět počet filiálek, editovat číslo a zkratku smí jen správce aplikace (název zůstává needitovatelný, přichází ze zdroje)
+
 ## v0.2.0 - 03.09.2026 14:47
 - Import dat filiálek — etapa 1: nová záložka Import dat v Nastavení, kam se zadá URL/ID složky na Disku a hledaný výraz
 - appka najde odpovídající Sheets soubory (nejnovější předvybraný, jde přepnout), po potvrzení přečte listy Organizace_Detail a Zavrene_Openings a nahradí jimi vlastní tabulky (nové _stores, _logistic_centers, _store_closures)

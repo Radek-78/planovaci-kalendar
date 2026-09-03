@@ -41,6 +41,14 @@
       <button class="nav-link" type="button" data-section="users" id="navUsers">
         <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-users"></use></svg><span>Uživatelé</span>
       </button>
+      <!-- Filiálky/LC vidí každý přihlášený (calendar_read) — data přichází
+           importem (viz server/60_import.js), žádné omezení podle role. -->
+      <button class="nav-link" type="button" data-section="stores">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-store"></use></svg><span>Filiálky</span>
+      </button>
+      <button class="nav-link" type="button" data-section="lc">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-warehouse"></use></svg><span>LC</span>
+      </button>
       <button class="nav-link" type="button" data-section="settings" id="navSettings">
         <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-settings"></use></svg><span>Nastavení</span>
       </button>
@@ -139,6 +147,47 @@
           <span>Akce</span>
         </div>
         <div class="users-table-body" id="usersList"><!-- vykresleno JS --></div>
+      </div>
+    </section>
+
+    <!-- Panel: Filiálky — čtecí přehled dat naimportovaných z listu
+         Organizace_Detail (viz server/60_import.js), vidí každý přihlášený.
+         Klik na řádek otevře detail (kontakty, adresa, otevírací doba). -->
+    <section class="view-panel" data-page-section="stores">
+      <div class="section-header">
+        <h2>Filiálky</h2>
+        <input type="search" id="storesFilterInput" placeholder="Hledat podle čísla, názvu, města, LC…">
+      </div>
+      <div class="users-panel-wrap">
+        <div class="data-table-head stores-table-head">
+          <span>Číslo</span>
+          <span>Název</span>
+          <span>LC</span>
+          <span>Město</span>
+          <span>Telefon prodejny</span>
+          <span>RM</span>
+          <span>Stav</span>
+        </div>
+        <div class="data-table-body" id="storesList"><!-- vykresleno JS --></div>
+      </div>
+    </section>
+
+    <!-- Panel: LC — odvozené ze sloupce LC u filiálek (viz
+         _importSyncLogisticCenters_ v server/60_import.js). Číslo/zkratku
+         edituje jen SUPERADMIN (tužka v Akce), název přichází ze zdroje. -->
+    <section class="view-panel" data-page-section="lc">
+      <div class="section-header">
+        <h2>LC</h2>
+      </div>
+      <div class="users-panel-wrap">
+        <div class="data-table-head lc-table-head">
+          <span>Číslo</span>
+          <span>Zkratka</span>
+          <span>Název</span>
+          <span>Filiálek</span>
+          <span id="lcActionsHead">Akce</span>
+        </div>
+        <div class="data-table-body" id="lcList"><!-- vykresleno JS --></div>
       </div>
     </section>
 
@@ -302,6 +351,23 @@
       </form>
     </div>
   </div>
+</dialog>
+
+<!-- ══ Modal: detail filiálky (klik na řádek v sekci Filiálky) ══
+     Jen ke čtení — data přichází importem (viz server/60_import.js),
+     appka je needituje. -->
+<dialog class="modal modal-wide modal-grow" id="storeDetailModal">
+  <div class="modal-header">
+    <span class="modal-icon"><i class="ph ph-storefront" aria-hidden="true"></i></span>
+    <div class="modal-header-text">
+      <p class="kicker" id="storeDetailKicker">Filiálka</p>
+      <h2 id="storeDetailTitle"></h2>
+    </div>
+    <button class="modal-close" type="button" id="storeDetailClose" aria-label="Zavřít">
+      <i class="ph ph-x" aria-hidden="true"></i>
+    </button>
+  </div>
+  <div class="modal-body" id="storeDetailBody"><!-- vykresleno JS --></div>
 </dialog>
 
 <!-- ══ Modal: nová/upravovaná událost (jeden formulář pro obojí, viz
@@ -534,6 +600,45 @@
   </form>
 </dialog>
 
+<!-- ══ Modal: úprava LC ══
+     Na rozdíl od pozic/oddělení tu NENÍ založení nové položky — LC vznikají
+     jen synchronizací (viz _importSyncLogisticCenters_), appka umožňuje
+     upravit pouze číslo/zkratku; název je needitovatelný (ze zdroje). -->
+<dialog class="modal modal-grow" id="lcFormModal">
+  <div class="modal-header">
+    <span class="modal-icon"><i class="ph ph-warehouse" aria-hidden="true"></i></span>
+    <div class="modal-header-text">
+      <p class="kicker">Upravit LC</p>
+      <h2 id="lcFormModalTitle"></h2>
+    </div>
+    <button class="modal-close" type="button" id="lcFormClose" aria-label="Zavřít">
+      <i class="ph ph-x" aria-hidden="true"></i>
+    </button>
+  </div>
+  <form id="lcForm">
+    <div class="modal-body">
+      <div class="event-form-row">
+        <label>
+          <span>Číslo</span>
+          <input type="text" id="lcFormCislo" maxlength="20">
+        </label>
+        <label>
+          <span>Zkratka</span>
+          <input type="text" id="lcFormZkratka" maxlength="10">
+        </label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="button button-secondary" id="lcFormCancel">
+        <i class="ph ph-x" aria-hidden="true"></i> Zrušit
+      </button>
+      <button type="submit" class="button button-primary" id="lcFormSubmit">
+        <i class="ph ph-check" aria-hidden="true"></i> Uložit
+      </button>
+    </div>
+  </form>
+</dialog>
+
 <!-- ══ Modal: typ události (nový/upravovaný) ══
      Ikona se vybírá z mřížky (viz renderEventTypeIconPicker) — ne z volného
      textu, ať nejde vybrat neexistující/mimo whitelist ikonu (viz
@@ -735,6 +840,12 @@
     /** Poslední nalezené soubory při hledání v Import dat (viz apiSearchImportFiles/renderImportResults). */
     importFiles: [],
 
+    /** Poslední načtený seznam filiálek — pro dohledání dat při kliku na řádek (openStoreDetailModal). */
+    storesCache: [],
+
+    /** Poslední načtený seznam LC — pro dohledání dat při kliku na tužku (openLcFormModal). */
+    lcCache: [],
+
     /**
      * Oznámení „co je nového od poslední návštěvy" — ze serveru
      * (apiGetBootstrap, viz _computeNotifications_), naplní se jednou při
@@ -813,6 +924,9 @@
       this.bindEventModal();
       this.bindEventForm();
       this.bindChipTooltip();
+      this.bindStores();
+      this.bindLc();
+      if (!canManageSettings) document.querySelector('#lcActionsHead').classList.add('is-hidden');
       if (canManageUsers) this.bindUserForm();
       if (canManageSettings) this.bindSettings();
       this.renderCalendar();
@@ -1784,6 +1898,228 @@
       '</div>';
     },
 
+    /* ── Filiálky / LC ────────────────────────────────────────────────────
+       Data přichází importem (viz server/60_import.js) — appka je tu jen
+       ČTE (u LC navíc dovolí SUPERADMINovi upravit číslo/zkratku), žádné
+       vytváření/mazání jako u Nastavení. Vidí každý přihlášený uživatel. */
+
+    loadStores() {
+      const list = document.querySelector('#storesList');
+      list.innerHTML = this.usersPlaceholder('Načítám filiálky…');
+
+      Ui.call('apiGetStores', null, { silent: true })
+        .then((stores) => {
+          this.storesCache = stores;
+          this.renderStores();
+        })
+        .catch((error) => {
+          list.innerHTML = this.usersPlaceholder('Filiálky se nepodařilo načíst.');
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    /** Vykreslí #storesList z this.storesCache, s ohledem na aktuální text ve filtru (viz bindStores). */
+    renderStores() {
+      const list = document.querySelector('#storesList');
+      const filter = document.querySelector('#storesFilterInput').value.trim().toLowerCase();
+
+      const filtered = filter
+        ? this.storesCache.filter((s) =>
+            (s.id + ' ' + s.nazev + ' ' + s.mesto + ' ' + s.lc).toLowerCase().indexOf(filter) !== -1
+          )
+        : this.storesCache;
+
+      list.innerHTML = filtered.length
+        ? filtered.map((s) => this.renderStoreRow(s)).join('')
+        : this.usersPlaceholder(this.storesCache.length ? 'Žádná filiálka neodpovídá hledání.' : 'Zatím žádná data — synchronizujte v Nastavení.');
+    },
+
+    renderStoreRow(s) {
+      const status = s.closedTo
+        ? '<span class="store-status is-closed"><i class="ph ph-door-open" aria-hidden="true"></i> Zavřeno do ' + Ui.escape(this.formatFullDate(s.closedTo)) + '</span>'
+        : '<span class="store-status">Otevřeno</span>';
+
+      return '<div class="data-row store-row" data-id="' + Ui.escape(s.id) + '">' +
+        '<span class="user-cell-name">' + Ui.escape(s.id) + '</span>' +
+        '<span class="user-cell-name">' + Ui.escape(s.nazev) + '</span>' +
+        '<span class="user-cell-muted">' + Ui.escape(s.lc || '—') + '</span>' +
+        '<span class="user-cell-muted">' + Ui.escape(s.mesto || '—') + '</span>' +
+        '<span class="user-cell-muted">' + Ui.escape(s.telefonProdejny || '—') + '</span>' +
+        '<span class="user-cell-muted">' + Ui.escape(s.rm || '—') + '</span>' +
+        status +
+      '</div>';
+    },
+
+    bindStores() {
+      document.querySelector('#storesFilterInput').addEventListener('input', () => this.renderStores());
+      document.querySelector('#storesList').addEventListener('click', (e) => {
+        const row = e.target.closest('.store-row');
+        if (!row) return;
+        const store = this.storesCache.find((s) => s.id === row.dataset.id);
+        if (store) this.openStoreDetailModal(store, row);
+      });
+      document.querySelector('#storeDetailClose').addEventListener('click', () => Ui.closeModal(document.querySelector('#storeDetailModal')));
+      document.querySelector('#storeDetailModal').addEventListener('click', (e) => {
+        if (e.target === document.querySelector('#storeDetailModal')) Ui.closeModal(e.target);
+      });
+      document.querySelector('#storeDetailModal').addEventListener('cancel', (e) => {
+        e.preventDefault();
+        Ui.closeModal(e.target);
+      });
+    },
+
+    openStoreDetailModal(store, originEl) {
+      document.querySelector('#storeDetailKicker').textContent = 'Filiálka ' + store.id + (store.lc ? ' · LC ' + store.lc : '');
+      document.querySelector('#storeDetailTitle').textContent = store.nazev;
+      document.querySelector('#storeDetailBody').innerHTML = this.renderStoreDetail(store);
+
+      const dialog = document.querySelector('#storeDetailModal');
+      this.setModalOrigin(dialog, originEl);
+      Ui.openModal(dialog);
+    },
+
+    /** Sestaví obsah modalu detailu filiálky — jen ke čtení (viz komentář u #storeDetailModal v HTML). */
+    renderStoreDetail(store) {
+      const contactRow = (label, name, phone) => {
+        if (!name && !phone) return '';
+        const value = name && phone ? name + ' · ' + phone : (name || phone);
+        return '<div class="store-detail-row"><span class="store-detail-label">' + Ui.escape(label) + '</span><span>' + Ui.escape(value) + '</span></div>';
+      };
+
+      const hoursRows = store.hours.map((d) =>
+        '<tr><td>' + Ui.escape(d.label) + '</td><td>' +
+          (d.otevreno && d.zavreno ? Ui.escape(d.otevreno) + '–' + Ui.escape(d.zavreno) : '—') +
+        '</td></tr>'
+      ).join('');
+
+      const closedBadge = store.closedTo
+        ? '<span class="store-detail-badge is-closed"><i class="ph ph-door-open" aria-hidden="true"></i> Zavřeno ' +
+          Ui.escape(this.formatFullDate(store.closedFrom)) + '–' + Ui.escape(this.formatFullDate(store.closedTo)) + '</span>'
+        : '';
+
+      return '<div class="store-detail">' +
+        '<div class="store-detail-badges">' +
+          '<span class="store-detail-badge">Číslo ' + Ui.escape(store.id) + '</span>' +
+          (store.kod ? '<span class="store-detail-badge">' + Ui.escape(store.kod) + '</span>' : '') +
+          closedBadge +
+        '</div>' +
+        '<div class="store-detail-block">' +
+          '<p class="kicker"><i class="ph ph-map-pin" aria-hidden="true"></i> Adresa</p>' +
+          '<p>' + Ui.escape(store.ulice || '—') + (store.psc || store.mesto ? ', ' + Ui.escape((store.psc + ' ' + store.mesto).trim()) : '') + '</p>' +
+        '</div>' +
+        '<div class="store-detail-block">' +
+          '<p class="kicker"><i class="ph ph-phone" aria-hidden="true"></i> Kontakty</p>' +
+          (contactRow('Telefon prodejny', '', store.telefonProdejny) +
+           contactRow('VT', store.vt, store.telefonVt) +
+           contactRow('RM', store.rm, store.telefonRm) +
+           contactRow('Zástupce RM', store.zastupceRm, store.telefonZastupce) || '<p class="store-detail-empty">Bez kontaktů.</p>') +
+        '</div>' +
+        '<div class="store-detail-block">' +
+          '<p class="kicker"><i class="ph ph-clock" aria-hidden="true"></i> Otevírací doba</p>' +
+          '<table class="store-detail-hours"><tbody>' + hoursRows + '</tbody></table>' +
+        '</div>' +
+      '</div>';
+    },
+
+    loadLogisticCenters() {
+      const list = document.querySelector('#lcList');
+      list.innerHTML = this.usersPlaceholder('Načítám LC…');
+
+      Ui.call('apiGetLogisticCenters', null, { silent: true })
+        .then((items) => {
+          this.lcCache = items;
+          this.renderLc();
+        })
+        .catch((error) => {
+          list.innerHTML = this.usersPlaceholder('LC se nepodařilo načíst.');
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    renderLc() {
+      const list = document.querySelector('#lcList');
+      list.innerHTML = this.lcCache.length
+        ? this.lcCache.map((lc) => this.renderLcRow(lc)).join('')
+        : this.usersPlaceholder('Zatím žádná data — synchronizujte v Nastavení.');
+    },
+
+    renderLcRow(lc) {
+      const editBtn = this.canManageSettings
+        ? '<button type="button" class="user-action-btn is-edit" data-id="' + Ui.escape(lc.id) + '" title="Upravit" aria-label="Upravit ' + Ui.escape(lc.nazev) + '">' +
+          '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>'
+        : '';
+
+      return '<div class="data-row lc-row">' +
+        '<span class="user-cell-muted">' + Ui.escape(lc.cislo || '—') + '</span>' +
+        '<span class="user-cell-muted">' + Ui.escape(lc.zkratka || '—') + '</span>' +
+        '<span class="user-cell-name">' + Ui.escape(lc.nazev) + '</span>' +
+        '<span class="user-cell-muted">' + lc.storeCount + '</span>' +
+        '<span class="user-actions">' + editBtn + '</span>' +
+      '</div>';
+    },
+
+    bindLc() {
+      document.querySelector('#lcList').addEventListener('click', (e) => {
+        const btn = e.target.closest('.user-action-btn');
+        if (!btn) return;
+        const item = this.lcCache.find((lc) => lc.id === btn.dataset.id);
+        if (item) this.openLcFormModal(item, btn);
+      });
+
+      const dialog = document.querySelector('#lcFormModal');
+      document.querySelector('#lcFormClose').addEventListener('click', () => Ui.closeModal(dialog));
+      document.querySelector('#lcFormCancel').addEventListener('click', () => Ui.closeModal(dialog));
+      dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) Ui.closeModal(dialog);
+      });
+      dialog.addEventListener('cancel', (e) => {
+        e.preventDefault();
+        Ui.closeModal(dialog);
+      });
+      document.querySelector('#lcForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.submitLcForm();
+      });
+    },
+
+    openLcFormModal(lc, originEl) {
+      document.querySelector('#lcFormModalTitle').textContent = lc.nazev;
+      document.querySelector('#lcFormCislo').value = lc.cislo;
+      document.querySelector('#lcFormZkratka').value = lc.zkratka;
+      document.querySelector('#lcForm').dataset.editId = lc.id;
+
+      const dialog = document.querySelector('#lcFormModal');
+      this.setModalOrigin(dialog, originEl);
+      Ui.openModal(dialog);
+      document.querySelector('#lcFormCislo').focus();
+    },
+
+    submitLcForm() {
+      const id = document.querySelector('#lcForm').dataset.editId;
+      const payload = {
+        id: id,
+        cislo: document.querySelector('#lcFormCislo').value.trim(),
+        zkratka: document.querySelector('#lcFormZkratka').value.trim(),
+      };
+
+      const submitButton = document.querySelector('#lcFormSubmit');
+      Ui.setButtonLoading(submitButton, true, 'Ukládám…');
+
+      Ui.call('apiSaveLogisticCenter', payload, { silent: true })
+        .then((record) => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.closeModal(document.querySelector('#lcFormModal'));
+          Ui.toast('LC upraveno.', 'success');
+          const idx = this.lcCache.findIndex((lc) => lc.id === record.id);
+          if (idx !== -1) this.lcCache[idx] = record;
+          this.renderLc();
+        })
+        .catch((error) => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.toast(error.message, 'error');
+        });
+    },
+
     /* ── Nastavení ────────────────────────────────────────────────────── */
 
     /**
@@ -2501,6 +2837,8 @@
         this.loadEventTypesAdmin();
         this.loadImportSettings();
       }
+      if (name === 'stores') this.loadStores();
+      if (name === 'lc') this.loadLogisticCenters();
     },
 
     navigateMonth(delta) {

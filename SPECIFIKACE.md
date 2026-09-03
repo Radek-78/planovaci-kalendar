@@ -359,6 +359,9 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiGetImportSettings()` | `settings_manage` | — | naposledy odsouhlasená složka/výraz (viz 9.6) |
 | `apiSearchImportFiles(payload)` | `settings_manage` | `{ folderInput, searchTerm }` | nalezené Sheets soubory, od nejnovější úpravy |
 | `apiSyncImportFile(payload)` | `settings_manage` | `{ fileId, folderInput, searchTerm }` | souhrn synchronizace (počty přidáno/změněno/smazáno) |
+| `apiGetStores()` | `calendar_read` | — | seznam filiálek, řazený podle Čísla (numericky) — čtení smí každý přihlášený |
+| `apiGetLogisticCenters()` | `calendar_read` | — | seznam LC, řazený podle Čísla (bez čísla vždy na konec) — čtení smí každý přihlášený |
+| `apiSaveLogisticCenter(payload)` | `settings_manage` | `{ id, cislo, zkratka }` | uložené LC — edituje jen tato dvě pole, název je needitovatelný |
 
 **Rozsah v `apiGetEvents`** se vyhodnocuje jako **průnik**, ne jako „start
 uvnitř rozsahu" — jinak by vícedenní událost začínající minulý měsíc v aktuální
@@ -526,12 +529,25 @@ si z něj bere kopii do vlastních tabulek (`_stores`, `_logistic_centers`,
    uzavírek) appka zobrazí přímo ve formuláři — zatím se NIKAM neukládá,
    žádná trvalá historie ani oznámení.
 
-**Plánované další etapy** (viz SPECIFIKACE.md changelog konverzace):
-etapa 2 — sekce **Filiálky** a **LC** v menu (čtení `calendar_read`, u LC
-navíc úprava `cislo`/`zkratka` přes `settings_manage`), obě řazené podle
-Čísla; etapa 3 — `_import_log` (trvalá historie synchronizací) + oznámení
-zvonečkem (`import.sync` v `NOTIFY_ACTIONS`); etapa 4 — noční trigger
-6:00–7:00 založený jednorázově přes `TOOLS_` funkci.
+**Etapa 2 (implementováno)** — sekce **Filiálky** a **LC** v menu, obě
+přístupné každému přihlášenému (`calendar_read` — appka slouží i jako
+firemní adresář):
+
+- **Filiálky** — čtecí přehled, výchozí řazení podle Čísla (numericky).
+  Filtr nad tabulkou hledá v čísle/názvu/městě/LC (jen na klientovi, nad
+  už načteným seznamem — appka počítá s řádově stovkami filiálek, ne
+  tisíci). Klik na řádek otevře detail (adresa, kontakty VT/RM/zástupce
+  s telefony, otevírací doba po dnech, odznak „Zavřeno do…" podle
+  `_store_closures`) — čistě ke čtení, appka filiálky needituje.
+- **LC** — řazení podle Čísla (LC bez čísla až na konec), sloupec Filiálek
+  = kolik filiálek má aktuálně tohle LC v `lc` (jen doplňková informace).
+  Editovat smí SUPERADMIN (`settings_manage`) jen **číslo** a **zkratku**
+  (tužka → `#lcFormModal`) — **název** je needitovatelný, přichází ze
+  zdroje a synchronizace by ruční změnu stejně přepsala zpět.
+
+**Plánované další etapy:** etapa 3 — `_import_log` (trvalá historie
+synchronizací) + oznámení zvonečkem (`import.sync` v `NOTIFY_ACTIONS`);
+etapa 4 — noční trigger 6:00–7:00 založený jednorázově přes `TOOLS_` funkci.
 
 ---
 

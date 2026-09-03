@@ -9,10 +9,15 @@
  * běhu, to by bylo pomalé a křehké (appka by spadla, kdyby soubor zrovna
  * někdo měl otevřený k editaci, nebo kdyby zmizel).
  *
- * ETAPA 1 (tahle verze): ruční vyhledání souboru ve složce na Disku podle
- * hledaného výrazu + samotný import. Hlídání rozdílů oproti minulému stavu,
- * trvalý Log importu a oznámení zvonečkem přibudou v etapě 3, noční
- * automatická synchronizace v etapě 4 (viz SPECIFIKACE.md kapitola 9.6).
+ * ETAPA 1: ruční vyhledání souboru ve složce na Disku podle hledaného
+ * výrazu + samotný import (viz apiSearchImportFiles/apiSyncImportFile).
+ * ETAPA 2 (tahle verze): čtení pro sekce Filiálky/LC v menu (čtení smí
+ * každý přihlášený — appka slouží i jako firemní adresář, viz konverzace)
+ * + ruční úprava čísla/zkratky LC (jen SUPERADMIN).
+ *
+ * Hlídání rozdílů oproti minulému stavu, trvalý Log importu a oznámení
+ * zvonečkem přibudou v etapě 3, noční automatická synchronizace v etapě 4
+ * (viz SPECIFIKACE.md kapitola 9.6).
  *
  * Sloupce se hledají podle PŘESNÉHO textu hlavičky v řádku 1, ne podle
  * pozice — cizí systém sloupce časem může přeuspořádat, appka na tom nesmí
@@ -349,4 +354,133 @@ function _importSyncClosures_(closureRows) {
   const before = dbGetAll_(SHEETS.STORE_CLOSURES);
   dbReplaceAll_(SHEETS.STORE_CLOSURES, closureRows);
   return { total: closureRows.length, previousTotal: before.length };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ČTENÍ PRO SEKCE FILIÁLKY / LC (viz nav v ui/view_app.html)
+
+   Obojí smí ČÍST každý přihlášený uživatel (`calendar_read`) — appka tu
+   slouží i jako firemní adresář, ne jen jako nástroj správce. Editovat
+   (jen číslo/zkratku LC) smí pořád jen SUPERADMIN (`settings_manage`).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Přemění řádek filiálky na podobu pro klienta — camelCase pole + info o aktuální uzavírce (viz _store_closures). */
+function _publicStore_(row, closuresByStore) {
+  const closure = closuresByStore[String(row.id)];
+  return {
+    id: String(row.id),
+    kod: String(row.kod || ''),
+    nazev: String(row.nazev || ''),
+    lc: String(row.lc || ''),
+    telefonProdejny: String(row.telefon_prodejny || ''),
+    vt: String(row.vt || ''),
+    telefonVt: String(row.telefon_vt || ''),
+    rm: String(row.rm || ''),
+    telefonRm: String(row.telefon_rm || ''),
+    zastupceRm: String(row.zastupce_rm || ''),
+    telefonZastupce: String(row.telefon_zastupce || ''),
+    ulice: String(row.ulice || ''),
+    mesto: String(row.mesto || ''),
+    psc: String(row.psc || ''),
+    // Otevírací doba po dnech — pro detail filiálky na klientovi (App.openStoreDetailModal).
+    hours: [
+      { label: 'Pondělí', otevreno: String(row.po_otevreno || ''), zavreno: String(row.po_zavreno || '') },
+      { label: 'Úterý', otevreno: String(row.ut_otevreno || ''), zavreno: String(row.ut_zavreno || '') },
+      { label: 'Středa', otevreno: String(row.st_otevreno || ''), zavreno: String(row.st_zavreno || '') },
+      { label: 'Čtvrtek', otevreno: String(row.ct_otevreno || ''), zavreno: String(row.ct_zavreno || '') },
+      { label: 'Pátek', otevreno: String(row.pa_otevreno || ''), zavreno: String(row.pa_zavreno || '') },
+      { label: 'Sobota', otevreno: String(row.so_otevreno || ''), zavreno: String(row.so_zavreno || '') },
+      { label: 'Neděle', otevreno: String(row.ne_otevreno || ''), zavreno: String(row.ne_zavreno || '') },
+    ],
+    closedFrom: closure ? String(closure.od) : '',
+    closedTo: closure ? String(closure.do) : '',
+  };
+}
+
+/**
+ * Seznam filiálek, řazený podle Čísla vzestupně — NUMERICKY, ne textově
+ * (jinak by "1100" vyšlo před "200"). id ve _stores je vždycky číselný
+ * řetězec (= sloupec Číslo ve zdroji), Number() na něm je bezpečné.
+ */
+function apiGetStores() {
+  return guard_(PERM_KEYS.CALENDAR_READ, () => {
+    const closuresByStore = {};
+    dbGetAll_(SHEETS.STORE_CLOSURES).forEach((row) => { closuresByStore[String(row.id)] = row; });
+
+    return dbGetAll_(SHEETS.STORES)
+      .slice()
+      .sort((a, b) => Number(a.id) - Number(b.id))
+      .map((row) => _publicStore_(row, closuresByStore));
+  });
+}
+
+/** Spočítá počet filiálek pro každé LC (podle názvu) — jen doplňková informace v přehledu, appka na ní jinak nezávisí. */
+function _storeCountByLc_() {
+  const counts = {};
+  dbGetAll_(SHEETS.STORES).forEach((row) => {
+    const lc = String(row.lc || '');
+    if (lc) counts[lc] = (counts[lc] || 0) + 1;
+  });
+  return counts;
+}
+
+/** Přemění řádek LC na podobu pro klienta. */
+function _publicLogisticCenter_(row, storeCountByLc) {
+  return {
+    id: String(row.id),
+    cislo: String(row.cislo || ''),
+    zkratka: String(row.zkratka || ''),
+    nazev: String(row.nazev || ''),
+    storeCount: storeCountByLc[String(row.nazev)] || 0,
+  };
+}
+
+/**
+ * Seznam LC, řazený podle Čísla vzestupně — LC bez zadaného čísla (nově
+ * objevené, ještě nedoplněné) jdou vždycky AŽ NA KONEC, ne na začátek
+ * (prázdný řetězec by se jinak řadil textově před jakoukoli číslici).
+ */
+function apiGetLogisticCenters() {
+  return guard_(PERM_KEYS.CALENDAR_READ, () => {
+    const storeCountByLc = _storeCountByLc_();
+
+    return dbGetAll_(SHEETS.LOGISTIC_CENTERS)
+      .slice()
+      .sort((a, b) => {
+        const numA = a.cislo ? Number(a.cislo) : null;
+        const numB = b.cislo ? Number(b.cislo) : null;
+        if (numA === null && numB === null) return String(a.nazev).localeCompare(String(b.nazev), 'cs');
+        if (numA === null) return 1;
+        if (numB === null) return -1;
+        return numA - numB;
+      })
+      .map((row) => _publicLogisticCenter_(row, storeCountByLc));
+  });
+}
+
+/**
+ * Upraví číslo/zkratku LC — jediné dva sloupce, které appka u LC dovolí
+ * ručně editovat (název přichází ze zdroje, viz _importSyncLogisticCenters_
+ * výše — synchronizace ho při refreshi nepřepíše zpátky).
+ *
+ * @param {Object} payload  { id, cislo, zkratka }
+ */
+function apiSaveLogisticCenter(payload) {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    const data = payload || {};
+    const id = cleanText_(data.id, 'ID LC', 100, true);
+    const existing = dbFindById_(SHEETS.LOGISTIC_CENTERS, id);
+    if (!existing) {
+      throw userError_('LC nebylo nalezeno — mohla ho mezitím smazat synchronizace.');
+    }
+
+    const cislo = cleanText_(data.cislo, 'Číslo', LIMITS.LC_CISLO_MAX, false);
+    const zkratka = cleanText_(data.zkratka, 'Zkratka', LIMITS.LC_ZKRATKA_MAX, false);
+
+    const record = dbUpdate_(SHEETS.LOGISTIC_CENTERS, id, { cislo: cislo, zkratka: zkratka });
+    audit_('logisticCenter.update', 'Upraveno LC „' + existing.nazev + '" (číslo ' +
+      (cislo || '—') + ', zkratka ' + (zkratka || '—') + ')');
+
+    return _publicLogisticCenter_(record, _storeCountByLc_());
+  });
 }
