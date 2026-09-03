@@ -215,40 +215,17 @@ function _toolsAddDays_(dateIso, days) {
 }
 
 /**
- * Vygeneruje testovací data od RŮZNÝCH uživatelů — nové události, komentáře
- * k nim od jiného uživatele, úpravu jedné události a smazání jiné — pro
- * ruční ověření systému Oznámení (zvoneček v kalendáři musí ukázat CIZÍ
- * akce, ne vlastní). Spuštěním čehokoliv přímo z editoru by jinak vždy
- * vyšlo, že akci udělal ten, kdo skript pouští (currentEmail_()) — pro
- * test oznámení je ale potřeba, aby akce vypadaly jako od někoho jiného.
- *
- * Použije REÁLNÉ uživatele z `_users` — musí jich tam už pár být založených
- * přes appku (role/oprávnění se neřeší, jen e-mail). S míň než dvěma nemá
- * test oznámení smysl (nebylo by koho označit za "někoho jiného").
- *
- * Postup po spuštění: přihlas se do appky pod jedním z použitých uživatelů
- * (jiným, než ukázal poslední řádek logu u „Upraveno/Smazáno jako…") a
- * zkontroluj zvoneček — měl by ukázat odznak a v panelu všechny akce, které
- * udělali OSTATNÍ.
- *
- * POZOR: spustit jen JEDNOU, jinak vzniknou duplicity (stejně jako
- * u TOOLS_vlozTestovaciUdalosti). Testovací řádky jde smazat ručně přímo
- * v listech `events`, `event_comments` a `_audit_log`.
+ * Vygeneruje dávku testovacích dat pro ověření Oznámení — nové události,
+ * komentáře k nim od jiného uživatele, úpravu jedné události a smazání
+ * jiné. `actorPool` je seznam e-mailů, mezi kterými se akce rozdělují —
+ * volající (TOOLS_vlozOznamovaciTestData / TOOLS_simulujOznameniProMe)
+ * rozhoduje, jestli tam patří úplně všichni, nebo někdo záměrně chybí
+ * (typicky ten, kdo skript pouští — viz TOOLS_simulujOznameniProMe).
+ * Sdílené oběma nástroji, ať se stejná logika nepíše na dvou místech.
  */
-function TOOLS_vlozOznamovaciTestData() {
-  const users = dbGetAll_(SHEETS.USERS)
-    .map((u) => cleanEmail_(u.email))
-    .filter(Boolean);
-
-  if (users.length < 2) {
-    console.log('V _users je jen ' + users.length + ' uživatel(ů) — pro test oznámení jich potřebuješ ' +
-      'aspoň 2. Nejdřív založ uživatele v sekci Uživatelé v appce.');
-    return;
-  }
-  console.log('Nalezení uživatelé (' + users.length + '): ' + users.join(', '));
-
+function _toolsSeedNotifyBatch_(actorPool) {
   const today = todayIso_();
-  const pick = (i) => users[i % users.length];
+  const pick = (i) => actorPool[i % actorPool.length];
 
   // 1) Nové události od různých uživatelů, blízko dneška, ať jsou hned
   //    vidět v aktuálně zobrazeném měsíci mřížky.
@@ -279,7 +256,7 @@ function TOOLS_vlozOznamovaciTestData() {
   // 2) Komentáře k prvním dvěma událostem — vždy od JINÉHO uživatele, než
   //    je jejich vlastník.
   created.slice(0, 2).forEach((ev) => {
-    const commenter = users.find((u) => u !== ev.owner) || users[0];
+    const commenter = actorPool.find((u) => u !== ev.owner) || actorPool[0];
     const text = 'Díky za info, počítám s tím.';
     const comment = _toolsInsertAs_(SHEETS.EVENT_COMMENTS, {
       event_id: ev.id, author_email: commenter, text: text,
@@ -291,7 +268,7 @@ function TOOLS_vlozOznamovaciTestData() {
   // 3) Úprava první vytvořené události — jiným uživatelem, než je vlastník.
   if (created.length) {
     const target = created[0];
-    const editor = users.find((u) => u !== target.owner) || users[0];
+    const editor = actorPool.find((u) => u !== target.owner) || actorPool[0];
     dbUpdate_(SHEETS.EVENTS, target.id, {
       description: 'Upraveno — změna místa konání.',
       updated_by: editor,
@@ -308,15 +285,99 @@ function TOOLS_vlozOznamovaciTestData() {
     title: 'Zrušená schůzka', description: '',
     owner_email: throwawayOwner, created_by: throwawayOwner, updated_by: throwawayOwner,
   });
-  const deleter = users.find((u) => u !== throwawayOwner) || users[0];
+  const deleter = actorPool.find((u) => u !== throwawayOwner) || actorPool[0];
   dbDelete_(SHEETS.EVENTS, throwaway.id);
   _toolsAuditAs_(deleter, 'event.delete', 'Smazána událost „Zrušená schůzka" (' + throwaway.id + ')');
   console.log('Smazána zkušební událost „Zrušená schůzka" jako ' + deleter);
 
-  console.log('---');
   console.log('Hotovo — vytvořeno ' + created.length + ' událostí, 2 komentáře, 1 úprava, 1 smazání.');
+}
+
+/**
+ * Vygeneruje testovací data od RŮZNÝCH uživatelů (viz _toolsSeedNotifyBatch_)
+ * — pro ruční ověření systému Oznámení, POKUD se máš jak přihlásit do appky
+ * pod aspoň jedním z nich. Když ne (běžný případ — appka pouští jen účet,
+ * pod kterým jsi zrovna v prohlížeči), použij TOOLS_simulujOznameniProMe
+ * níže, ta totéž nasimuluje pro TEBE, bez přepínání účtů.
+ *
+ * Použije REÁLNÉ uživatele z `_users` — musí jich tam už pár být založených
+ * přes appku (role/oprávnění se neřeší, jen e-mail). S míň než dvěma nemá
+ * test oznámení smysl (nebylo by koho označit za "někoho jiného").
+ *
+ * POZOR: spustit jen JEDNOU, jinak vzniknou duplicity (stejně jako
+ * u TOOLS_vlozTestovaciUdalosti). Testovací řádky jde smazat ručně přímo
+ * v listech `events`, `event_comments` a `_audit_log`.
+ */
+function TOOLS_vlozOznamovaciTestData() {
+  const users = dbGetAll_(SHEETS.USERS)
+    .map((u) => cleanEmail_(u.email))
+    .filter(Boolean);
+
+  if (users.length < 2) {
+    console.log('V _users je jen ' + users.length + ' uživatel(ů) — pro test oznámení jich potřebuješ ' +
+      'aspoň 2. Nejdřív založ uživatele v sekci Uživatelé v appce.');
+    return;
+  }
+  console.log('Nalezení uživatelé (' + users.length + '): ' + users.join(', '));
+
+  _toolsSeedNotifyBatch_(users);
+
+  console.log('---');
   console.log('Teď se přihlas do appky pod některým z uživatelů výše a zkontroluj zvoneček s oznámeními ' +
     '(uvidíš jen akce OSTATNÍCH, ne svoje vlastní).');
+}
+
+/**
+ * To samé jako TOOLS_vlozOznamovaciTestData, ale simulované pro TEBE —
+ * pro případ (běžný), že se do appky fyzicky nedá přihlásit pod cizím
+ * účtem, protože Apps Script vždy pustí jen toho, kdo je zrovna přihlášený
+ * v prohlížeči.
+ *
+ * Trik: všechny testovací akce se zapíšou jako OSTATNÍ uživatelé (nikdy
+ * jako ty — currentEmail_()), a tvůj vlastní `last_visit_at` se hned potom
+ * ručně posune pár dní do minulosti. Appka tak po tvém přihlášení uvidí
+ * "od poslední návštěvy proběhlo tohle" přesně, jako by se to fakt stalo
+ * bez tebe — přestože jsi to spustil ty sám, jen z editoru, ne z webu.
+ *
+ * Podmínka: TY sám musíš být v `_users` (appka by tě jinak stejně nepustila
+ * dovnitř) a musí tam být aspoň jeden DALŠÍ uživatel.
+ *
+ * POZOR: spustit jen JEDNOU ze stejného důvodu jako výše.
+ */
+function TOOLS_simulujOznameniProMe() {
+  const me = currentEmail_();
+  if (!me) {
+    console.log('Nepodařilo se zjistit e-mail toho, kdo skript pouští (currentEmail_() je prázdné).');
+    return;
+  }
+
+  const myRow = dbFindBy_(SHEETS.USERS, 'email', me);
+  if (!myRow) {
+    console.log('Účet ' + me + ' není v _users — appka by ho tak jako tak nepustila dovnitř. ' +
+      'Nejdřív si musíš sám sobě založit uživatele v sekci Uživatelé.');
+    return;
+  }
+
+  const others = dbGetAll_(SHEETS.USERS)
+    .map((u) => cleanEmail_(u.email))
+    .filter((email) => email && email !== me);
+
+  if (others.length < 1) {
+    console.log('V _users kromě tebe (' + me + ') nikdo jiný není — není co simulovat. ' +
+      'Nejdřív založ aspoň jednoho dalšího uživatele.');
+    return;
+  }
+  console.log('Ty (' + me + ') se do simulace NEPOČÍTÁŠ. Simuluju akce: ' + others.join(', '));
+
+  _toolsSeedNotifyBatch_(others);
+
+  const pastVisit = new Date();
+  pastVisit.setDate(pastVisit.getDate() - 3);
+  dbUpdate_(SHEETS.USERS, myRow.id, { last_visit_at: pastVisit.toISOString() });
+
+  console.log('---');
+  console.log('Tvůj last_visit_at (' + me + ') je nastavený 3 dny do minulosti.');
+  console.log('Teď otevři appku POD SVÝM účtem a zkontroluj zvoneček — měl by ukázat vše výše jako nové.');
 }
 
 /**
