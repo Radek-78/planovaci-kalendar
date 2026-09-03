@@ -1411,22 +1411,25 @@
     },
 
     /**
-     * Vloží načtené události do už vykreslené mřížky jako pruhy (chipy) —
-     * jeden souvislý pruh na celý rozsah, který událost v daném TÝDNU
-     * pokrývá, ne samostatný chip pro každý den zvlášť. Díky tomu je na
-     * první pohled jasné, že jde o vícedenní událost (pruh se vizuálně
-     * spojí přes všechny dny, mezerou mezi buňkami "protéká" stejnou barvou).
-     * Přes hranici týdne (nový řádek mřížky) je pruh nutně rozdělený na
-     * segmenty — pokračování v dalším týdnu nese jen značku „▸".
+     * Vloží načtené události do už vykreslené mřížky — SAMOSTATNÝ chip pro
+     * KAŽDÝ den, který událost pokrývá (ne jeden souvislý pruh přes víc
+     * sloupců, jak to appka zkoušela dřív). Že jde o vícedenní událost,
+     * naznačí malé trojúhelníky u okrajů chipu (viz renderChip/.cal-chip-edge)
+     * — na pravém okraji, když událost pokračuje i zítra, na levém, když
+     * pokračuje včerejškem. Místo pro ně je vyhrazené VŽDY (i prázdné, viz
+     * CSS), ať mají všechny chipy stejný vzhled bez ohledu na to, jestli
+     * jsou jedno- nebo vícedenní.
      *
      * Dráhy (lanes) se přidělují PO TÝDNECH klasickým "interval scheduling"
      * způsobem — nejdřív vícedenní a dřív začínající události, každá do
      * nejnižší volné dráhy, která se nepřekrývá s tím, co už je v ní.
-     * Stejná událost tak může mít v různých týdnech jinou dráhu (běžné
-     * i v jiných kalendářních appkách). Co se nevejde do CAL_LANE_COUNT
-     * drah, dostane v postižených dnech jen odznak "+N" v poslední dráze
-     * (viz .cal-chip-more níže), místo aby permanentně zabíralo místo
-     * v mřížce — klik na něj otevře detail dne s úplně vším.
+     * Stejná událost tak má PO CELÝ TÝDEN jednu dráhu (aby chipy jednotlivých
+     * dnů byly svisle zarovnané a trojúhelníky u okrajů na sebe navazovaly),
+     * i když je vykreslená jako víc samostatných chipů. V jiném týdnu může
+     * mít dráhu jinou (běžné i v jiných kalendářních appkách). Co se nevejde
+     * do CAL_LANE_COUNT drah, dostane v postižených dnech jen odznak "+N"
+     * v poslední dráze (viz .cal-chip-more níže), místo aby permanentně
+     * zabíralo místo v mřížce — klik na něj otevře detail dne s úplně vším.
      *
      * Souhrn v hlavičce počítá jen události protínající AKTUÁLNĚ ZOBRAZENÝ
      * MĚSÍC, ne celou 42denní mřížku (ta zasahuje i do sousedních měsíců).
@@ -1435,12 +1438,12 @@
       this.currentEvents = events;
 
       const grid = document.querySelector('#calGrid');
-      // Staré pruhy/odznaky přetečení z předchozího vykreslení pryč — buňky
+      // Staré chipy/odznaky přetečení z předchozího vykreslení pryč — buňky
       // dní zůstávají (ty vykresluje renderCalendar), jen se do nich znovu
-      // vloží aktuální odznaky a vedle nich nové pruhy.
+      // vloží aktuální odznaky a vedle nich nové chipy.
       grid.querySelectorAll('.cal-chip, .cal-chip-more').forEach((el) => el.remove());
 
-      let barsHtml = '';
+      let chipsHtml = '';
       const overflowByDate = {}; // dateIso -> { count, row, col } — kolik událostí navíc nad CAL_LANE_COUNT ten den má
 
       for (let row = 0; row < 6; row++) {
@@ -1456,13 +1459,7 @@
             const endIso = event.end.slice(0, 10);
             const startCol = startIso < rowStartIso ? 0 : this.dateDiffDays(rowStartIso, startIso);
             const endCol = endIso > rowEndIso ? 6 : this.dateDiffDays(rowStartIso, endIso);
-            return {
-              event: event,
-              startCol: startCol,
-              endCol: endCol,
-              isStart: startIso >= rowStartIso, // skutečný začátek události padá do tohoto týdne
-              isEnd: endIso <= rowEndIso,       // skutečný konec události padá do tohoto týdne
-            };
+            return { event: event, startCol: startCol, endCol: endCol };
           })
           .sort((a, b) => {
             const spanA = a.endCol - a.startCol;
@@ -1491,8 +1488,22 @@
           if (!lanes[lane]) lanes[lane] = [];
           lanes[lane].push([item.startCol, item.endCol]);
 
+          // Samostatný chip pro KAŽDÝ den v rozsahu (viz komentář výše u
+          // renderEvents) — všechny ve stejné dráze, ať jsou svisle zarovnané.
           const laneTrack = this.calHeadTrack(row) + 1 + lane;
-          barsHtml += this.renderChip(item.event, item.isStart, item.isEnd, laneTrack, item.startCol + 2, item.endCol + 3);
+          const startIso = item.event.start.slice(0, 10);
+          const endIso = item.event.end.slice(0, 10);
+          for (let col = item.startCol; col <= item.endCol; col++) {
+            const dayIso = this.isoDate(new Date(rowStart.getFullYear(), rowStart.getMonth(), rowStart.getDate() + col));
+            chipsHtml += this.renderChip(
+              item.event,
+              dayIso === startIso, // isFirstDay — jen skutečný první den nese čas
+              dayIso > startIso,   // continuesLeft — pokračuje včerejškem
+              dayIso < endIso,     // continuesRight — pokračuje zítra
+              laneTrack,
+              col + 2
+            );
+          }
         });
       }
 
@@ -1505,11 +1516,11 @@
       Object.keys(overflowByDate).forEach((iso) => {
         const o = overflowByDate[iso];
         const laneTrack = this.calHeadTrack(o.row) + this.CAL_LANE_COUNT; // poslední dráha
-        barsHtml += '<div class="cal-chip-more" data-date="' + Ui.escape(iso) +
+        chipsHtml += '<div class="cal-chip-more" data-date="' + Ui.escape(iso) +
           '" style="grid-row:' + laneTrack + '; grid-column:' + (o.col + 2) + '">+' + o.count + '</div>';
       });
 
-      grid.insertAdjacentHTML('beforeend', barsHtml);
+      grid.insertAdjacentHTML('beforeend', chipsHtml);
 
       const monthFirstIso = this.isoDate(monthFirst);
       const monthLastIso = this.isoDate(monthLast);
@@ -1526,27 +1537,33 @@
     },
 
     /**
-     * Jeden pruh (chip) v mřížce — grid-row/grid-column ho umístí přesně do
-     * přidělené dráhy a rozsahu dnů (viz renderEvents), takže vícedenní
-     * událost vypadá jako jeden souvislý pruh přes všechny dny daného týdne,
-     * ne jako samostatný chip v každém z nich. Zaoblení jen na skutečném
-     * začátku/konci události (is-start/is-end) — uprostřed zůstává hranatý,
-     * ať vypadá spojitě. Čas se vypíše jen na skutečném prvním dni, pokračování
-     * z předchozího týdne nese jen značku „▸" — ikona a barva jsou doplněk,
-     * text (název) je vždy čitelný i bez nich. `data-event-id` slouží
-     * tooltipu (viz showChipTooltip) i kliku (otevření detailu) k dohledání
-     * celé události.
+     * Jeden chip v mřížce — samostatný pro každý den, který událost pokrývá
+     * (viz renderEvents). grid-row/grid-column ho umístí do přidělené dráhy
+     * a jednoho konkrétního dne. Že jde o vícedenní událost, naznačí malé
+     * trojúhelníky u okrajů (.cal-chip-edge) — vlevo, když pokračuje
+     * včerejškem (continuesLeft), vpravo, když pokračuje zítra
+     * (continuesRight). Místo pro ně je vyhrazené VŽDY, i prázdné (viz CSS),
+     * ať mají všechny chipy stejnou šířku bez ohledu na to, jestli je
+     * událost jedno- nebo vícedenní.
+     *
+     * Čas se vypíše jen na skutečném prvním dni (isFirstDay), další dny jen
+     * název — ikona a barva jsou doplněk, text je vždy čitelný i bez nich.
+     * `data-event-id` slouží tooltipu (viz showChipTooltip) i kliku
+     * (otevření detailu) k dohledání celé události.
      *
      * Tužka/koš (jen u událostí, které smí uživatel spravovat — viz
-     * canManageEvent) se u pravého okraje ukážou až po najetí myší
-     * (.cal-chip-actions, viz CSS) — chip je na trvalé zobrazení dvou ikon
-     * navíc příliš úzký, klik mimo ně pořád otevírá jen detail.
+     * canManageEvent) jsou u pravého okraje vždy viditelné (ne jen na
+     * hover) — klik mimo ně pořád otevírá jen detail (čtení).
      */
-    renderChip(event, isStart, isEnd, laneTrack, colStartLine, colEndLine) {
+    renderChip(event, isFirstDay, continuesLeft, continuesRight, laneTrack, colLine) {
       const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a' };
       const timeLabel = event.allDay ? 'Celý den' : event.start.slice(11, 16);
-      const prefix = isStart ? timeLabel + ' ' : '▸ ';
-      const cls = 'cal-chip' + (isStart ? ' is-start' : '') + (isEnd ? ' is-end' : '');
+      const label = isFirstDay ? timeLabel + ' ' + event.title : event.title;
+
+      const leftEdge = '<span class="cal-chip-edge">' +
+        (continuesLeft ? '<i class="ph ph-caret-left" aria-hidden="true"></i>' : '') + '</span>';
+      const rightEdge = '<span class="cal-chip-edge">' +
+        (continuesRight ? '<i class="ph ph-caret-right" aria-hidden="true"></i>' : '') + '</span>';
 
       const actions = this.canManageEvent(event)
         ? '<span class="cal-chip-actions">' +
@@ -1557,12 +1574,14 @@
           '</span>'
         : '';
 
-      return '<div class="' + cls + '" data-event-id="' + Ui.escape(event.id) +
+      return '<div class="cal-chip" data-event-id="' + Ui.escape(event.id) +
         '" style="--chip-color:' + Ui.escape(type.color) + '; grid-row:' + laneTrack +
-        '; grid-column:' + colStartLine + ' / ' + colEndLine + '">' +
+        '; grid-column:' + colLine + '">' +
+        leftEdge +
         '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i>' +
-        '<span>' + Ui.escape(prefix + event.title) + '</span>' +
+        '<span class="cal-chip-title">' + Ui.escape(label) + '</span>' +
         actions +
+        rightEdge +
       '</div>';
     },
 

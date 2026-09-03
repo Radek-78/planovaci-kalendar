@@ -1562,13 +1562,12 @@
      typ. Ikona i barva jsou jen doplněk — text (název události) je vždy
      čitelný i bez nich, takže výpadek ikonového fontu nic neschová. ── */
 
-  /* Pruh (chip) události — samostatná položka mřížky (ne potomek buňky!),
-     umístěná přes grid-row (přidělená dráha) a grid-column (rozsah dnů,
-     který v tomto týdnu pokrývá — viz App.renderChip). Díky grid-column
-     přes víc sloupců vyplní pruh svou vlastní krabicí i mezeru mezi
-     sousedními buňkami, takže vícedenní událost vypadá jako JEDEN souvislý
-     pruh, ne jako řada oddělených chipů. Hranatý uprostřed, zaoblený jen
-     na skutečném začátku/konci (is-start/is-end) — stejný princip. */
+  /* Chip události — samostatná položka mřížky (ne potomek buňky!), jeden
+     pro KAŽDÝ den, který událost pokrývá (viz App.renderEvents/renderChip)
+     — ne jeden souvislý pruh přes víc sloupců. Umístěný přes grid-row
+     (přidělená dráha, stejná pro všechny dny té události v daném týdnu)
+     a grid-column (jeden konkrétní den). Že událost pokračuje do dalšího/
+     z předchozího dne, naznačí trojúhelníky u okrajů (.cal-chip-edge). */
   /* align-self: start — bez toho by chip (grid položka) defaultně roztáhl
      svoji výšku přes celou dráhu (align-items: stretch je výchozí chování
      mřížky). Chip má mít vždy stejnou kompaktní velikost bez ohledu na to,
@@ -1578,28 +1577,18 @@
     align-items: center;
     align-self: start;
     background: color-mix(in srgb, var(--chip-color) 14%, white);
-    border-radius: 0;
+    border-radius: 4px;
     color: var(--chip-color);
     display: flex;
     font-size: 10px;
     font-weight: 700;
-    gap: 4px;
+    gap: 3px;
     margin: 3px 3px 0;
     overflow: hidden;
-    padding: 2px 6px;
+    padding: 2px 4px;
     position: relative;
     white-space: nowrap;
     z-index: 1;
-  }
-
-  .cal-chip.is-start {
-    border-bottom-left-radius: 4px;
-    border-top-left-radius: 4px;
-  }
-
-  .cal-chip.is-end {
-    border-bottom-right-radius: 4px;
-    border-top-right-radius: 4px;
   }
 
   .cal-chip i {
@@ -1610,10 +1599,26 @@
   /* min-width: 0 je tu nutné — bez něj by flex položka (výchozí min-width:
      auto) odmítala zúžit se pod šířku svého textu, takže by text-overflow:
      ellipsis nikdy neměl šanci se uplatnit (klasická flexbox past). */
-  .cal-chip span {
+  .cal-chip-title {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  /* Vyhrazené místo pro trojúhelník "pokračuje vlevo/vpravo" (viz
+     renderChip) — VŽDY stejně široké, i prázdné (event nemá continuesLeft/
+     Right), ať mají všechny chipy stejnou šířku bez ohledu na to, jestli
+     jde o jedno- nebo vícedenní událost (jednotný vzhled celé mřížky). */
+  .cal-chip-edge {
+    align-items: center;
+    display: inline-flex;
+    flex-shrink: 0;
+    justify-content: center;
+    width: 8px;
+  }
+
+  .cal-chip-edge i {
+    font-size: 8px;
   }
 
   /* Tužka/koš přímo v chipu — jen po najetí myší (chip je na trvalé
@@ -1626,14 +1631,10 @@
      nebo chip široký (vícedenní událost s krátkým názvem by jinak
      nechala ikony viset hned za textem, ne u okraje). */
   .cal-chip-actions {
-    display: none;
+    display: flex;
     flex-shrink: 0;
     gap: 2px;
     margin-left: auto;
-  }
-
-  .cal-chip:hover .cal-chip-actions {
-    display: flex;
   }
 
   .cal-chip-action {

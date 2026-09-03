@@ -5,6 +5,11 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.27 - 03.09.2026 07:35
+- Kalendar - ikony tuzky a kose v chipu udalosti jsou ted vzdy viditelne, ne jen po najeti mysi
+- vicedenni udalosti se uz nezobrazuji jako jeden souvisly pruh pres vsechny dny - kazdy den ma zase svuj samostatny chip, pokracovani do dalsiho/z predchoziho dne naznacuji male trojuhelniky u leveho a praveho okraje chipu
+- misto pro tyto trojuhelniky je vyhrazene u kazdeho chipu vzdy (i prazdne u jednodennich udalosti), aby mely vsechny chipy stejnou sirku a jednotny vzhled
+
 ## v0.1.26 - 02.09.2026 18:24
 - Kalendář — ikony tužky a koše v chipu události se teď vždy přitisknou k pravému okraji (margin-left auto), ne jen hned za krátký název — u širších (vícedenních) chipů s krátkým názvem dřív viselo mezi textem a okrajem prázdné místo
 
