@@ -6,10 +6,10 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.31 - 03.09.2026 08:42
-- Opravy vzhledu Oznameni - z textu oznameni uz nikdy nejde zadne technicke ID (misto nej jmeno udalosti, napr. u komentare), novy sloupec _audit_log.entity_id nese jen odkaz pro prokliknuti
-- jednotny format data a casu v cele aplikaci - D.M.RRRR HH:MM (drive bez roku a nejednotne), sdilene App.formatDateTime/formatFullDate na klientovi a formatDateTimeCz_ na serveru
-- oprava - auditni zaznamy i last_visit_at se ted ukladaji v mistnim case (drive UTC), takze casy v oznamenich uz nejsou posunute o par hodin
-- klik na oznameni s odkazem na udalost ted otevre jeji detail, chybejici/mimo aktualni mesic appka srozumitelne oznami
+- Opravy vzhledu Oznámení — z textu oznámení už nikdy nejde žádné technické ID (místo něj jméno události, např. u komentáře), nový sloupec _audit_log.entity_id nese jen odkaz pro prokliknutí
+- Jednotný formát data a času v celé aplikaci — D.M.RRRR HH:MM (dříve bez roku a nejednotně), sdílené App.formatDateTime/formatFullDate na klientovi a formatDateTimeCz_ na serveru
+- Oprava — auditní záznamy i last_visit_at se teď ukládají v místním čase (dříve UTC), takže časy v oznámeních už nejsou posunuté o pár hodin
+- Klik na oznámení s odkazem na událost teď otevře její detail, chybějící/mimo aktuální měsíc appka srozumitelně oznámí
 
 ## v0.1.30 - 03.09.2026 08:17
 - Nový ruční nástroj TOOLS_simulujOznameniProMe (server/90_tools.js) — protože se do appky nedá fyzicky přihlásit pod cizím uživatelem (Apps Script pustí vždy jen přihlášený účet v prohlížeči), tento nástroj nasimuluje cizí aktivitu pro toho, kdo skript spustí — všechny testovací události/komentáře/úpravy/smazání zapíše jako OSTATNÍ uživatelé a hned nato posune jeho vlastní last_visit_at 3 dny do minulosti, takže po přihlášení pod vlastním účtem uvidí vše jako nové ve zvonečku
