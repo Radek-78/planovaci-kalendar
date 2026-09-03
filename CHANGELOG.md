@@ -6,10 +6,10 @@ Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
 ## v0.1.34 - 03.09.2026 12:57
-- Oznameni - opraven zpusob evidence precteni: drive se last_visit_at posouval automaticky pri kazdem otevreni appky (kdo si zvonecku nevsiml, o oznameni nenavratne prisel), ted az explicitnim otevrenim modalu se zvoneckem (novy endpoint apiMarkNotificationsSeen), odznak se hned schova
-- typy udalosti - barva ikony a barva podkladu jsou ted dve nezavisle nastavitelne barvy misto jedne pocitane
-- kalendar - barevny podklad chipu sahá az k okraji bunky jen na strane, kde je videt trojuhelnik pokracovani, jednodenni udalost bez trojuhelniku je uzsi s odstupem od okraju
-- pracovni pozice se ted skutecne nabizeji jako vyber v poli Pozice ve formulari uzivatele (drive jen volny text, seznam z Nastaveni se nikam nepropisoval) - cteni seznamu smi i administrator, spravu porad jen spravce aplikace
+- Oznámení — opraven způsob evidence přečtení: dříve se last_visit_at posouval automaticky při každém otevření appky (kdo si zvonečku nevšiml, o oznámení nenávratně přišel), teď až explicitním otevřením modalu se zvonečkem (nový endpoint apiMarkNotificationsSeen), odznak se hned schová
+- Typy událostí — barva ikony a barva podkladu jsou teď dvě nezávisle nastavitelné barvy místo jedné počítané
+- Kalendář — barevný podklad chipu sahá až k okraji buňky jen na straně, kde je vidět trojúhelník pokračování, jednodenní událost bez trojúhelníků je užší s odstupem od okrajů
+- Pracovní pozice se teď skutečně nabízejí jako výběr v poli Pozice ve formuláři uživatele (dříve jen volný text, seznam z Nastavení se nikam nepropisoval) — čtení seznamu smí i administrátor, správu pořád jen správce aplikace
 
 ## v0.1.33 - 03.09.2026 09:32
 - Základ sekce Nastavení — dvě záložky, Pracovní pozice a Typy událostí, obě jako přehledný seznam s vytvořením/úpravou/smazáním ve stejném stylu jako appka používá jinde (modal formulář, potvrzovací okno na mazání, tužka/koš)
