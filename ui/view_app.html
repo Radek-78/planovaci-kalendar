@@ -2385,9 +2385,14 @@
       const timeLabel = event.allDay ? 'Celý den' : event.start.slice(11, 16);
       const label = isFirstDay ? timeLabel + ' ' + event.title : event.title;
 
-      const leftEdge = '<span class="cal-chip-edge">' +
+      // Vyhrazený prostor pro šipku má VŽDY stejnou šířku (viz .cal-chip-edge
+      // v CSS), ale obarví se (is-active) jen na straně, kde událost skutečně
+      // pokračuje — tam barva pruhu splyne až s okrajem buňky, i pod ikonou
+      // šipky. Bez pokračování zůstává ten prostor průhledný, je skrz něj
+      // vidět skutečné pozadí buňky (bílá/víkend/dnešek…), ne barva pruhu.
+      const leftEdge = '<span class="cal-chip-edge' + (continuesLeft ? ' is-active' : '') + '">' +
         (continuesLeft ? '<i class="ph ph-caret-left" aria-hidden="true"></i>' : '') + '</span>';
-      const rightEdge = '<span class="cal-chip-edge">' +
+      const rightEdge = '<span class="cal-chip-edge' + (continuesRight ? ' is-active' : '') + '">' +
         (continuesRight ? '<i class="ph ph-caret-right" aria-hidden="true"></i>' : '') + '</span>';
 
       const actions = this.canManageEvent(event)
@@ -2401,13 +2406,21 @@
 
       const cls = 'cal-chip' + (continuesLeft ? ' is-continue-left' : '') + (continuesRight ? ' is-continue-right' : '');
 
+      // Barvu/podklad teď nenese celý vnější box, ale samostatný vnitřní
+      // .cal-chip-body (ikona/název/akce) — díky tomu může zůstat vyhrazený
+      // prostor pro šipku (.cal-chip-edge) na neaktivní straně bez barvy,
+      // viz komentář výše. Na aktivní straně tělo ztrácí zaoblení (viz CSS
+      // .is-continue-left/right), takže barevně splyne s aktivní hranou
+      // beze švu, jako jeden souvislý pruh až k okraji buňky.
       return '<div class="' + cls + '" data-event-id="' + Ui.escape(event.id) +
         '" style="--chip-color:' + Ui.escape(type.color) + '; --chip-bg:' + Ui.escape(type.bgColor) + '; grid-row:' + laneTrack +
         '; grid-column:' + colLine + '">' +
         leftEdge +
-        '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i>' +
-        '<span class="cal-chip-title">' + Ui.escape(label) + '</span>' +
-        actions +
+        '<span class="cal-chip-body">' +
+          '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i>' +
+          '<span class="cal-chip-title">' + Ui.escape(label) + '</span>' +
+          actions +
+        '</span>' +
         rightEdge +
       '</div>';
     },

@@ -1810,40 +1810,59 @@
      svoji výšku přes celou dráhu (align-items: stretch je výchozí chování
      mřížky). Chip má mít vždy stejnou kompaktní velikost bez ohledu na to,
      kolik místa dráha skutečně má — proto vlastní pevné odsazení (margin)
-     shora i po stranách, ne roztažení na 100 % výšky. */
+     shora i po stranách, ne roztažení na 100 % výšky.
+     Barvu/podklad NENESE tenhle vnější box — jen sestavuje tři vnitřní
+     části vedle sebe (hrana/tělo/hrana), gap: 0, ať na aktivní straně
+     (viz .cal-chip-body a .cal-chip-edge.is-active níže) barevně navazují
+     beze švu. Bez pokračování na dané straně zůstává hrana průhledná —
+     nese ji zase jen .cal-chip-body, zaoblené a s odstupem od okraje. */
   .cal-chip {
     align-items: center;
     align-self: start;
-    background: var(--chip-bg, var(--page));
-    border-radius: 4px;
-    color: var(--chip-color);
     display: flex;
     font-size: 10px;
     font-weight: 700;
-    gap: 3px;
     margin: 3px 3px 0;
     overflow: hidden;
-    padding: 2px 4px;
     position: relative;
     white-space: nowrap;
     z-index: 1;
   }
 
-  /* Barevný podklad sahá až k okraji buňky (bez odstupu, hranatý roh) JEN
-     na straně, kde je vidět šipka pokračování (.cal-chip-edge) — jinak
-     zůstává užší, s odstupem od okraje (viz margin/border-radius výše).
-     Díky tomu chip vizuálně "naváže" na sousední den přesně tam, kde to
-     šipka slibuje, a nikde jinde. */
   .cal-chip.is-continue-left {
-    border-bottom-left-radius: 0;
-    border-top-left-radius: 0;
     margin-left: 0;
   }
 
   .cal-chip.is-continue-right {
+    margin-right: 0;
+  }
+
+  /* Skutečný barevný pruh — ikona typu, název, akce. Zaoblený a s paddingem
+     na obou stranách, DOKUD se ta strana nedotýká aktivní hrany pokračování
+     (viz pravidla .is-continue-left/right níže) — tam se zaoblení zruší,
+     ať tělo barevně naváže na .cal-chip-edge.is-active beze švu a pruh tak
+     sahá až k okraji buňky, viditelný i pod ikonou šipky. */
+  .cal-chip-body {
+    align-items: center;
+    background: var(--chip-bg, var(--page));
+    border-radius: 4px;
+    color: var(--chip-color);
+    display: flex;
+    flex: 1;
+    gap: 3px;
+    min-width: 0;
+    overflow: hidden;
+    padding: 2px 4px;
+  }
+
+  .cal-chip.is-continue-left .cal-chip-body {
+    border-bottom-left-radius: 0;
+    border-top-left-radius: 0;
+  }
+
+  .cal-chip.is-continue-right .cal-chip-body {
     border-bottom-right-radius: 0;
     border-top-right-radius: 0;
-    margin-right: 0;
   }
 
   .cal-chip i {
@@ -1863,13 +1882,25 @@
   /* Vyhrazené místo pro trojúhelník "pokračuje vlevo/vpravo" (viz
      renderChip) — VŽDY stejně široké, i prázdné (event nemá continuesLeft/
      Right), ať mají všechny chipy stejnou šířku bez ohledu na to, jestli
-     jde o jedno- nebo vícedenní událost (jednotný vzhled celé mřížky). */
+     jde o jedno- nebo vícedenní událost (jednotný vzhled celé mřížky).
+     Bez pokračování (žádná .is-active) zůstává BEZ pozadí — schválně, ať
+     je skrz něj vidět skutečné pozadí buňky (bílá/víkend/dnešek/hover…),
+     ne barva pruhu, viz komentář u .cal-chip-body výše. */
   .cal-chip-edge {
     align-items: center;
     display: inline-flex;
     flex-shrink: 0;
     justify-content: center;
     width: 8px;
+  }
+
+  /* Aktivní hrana (událost tímhle směrem skutečně pokračuje) — obarví se
+     stejně jako .cal-chip-body, hranatě, bez odstupu od okraje buňky (viz
+     margin v .cal-chip.is-continue-left/right výše), takže pruh viditelně
+     sahá až k okraji, s trojúhelníkem přímo na barevném podkladu. */
+  .cal-chip-edge.is-active {
+    background: var(--chip-bg, var(--page));
+    color: var(--chip-color);
   }
 
   .cal-chip-edge i {

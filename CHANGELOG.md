@@ -5,6 +5,10 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.37 - 03.09.2026 13:36
+- Kalendář — barevný pruh chipu (vícedenní událost) je teď skutečně vidět až k okraji buňky i pod ikonou trojúhelníku pokračování, ne jen vedle ní (vyhrazený prostor pro trojúhelník se na aktivní straně obarví stejně jako zbytek chipu)
+- na straně bez pokračování zůstává ten prostor bez barvy, prosvítá skrz něj skutečné pozadí buňky
+
 ## v0.1.36 - 03.09.2026 13:22
 - Nový jednorázový nástroj TOOLS_dosaditBarvyTypuUdalosti v 90_tools.js — dosadí barvu ikony i barvu podkladu přímo do živé databáze u výchozích typů událostí (podle DEFAULT_EVENT_TYPES), protože sloupec bg_color přibyl do schématu později než appka poprvé naseje tabulku a u starších instalací tak mohl zůstat prázdný nebo neladit
 - nástroj se spouští ručně z editoru Apps Script, je bezpečné ho spustit i opakovaně, vlastní typy vytvořené v appce nechává beze změny

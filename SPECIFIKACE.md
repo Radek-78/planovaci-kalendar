@@ -305,10 +305,12 @@ tutéž událost.
 - že událost pokračuje do dalšího/z předchozího dne, naznačí malé trojúhelníky
   u levého/pravého okraje chipu — místo pro ně je vyhrazené u KAŽDÉHO chipu
   (i jednodenního), ať mají všechny stejnou šířku
-- barevný podklad chipu sahá až k okraji buňky (bez odstupu, hranatý roh)
-  JEN na straně, kde je vidět trojúhelník (`.cal-chip.is-continue-left/
-  -right`) — jednodenní chip bez trojúhelníků je užší, s odstupem od obou
-  okrajů buňky
+- barevný podklad (`.cal-chip-body`) sahá až k okraji buňky (bez odstupu,
+  hranatý roh) JEN na straně, kde je vidět trojúhelník — vyhrazený prostor
+  pro trojúhelník (`.cal-chip-edge`) se tam obarví stejně (`.is-active`),
+  takže pruh je viditelný i pod ikonou šipky; na straně bez pokračování
+  zůstává ten prostor bez pozadí (průhledný, prosvítá skutečné pozadí
+  buňky) a tělo chipu je užší, zaoblené, s odstupem od okraje buňky
 - editace i smazání z kteréhokoli dne mění **celou** událost
 - potvrzovací dialog u mazání proto vždy vypíše celý rozsah („Smazat celou
   událost 3. 9. – 5. 9.?"), aby si nikdo nespletl den s akcí
