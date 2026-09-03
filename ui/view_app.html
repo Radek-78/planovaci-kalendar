@@ -100,20 +100,12 @@
 
           <!-- Zvoneček s oznámeními — úplně vpravo, za souhrnem. Odznak
                s počtem se ukáže, jen když je od poslední návštěvy něco
-               nového (viz renderNotifyBadge); panel pod ním se otevírá/
-               zavírá stejným vzorem jako přepínač měsíce/roku výše
-               (bindNotifications/openNotifyPanel). -->
-          <span class="cal-notify-wrap">
-            <button class="cal-notify-btn" type="button" id="calNotifyBtn" aria-label="Oznámení">
-              <i class="ph ph-bell" aria-hidden="true"></i>
-              <span class="cal-notify-badge is-hidden" id="calNotifyBadge"></span>
-            </button>
-
-            <div class="cal-notify-panel is-hidden" id="calNotifyPanel">
-              <p class="cal-notify-panel-head">Oznámení</p>
-              <div class="cal-notify-list" id="calNotifyList"><!-- vykresleno JS --></div>
-            </div>
-          </span>
+               nového (viz renderNotifyBadge). Otevírá modal #notifyModal
+               (stejný jazyk jako ostatní modaly appky), ne malý dropdown. -->
+          <button class="cal-notify-btn" type="button" id="calNotifyBtn" aria-label="Oznámení">
+            <i class="ph ph-bell" aria-hidden="true"></i>
+            <span class="cal-notify-badge is-hidden" id="calNotifyBadge"></span>
+          </button>
         </div>
       </div>
       <div class="cal-grid-wrap">
@@ -408,6 +400,30 @@
   </div>
 </dialog>
 
+<!-- ══ Modal: Oznámení ══
+     Otevírá se kliknutím na zvoneček v hlavičce kalendáře (#calNotifyBtn).
+     Data má appka už z bootstrapu (this.notifications) — modal je jen
+     zobrazí, žádné další volání serveru. Pevná výška těla (viz CSS) jako
+     u ostatních modalů appky, ať se vejde přehledně víc položek najednou
+     bez scrollování. Každá položka má ikonu/barvu/popisek podle typu akce
+     (viz App.NOTIFY_TYPE_META/renderNotifyItem) a je klikatelná, jen když
+     nese odkaz na existující událost (entityId). -->
+<dialog class="modal modal-wide modal-grow" id="notifyModal">
+  <div class="modal-header">
+    <span class="modal-icon"><i class="ph ph-bell" aria-hidden="true"></i></span>
+    <div class="modal-header-text">
+      <p class="kicker">Oznámení</p>
+      <h2>Co je nového</h2>
+    </div>
+    <button class="modal-close" type="button" id="notifyModalClose" aria-label="Zavřít">
+      <i class="ph ph-x" aria-hidden="true"></i>
+    </button>
+  </div>
+  <div class="modal-body" id="notifyModalBody">
+    <div class="notify-list" id="calNotifyList"><!-- vykresleno JS --></div>
+  </div>
+</dialog>
+
 <!-- Sdílený tooltip pro najetí na chip události v mřížce — jeden prvek pro
      celou stránku, JS ho jen přesouvá a přepisuje obsah (viz bindChipTooltip). -->
 <div class="event-tooltip is-hidden" id="eventTooltip"></div>
@@ -689,37 +705,43 @@
     },
 
     /**
-     * Otevírání/zavírání panelu s oznámeními — stejný vzor jako přepínač
-     * měsíce/roku výše (klik mimo panel ho zavře). Data už jsou z bootstrapu
-     * (this.notifications) — panel je jen zobrazí, žádné další volání
-     * serveru. „last_visit_at" se posouvá na serveru už při bootstrapu
-     * (viz _computeNotifications_), ne tady — otevření panelu je čistě
-     * vizuální, na to, co appka počítá za „viděné", nemá žádný vliv.
+     * Otevírání/zavírání modalu s oznámeními — stejný vzor jako ostatní
+     * modaly appky (klik na pozadí/křížek/Esc zavře). Data už jsou
+     * z bootstrapu (this.notifications) — modal je jen zobrazí, žádné
+     * další volání serveru. „last_visit_at" se posouvá na serveru už při
+     * bootstrapu (viz _computeNotifications_), ne tady — otevření modalu
+     * je čistě vizuální, na to, co appka počítá za „viděné", nemá vliv.
      */
     bindNotifications() {
-      const btn = document.querySelector('#calNotifyBtn');
-      const panel = document.querySelector('#calNotifyPanel');
-
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation(); // ať to hned nezavře posluchač na document níže
-        panel.classList.contains('is-hidden') ? this.openNotifyPanel() : this.closeNotifyPanel();
+      const dialog = document.querySelector('#notifyModal');
+      document.querySelector('#calNotifyBtn').addEventListener('click', (e) => {
+        this.openNotifyModal(e.currentTarget);
       });
-
-      document.addEventListener('click', (e) => {
-        if (!panel.classList.contains('is-hidden') && !panel.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
-          this.closeNotifyPanel();
-        }
+      document.querySelector('#notifyModalClose').addEventListener('click', () => Ui.closeModal(dialog));
+      dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) Ui.closeModal(dialog);
+      });
+      dialog.addEventListener('cancel', (e) => {
+        e.preventDefault();
+        Ui.closeModal(dialog);
       });
 
       // Klik na položku oznámení otevře detail události, ke které se
       // vztahuje (viz entityId/renderNotifyItem) — jen ty, co ho mají
       // (nemrtvý klik nikam, viz is-clickable v CSS).
       document.querySelector('#calNotifyList').addEventListener('click', (e) => {
-        const item = e.target.closest('.cal-notify-item');
+        const item = e.target.closest('.notify-item');
         if (!item || !item.dataset.entityId) return;
-        this.closeNotifyPanel();
+        Ui.closeModal(dialog);
         this.openNotificationTarget(item.dataset.entityId, item);
       });
+    },
+
+    openNotifyModal(originEl) {
+      this.renderNotifyList();
+      const dialog = document.querySelector('#notifyModal');
+      this.setModalOrigin(dialog, originEl);
+      Ui.openModal(dialog);
     },
 
     /**
@@ -738,15 +760,6 @@
       this.openEventModal(eventId, originEl);
     },
 
-    openNotifyPanel() {
-      this.renderNotifyList();
-      document.querySelector('#calNotifyPanel').classList.remove('is-hidden');
-    },
-
-    closeNotifyPanel() {
-      document.querySelector('#calNotifyPanel').classList.add('is-hidden');
-    },
-
     /** Odznak s počtem u zvonečku — skrytý, když je unseenCount 0. */
     renderNotifyBadge() {
       const badge = document.querySelector('#calNotifyBadge');
@@ -759,31 +772,52 @@
       }
     },
 
-    /** Seznam v panelu oznámení — vykreslí se až při otevření (data má appka už z bootstrapu). */
+    /** Seznam v modalu oznámení — vykreslí se až při otevření (data má appka už z bootstrapu). */
     renderNotifyList() {
       const list = document.querySelector('#calNotifyList');
       const items = this.notifications.items;
       list.innerHTML = items.length
         ? items.map((n) => this.renderNotifyItem(n)).join('')
-        : '<div class="cal-notify-empty"><i class="ph ph-bell-slash" aria-hidden="true"></i><p>Od poslední návštěvy nic nového.</p></div>';
+        : '<div class="notify-empty"><i class="ph ph-bell-slash" aria-hidden="true"></i><p>Od poslední návštěvy nic nového.</p></div>';
     },
 
     /**
-     * Jedna položka oznámení — jméno toho, kdo změnu udělal, a hotový
-     * český popis z auditního logu (`detail`, viz audit_ v 10_util.js).
-     * Žádné vlastní překládání typu akce na klientovi — text ze serveru
-     * už je čitelný, netřeba ho duplikovat na dvou místech.
+     * Ikona/barva/popisek podle typu akce v oznámení (viz renderNotifyItem)
+     * — klíče odpovídají NOTIFY_ACTIONS na serveru (00_config.js). Barvy
+     * záměrně stejný jazyk jako jinde v appce: zelená = vznik, modrá =
+     * úprava/přidání, červená = smazání.
+     */
+    NOTIFY_TYPE_META: {
+      'event.create': { icon: 'ph-calendar-plus', color: 'var(--green)', label: 'Nová událost' },
+      'event.update': { icon: 'ph-pencil-simple', color: 'var(--lidl-blue)', label: 'Upravená událost' },
+      'event.delete': { icon: 'ph-trash', color: 'var(--lidl-red)', label: 'Smazaná událost' },
+      'comment.create': { icon: 'ph-chat-circle', color: 'var(--lidl-blue)', label: 'Nový komentář' },
+      'comment.delete': { icon: 'ph-chat-circle-dots', color: 'var(--lidl-red)', label: 'Smazaný komentář' },
+    },
+
+    /**
+     * Jedna položka oznámení — ikona a kicker podle typu akce, jméno toho,
+     * kdo změnu udělal, a hotový český popis z auditního logu (`detail`,
+     * viz audit_ v 10_util.js). Žádné vlastní překládání textu akce na
+     * klientovi — ten ze serveru už je čitelný, netřeba ho psát dvakrát.
      *
      * Klikatelná jen s entityId (viz apiGetBootstrap/_computeNotifications_
      * na serveru) — bez něj (starší řádky logu z doby před přidáním
      * entity_id) by klik neměl kam vést, tak se ani netváří jako tlačítko.
      */
     renderNotifyItem(n) {
+      const meta = this.NOTIFY_TYPE_META[n.action] || { icon: 'ph-bell', color: 'var(--muted)', label: 'Oznámení' };
       const clickable = n.entityId ? ' is-clickable' : '';
       const entityAttr = n.entityId ? ' data-entity-id="' + Ui.escape(n.entityId) + '"' : '';
-      return '<div class="cal-notify-item' + clickable + '"' + entityAttr + '>' +
-        '<p class="cal-notify-item-text"><strong>' + Ui.escape(n.actorName) + '</strong> ' + Ui.escape(n.detail) + '</p>' +
-        '<p class="cal-notify-item-meta">' + Ui.escape(this.formatDateTime(n.timestamp)) + '</p>' +
+
+      return '<div class="notify-item' + clickable + '"' + entityAttr + '>' +
+        '<span class="notify-item-icon" style="--notify-color:' + Ui.escape(meta.color) + '">' +
+          '<i class="ph ' + Ui.escape(meta.icon) + '" aria-hidden="true"></i></span>' +
+        '<div class="notify-item-body">' +
+          '<p class="notify-item-kicker" style="--notify-color:' + Ui.escape(meta.color) + '">' + Ui.escape(meta.label) + '</p>' +
+          '<p class="notify-item-text"><strong>' + Ui.escape(n.actorName) + '</strong> ' + Ui.escape(n.detail) + '</p>' +
+          '<p class="notify-item-time">' + Ui.escape(this.formatDateTime(n.timestamp)) + '</p>' +
+        '</div>' +
       '</div>';
     },
 

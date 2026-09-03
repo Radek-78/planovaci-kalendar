@@ -373,8 +373,10 @@ tlačítka — akce, kterou nelze provést, se nezobrazuje), probíhající ukl�
 
 Zvoneček v hlavičce kalendáře (`.cal-nav`, úplně vpravo) — jen tam, appka
 nemá jednu společnou horní lištu přes všechny sekce. Odznak s počtem se
-ukáže, jen když je od poslední návštěvy něco nového; panel pod zvonečkem
-vypíše, co přesně.
+ukáže, jen když je od poslední návštěvy něco nového; klik otevře modal
+(`#notifyModal`, stejný jazyk jako ostatní modaly appky — ne malý dropdown),
+který vypíše, co přesně. Každá položka má ikonu/barvu/kicker podle typu
+akce (`App.NOTIFY_TYPE_META`) a je oddělená od dalších spodní linkou.
 
 **Zdroj dat** — žádná nová tabulka. Využívá se, co appka už měla:
 

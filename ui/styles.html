@@ -1310,13 +1310,8 @@
   }
 
   /* ── Zvoneček s oznámeními — úplně vpravo v hlavičce kalendáře, za
-     souhrnem (viz .cal-nav v HTML). Stejný vzor otevírání/zavírání panelu
-     jako přepínač měsíce/roku (.cal-month-picker), jen s odznakem počtu
-     navíc. ── */
-
-  .cal-notify-wrap {
-    position: relative;
-  }
+     souhrnem (viz .cal-nav v HTML). Otevírá #notifyModal (viz níže u
+     modalů), ne dropdown panel. ── */
 
   .cal-notify-btn {
     align-items: center;
@@ -1358,78 +1353,6 @@
     position: absolute;
     right: -5px;
     top: -5px;
-  }
-
-  .cal-notify-panel {
-    background: var(--white);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: 0 16px 40px rgba(0, 36, 102, 0.18);
-    max-height: 360px;
-    overflow-y: auto;
-    padding: 6px;
-    position: absolute;
-    right: 0;
-    top: calc(100% + 6px);
-    width: 320px;
-    z-index: 30;
-  }
-
-  .cal-notify-panel-head {
-    color: var(--muted);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    margin: 0;
-    padding: 6px 8px;
-    text-transform: uppercase;
-  }
-
-  .cal-notify-item {
-    border-radius: 6px;
-    padding: 8px;
-  }
-
-  /* Jen s entityId (viz renderNotifyItem) — bez něj by klik neměl kam
-     vést, tak se ani netváří jako tlačítko (žádný ukazatel, žádný hover). */
-  .cal-notify-item.is-clickable {
-    cursor: pointer;
-  }
-
-  .cal-notify-item.is-clickable:hover {
-    background: var(--page);
-  }
-
-  .cal-notify-item-text {
-    color: var(--text);
-    font-size: 12.5px;
-    line-height: 1.4;
-    margin: 0;
-  }
-
-  .cal-notify-item-meta {
-    color: var(--muted);
-    font-size: 10.5px;
-    margin: 2px 0 0;
-  }
-
-  .cal-notify-empty {
-    align-items: center;
-    color: var(--muted);
-    display: flex;
-    flex-direction: column;
-    font-size: 12.5px;
-    gap: 8px;
-    padding: 24px 12px;
-    text-align: center;
-  }
-
-  .cal-notify-empty i {
-    font-size: 22px;
-  }
-
-  .cal-notify-empty p {
-    margin: 0;
   }
 
   /* ── Přepínač měsíce/roku (vlastní, ne prohlížečový) ──────────────────── */
@@ -1980,6 +1903,16 @@
     height: 430px;
   }
 
+  /* Stejný princip jako u #dayModal výše — pevná výška na přehledný počet
+     položek bez scrollování v běžném případě, prázdný stav se do ní sám
+     vycentruje (.notify-empty). Širší modal (.modal-wide) dá položkám
+     s ikonou/kickerem/textem/časem dost místa na jeden řádek. */
+  #notifyModal .modal-body {
+    display: flex;
+    flex-direction: column;
+    height: 480px;
+  }
+
   @keyframes backdrop-enter {
     from { opacity: 0; }
     to   { opacity: 1; }
@@ -2162,6 +2095,104 @@
     font-size: 13px;
     justify-content: center;
     text-align: center;
+  }
+
+  /* ── Modal — Oznámení ──────────────────────────────────────────────────
+     Jedna položka = ikona podle typu akce (barevný čtverec, stejný jazyk
+     jako .day-event-icon), kicker s popiskem typu, věta z auditního logu
+     a čas. Řádky odděluje spodní linka (stejný vzor jako .day-event-item/
+     .user-row) — viditelně oddělené, ne jen obarvené na hover. ── */
+
+  .notify-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .notify-item {
+    align-items: flex-start;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex;
+    gap: 12px;
+    padding: 12px 4px;
+  }
+
+  .notify-item:last-child {
+    border-bottom: none;
+  }
+
+  /* Jen s entityId (viz renderNotifyItem) — bez něj by klik neměl kam
+     vést, tak se ani netváří jako tlačítko (žádný ukazatel, žádný hover). */
+  .notify-item.is-clickable {
+    cursor: pointer;
+  }
+
+  .notify-item.is-clickable:hover {
+    background: var(--page);
+  }
+
+  .notify-item-icon {
+    align-items: center;
+    background: color-mix(in srgb, var(--notify-color, var(--muted)) 16%, white);
+    border-radius: 8px;
+    color: var(--notify-color, var(--muted));
+    display: flex;
+    flex-shrink: 0;
+    height: 34px;
+    justify-content: center;
+    width: 34px;
+  }
+
+  .notify-item-icon i {
+    font-size: 16px;
+  }
+
+  .notify-item-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .notify-item-kicker {
+    color: var(--notify-color, var(--muted));
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    margin: 0 0 3px;
+    text-transform: uppercase;
+  }
+
+  .notify-item-text {
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.4;
+    margin: 0;
+  }
+
+  .notify-item-time {
+    color: var(--muted);
+    font-size: 11px;
+    margin: 4px 0 0;
+  }
+
+  /* #notifyModal .modal-body je flex sloupec s pevnou výškou (viz výše) —
+     stejný vzor jako .day-empty, prázdný stav se do ní sám vycentruje. */
+  .notify-empty {
+    align-items: center;
+    color: var(--muted);
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    font-size: 13px;
+    gap: 10px;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .notify-empty i {
+    font-size: 26px;
+  }
+
+  .notify-empty p {
+    margin: 0;
   }
 
   /* ── Modal — detail JEDNÉ události: info + komentáře ve dvou sloupcích ──

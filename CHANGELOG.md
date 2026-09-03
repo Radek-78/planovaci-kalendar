@@ -5,6 +5,10 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.32 - 03.09.2026 09:01
+- Oznameni prepracovana na plnohodnotny modal (stejny jazyk jako ostatni okna appky - hlavicka s ikonou, vetsi a prehlednejsi telo s pevnou vyskou) misto maleho dropdown panelu
+- kazda polozka ma barevnou ikonu a kicker popisek podle typu akce (nova/upravena/smazana udalost, novy/smazany komentar - zelena/modra/cervena stejne jako jinde v appce) a je od dalsich viditelne oddelena spodni linkou misto pouheho podbarveni na hover
+
 ## v0.1.31 - 03.09.2026 08:42
 - Opravy vzhledu Oznámení — z textu oznámení už nikdy nejde žádné technické ID (místo něj jméno události, např. u komentáře), nový sloupec _audit_log.entity_id nese jen odkaz pro prokliknutí
 - Jednotný formát data a času v celé aplikaci — D.M.RRRR HH:MM (dříve bez roku a nejednotně), sdílené App.formatDateTime/formatFullDate na klientovi a formatDateTimeCz_ na serveru
