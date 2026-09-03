@@ -5,6 +5,12 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.2.0 - 03.09.2026 14:47
+- Import dat filiálek — etapa 1: nová záložka Import dat v Nastavení, kam se zadá URL/ID složky na Disku a hledaný výraz
+- appka najde odpovídající Sheets soubory (nejnovější předvybraný, jde přepnout), po potvrzení přečte listy Organizace_Detail a Zavrene_Openings a nahradí jimi vlastní tabulky (nové _stores, _logistic_centers, _store_closures)
+- LC se odvozují ze sloupce LC u filiálek, číslo a zkratku k nim doplňuje ručně správce aplikace
+- zatím bez hlídání rozdílů oproti minulému dni, bez trvalého logu a bez oznámení zvonečkem — jen okamžitý souhrn po dokončení, další etapy (sekce Filiálky/LC v menu, log a oznámení, noční automatická synchronizace) budou navazovat
+
 ## v0.1.40 - 03.09.2026 14:25
 - Uživatelé — seznam se teď řadí podle data a času vytvoření vzestupně, od nejstaršího (dřív nejnovější nahoře)
 - tichá aktualizace po uložení nového uživatele ho teď proto přidává na konec seznamu, ne na začátek

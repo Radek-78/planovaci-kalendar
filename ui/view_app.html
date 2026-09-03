@@ -161,6 +161,9 @@
           <button class="settings-tab" type="button" data-settings-tab="eventTypes">
             <i class="ph ph-tag" aria-hidden="true"></i> Typy událostí
           </button>
+          <button class="settings-tab" type="button" data-settings-tab="import">
+            <i class="ph ph-cloud-arrow-down" aria-hidden="true"></i> Import dat
+          </button>
         </div>
 
         <!-- Oddělení — prostý seznam, žádná vazba na uživatele (viz
@@ -202,6 +205,45 @@
           </div>
           <div class="settings-list-wrap">
             <div class="settings-list" id="eventTypesAdminList"><!-- vykresleno JS --></div>
+          </div>
+        </div>
+
+        <!-- Import dat filiálek — zdroj je cizí soubor na Disku, appka ho
+             jen ČTE a kopíruje si data do vlastních tabulek (viz
+             server/60_import.js). Etapa 1: ruční hledání + sync, bez
+             hlídání rozdílů a bez oznámení (přibude v dalších etapách). -->
+        <div class="settings-panel" data-settings-panel="import">
+          <div class="settings-panel-head">
+            <p class="settings-panel-desc">Synchronizace filiálek a LC ze sdíleného souboru na Disku (listy Organizace_Detail a Zavrene_Openings).</p>
+          </div>
+          <div class="import-panel">
+            <div class="field-group">
+              <label>
+                <span>Složka (URL nebo ID) *</span>
+                <input type="text" id="importFolderInput" maxlength="500" placeholder="https://drive.google.com/drive/folders/…">
+              </label>
+              <label>
+                <span>Hledaný výraz v názvu souboru *</span>
+                <input type="text" id="importSearchInput" maxlength="100" placeholder="např. OSO_export">
+              </label>
+              <div class="import-actions">
+                <button class="button button-secondary" type="button" id="importSearchBtn">
+                  <i class="ph ph-magnifying-glass" aria-hidden="true"></i> Hledat soubory
+                </button>
+              </div>
+            </div>
+
+            <div class="import-results is-hidden" id="importResultsWrap">
+              <p class="import-results-label">Nalezené soubory — vybraný (nejnovější) se použije při synchronizaci:</p>
+              <div class="import-file-list" id="importResultsList"><!-- vykresleno JS --></div>
+              <div class="import-actions">
+                <button class="button button-primary" type="button" id="importSyncBtn" disabled>
+                  <i class="ph ph-arrows-clockwise" aria-hidden="true"></i> Synchronizovat
+                </button>
+              </div>
+            </div>
+
+            <div class="import-sync-result" id="importSyncResult"><!-- vykresleno JS --></div>
           </div>
         </div>
       </div>
@@ -689,6 +731,9 @@
 
     /** Whitelist ikon pro výběr typu události — ze serveru (apiGetEventTypes), stejný jako EVENT_TYPE_ICONS v 00_config.js. */
     eventTypeIcons: [],
+
+    /** Poslední nalezené soubory při hledání v Import dat (viz apiSearchImportFiles/renderImportResults). */
+    importFiles: [],
 
     /**
      * Oznámení „co je nového od poslední návštěvy" — ze serveru
@@ -1796,6 +1841,7 @@
       this.bindDepartmentForm();
       this.bindPositionForm();
       this.bindEventTypeForm();
+      this.bindImportForm();
     },
 
     showSettingsTab(tabName) {
@@ -2328,6 +2374,111 @@
       }, originEl);
     },
 
+    /* ── Import dat filiálek (Nastavení → Import dat) ────────────────────
+       Etapa 1: ruční hledání souboru + sync, bez hlídání rozdílů a bez
+       oznámení (přibude v dalších etapách, viz server/60_import.js). */
+
+    bindImportForm() {
+      document.querySelector('#importSearchBtn').addEventListener('click', () => this.searchImportFiles());
+      document.querySelector('#importSyncBtn').addEventListener('click', () => this.runImportSync());
+    },
+
+    /** Předvyplní pole Složka/Hledaný výraz naposledy odsouhlasenou konfigurací (viz apiGetImportSettings). */
+    loadImportSettings() {
+      Ui.call('apiGetImportSettings', null, { silent: true })
+        .then((settings) => {
+          document.querySelector('#importFolderInput').value = settings.folderInput;
+          document.querySelector('#importSearchInput').value = settings.searchTerm;
+        })
+        .catch(() => {});
+    },
+
+    searchImportFiles() {
+      const folderInput = document.querySelector('#importFolderInput').value.trim();
+      const searchTerm = document.querySelector('#importSearchInput').value.trim();
+      if (!folderInput || !searchTerm) {
+        Ui.toast('Vyplňte složku i hledaný výraz.', 'error');
+        return;
+      }
+
+      const searchButton = document.querySelector('#importSearchBtn');
+      Ui.setButtonLoading(searchButton, true, 'Hledám…');
+      document.querySelector('#importSyncResult').innerHTML = '';
+
+      Ui.call('apiSearchImportFiles', { folderInput: folderInput, searchTerm: searchTerm }, { silent: true })
+        .then((result) => {
+          Ui.setButtonLoading(searchButton, false);
+          this.importFiles = result.files;
+          this.renderImportResults();
+          if (!result.files.length) Ui.toast('Žádný soubor podle zadání nenalezen.', 'error');
+        })
+        .catch((error) => {
+          Ui.setButtonLoading(searchButton, false);
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    /**
+     * Vykreslí nalezené soubory jako přepínatelný seznam (rádiová volba) —
+     * první (nejnovější, appka je už poslala seřazené, viz apiSearchImportFiles)
+     * je předvybraný, uživatel může zvolit jiný. Tlačítko Synchronizovat se
+     * povolí, jen když je něco vybrané.
+     */
+    renderImportResults() {
+      const wrap = document.querySelector('#importResultsWrap');
+      const list = document.querySelector('#importResultsList');
+      const syncButton = document.querySelector('#importSyncBtn');
+
+      if (!this.importFiles.length) {
+        wrap.classList.add('is-hidden');
+        syncButton.disabled = true;
+        return;
+      }
+
+      list.innerHTML = this.importFiles.map((f, i) =>
+        '<label class="import-file-row">' +
+          '<input type="radio" name="importFile" value="' + Ui.escape(f.id) + '"' + (i === 0 ? ' checked' : '') + '>' +
+          '<span class="import-file-name">' + Ui.escape(f.name) + '</span>' +
+          '<span class="import-file-date">' + Ui.escape(this.formatDateTime(f.modifiedAt)) + '</span>' +
+        '</label>'
+      ).join('');
+      wrap.classList.remove('is-hidden');
+      syncButton.disabled = false;
+    },
+
+    runImportSync() {
+      const selected = document.querySelector('input[name="importFile"]:checked');
+      if (!selected) return;
+
+      const folderInput = document.querySelector('#importFolderInput').value.trim();
+      const searchTerm = document.querySelector('#importSearchInput').value.trim();
+      const syncButton = document.querySelector('#importSyncBtn');
+      Ui.setButtonLoading(syncButton, true, 'Synchronizuji…');
+
+      Ui.call('apiSyncImportFile', { fileId: selected.value, folderInput: folderInput, searchTerm: searchTerm }, { silent: true })
+        .then((result) => {
+          Ui.setButtonLoading(syncButton, false);
+          Ui.toast('Synchronizace dokončena.', 'success');
+          document.querySelector('#importSyncResult').innerHTML = this.renderImportSyncResult(result);
+        })
+        .catch((error) => {
+          Ui.setButtonLoading(syncButton, false);
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    /** Souhrn poslední synchronizace — jen na obrazovku, nikam se neukládá (viz komentář v 60_import.js). */
+    renderImportSyncResult(r) {
+      return '<div class="import-result-box">' +
+        '<p class="import-result-title"><i class="ph ph-check-circle" aria-hidden="true"></i> Soubor „' + Ui.escape(r.fileName) + '"</p>' +
+        '<ul>' +
+          '<li>Filiálky: ' + r.stores.total + ' celkem (přidáno ' + r.stores.added + ', změněno ' + r.stores.changed + ', smazáno ' + r.stores.removed + ')</li>' +
+          '<li>LC: ' + r.logisticCenters.total + ' celkem (přidáno ' + r.logisticCenters.added + ', smazáno ' + r.logisticCenters.removed + ')</li>' +
+          '<li>Uzavírky: ' + r.closures.total + ' aktuálně platných</li>' +
+        '</ul>' +
+      '</div>';
+    },
+
     showSection(name) {
       document.querySelectorAll('.nav-link').forEach((item) => {
         item.classList.toggle('is-active', item.dataset.section === name);
@@ -2348,6 +2499,7 @@
         this.loadDepartments();
         this.loadPositions();
         this.loadEventTypesAdmin();
+        this.loadImportSettings();
       }
     },
 

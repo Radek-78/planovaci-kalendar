@@ -30,7 +30,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.1.40',
+  version: 'v0.2.0',
   releaseDate: '3.9.2026',
 
   /**
@@ -102,6 +102,9 @@ const SHEETS = {
   POSITIONS: '_positions',
   EVENT_TYPES: '_event_types',
   DEPARTMENTS: '_departments',
+  STORES: '_stores',
+  LOGISTIC_CENTERS: '_logistic_centers',
+  STORE_CLOSURES: '_store_closures',
 };
 
 /**
@@ -197,6 +200,14 @@ const LIMITS = {
   DEPARTMENT_NAME_MAX: 60,
   /** Popisek typu události (Nastavení). */
   EVENT_TYPE_LABEL_MAX: 40,
+  /** URL/ID složky pro import dat filiálek (Nastavení) — URL bývá dlouhá. */
+  IMPORT_FOLDER_MAX: 500,
+  /** Hledaný výraz v názvu souboru při importu dat filiálek. */
+  IMPORT_SEARCH_MAX: 100,
+  /** Zkratka LC (Filiálky/LC v menu) — krátká, jen pro přehlednost tabulky. */
+  LC_ZKRATKA_MAX: 10,
+  /** Číslo LC (Filiálky/LC v menu) — zadává ručně SUPERADMIN. */
+  LC_CISLO_MAX: 20,
 };
 
 /**
@@ -212,6 +223,11 @@ const DEFAULT_SETTINGS = {
   notifyRecipients: 'all',
   holidaysEnabled: true,
   pastEditAdminOnly: true,
+  // Naposledy odsouhlasená konfigurace importu dat filiálek (viz
+  // 60_import.js) — ukládá se až při úspěšné synchronizaci, ne při pouhém
+  // hledání, ať noční trigger vždycky navazuje na ověřenou volbu.
+  importFolderId: '',
+  importSearchTerm: '',
 };
 
 /** Časová zóna aplikace. Musí odpovídat timeZone v appsscript.json. */

@@ -93,6 +93,7 @@ server/
   30_auth.js        currentEmail_, getCurrentUser_, isAllowed_, guard_
   40_setup.js       isSetupDone_, scriptFolder_, wizardInfo_, setupInitialize
   50_api.js         veřejné endpointy (vše přes guard_)
+  60_import.js      import dat filiálek/LC ze sdíleného souboru na Disku
   90_tools.js       ruční nástroje vlastníka (reset, diagnostika)
   99_main.js        doGet — routing wizard / app / bez přístupu
 ui/
@@ -136,6 +137,16 @@ const DB_SCHEMA = {
   '_departments': ['id','name','created_at','created_by','updated_at','updated_by'],
   '_positions':   ['id','name','created_at','created_by','updated_at','updated_by'],
   '_event_types': ['id','label','icon','color','bg_color','created_at','created_by','updated_at','updated_by'],
+  // Import dat filiálek (viz kapitola 9.6) — zrcadlo cizího souboru na
+  // Disku, appka jen čte a jednou za čas přepisuje (dbReplaceAll_).
+  '_stores': ['id','kod','nazev','lc',
+              'telefon_prodejny','vt','telefon_vt','rm','telefon_rm','zastupce_rm','telefon_zastupce',
+              'ulice','mesto','psc',
+              'po_otevreno','po_zavreno','ut_otevreno','ut_zavreno','st_otevreno','st_zavreno',
+              'ct_otevreno','ct_zavreno','pa_otevreno','pa_zavreno','so_otevreno','so_zavreno',
+              'ne_otevreno','ne_zavreno','updated_at'],
+  '_logistic_centers': ['id','cislo','zkratka','nazev','created_at','created_by','updated_at','updated_by'],
+  '_store_closures':   ['id','nazev','od','do','celkem_dni','updated_at'],
 };
 ```
 
@@ -345,6 +356,9 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiGetSettings()` | `settings_manage` | — | mapa nastavení |
 | `apiSaveSettings(payload)` | `settings_manage` | whitelist klíčů | uložená nastavení |
 | `apiGetAuditLog(limit)` | `settings_manage` | limit | posledních N záznamů |
+| `apiGetImportSettings()` | `settings_manage` | — | naposledy odsouhlasená složka/výraz (viz 9.6) |
+| `apiSearchImportFiles(payload)` | `settings_manage` | `{ folderInput, searchTerm }` | nalezené Sheets soubory, od nejnovější úpravy |
+| `apiSyncImportFile(payload)` | `settings_manage` | `{ fileId, folderInput, searchTerm }` | souhrn synchronizace (počty přidáno/změněno/smazáno) |
 
 **Rozsah v `apiGetEvents`** se vyhodnocuje jako **průnik**, ne jako „start
 uvnitř rozsahu" — jinak by vícedenní událost začínající minulý měsíc v aktuální
@@ -453,9 +467,8 @@ formátu zobrazovala posunutá o rozdíl Europe/Prague od UTC.
 
 Správa (přidání/úprava/smazání) přístupná jen SUPERADMINovi
 (`settings_manage`). Záložky nad sebou sdílenou kartou (`.settings-tabs` +
-`.settings-panel`), v pořadí Oddělení / Pracovní pozice / Typy událostí —
-další přibudou stejným vzorem (jeden panel = jeden jednoduchý seznam
-s vytvořením/úpravou/smazáním).
+`.settings-panel`), v pořadí Oddělení / Pracovní pozice / Typy událostí /
+Import dat (viz 9.6) — další přibudou stejným vzorem.
 
 **Oddělení** (`_departments`) a **Pracovní pozice** (`_positions`) — dva
 prosté seznamy názvů, stejný vzor (i stejný kód, jen jiná tabulka), oba
@@ -478,6 +491,47 @@ platný hex. Uložení/smazání se hned promítne i do formuláře nové událo
 a kalendáře v téže session (`App.refreshEventTypes`), bez nutnosti appku
 znovu načítat — mapa typů se jen přepočítá z právě načteného seznamu pro
 správu, žádné další volání serveru.
+
+### 9.6 Import dat filiálek
+
+Zdrojem je Sheets soubor, který spravuje CIZÍ systém mimo appku a sám ho
+každý den mezi 4-5h ráno přepisuje (appka do něj nikdy nezapisuje). Appka
+si z něj bere kopii do vlastních tabulek (`_stores`, `_logistic_centers`,
+`_store_closures`, viz kapitola 5.1) — nikdy nečte zdroj přímo za běhu.
+
+**Etapa 1 (implementováno)** — záložka „Import dat" v Nastavení:
+
+1. Pole *Složka (URL nebo ID)* + *Hledaný výraz* → `apiSearchImportFiles`
+   prohledá zadanou složku na Disku (`DriveApp`), vrátí Sheets soubory,
+   jejichž název obsahuje výraz, seřazené od nejnovější úpravy.
+2. Appka nabídne nalezené soubory jako přepínatelný seznam, nejnovější
+   předvybraný — uživatel může zvolit jiný.
+3. Po potvrzení `apiSyncImportFile` otevře vybraný soubor a přečte listy
+   `Organizace_Detail` (→ `_stores`) a `Zavrene_Openings` (→ `_store_closures`).
+   Sloupce se hledají podle PŘESNÉHO textu hlavičky v řádku 1
+   (`IMPORT_STORE_COLUMNS`/`IMPORT_CLOSURE_COLUMNS` v `60_import.js`), ne
+   podle pozice — cizí systém je časem může přeuspořádat. Chybějící
+   očekávaná hlavička = jasná chyba hned při importu.
+4. `_stores` a `_store_closures` se KOMPLETNĚ nahradí novým obsahem
+   (`dbReplaceAll_`, viz 5.1) — filiálka, která v novém importu chybí, se
+   z appky smaže. `_logistic_centers` se odvodí z distinct hodnot sloupce
+   LC u filiálek: existující řádek (párovaný podle `nazev`) si ponechá
+   ručně zadané `cislo`/`zkratka`, nové LC se založí prázdné, LC které
+   v novém importu už u žádné filiálky nefiguruje se stejně jako filiálka
+   smaže (vědomé rozhodnutí — viz konverzace, ne přehlédnutí).
+5. Použitá složka/výraz se uloží do `_settings` (`importFolderId`/
+   `importSearchTerm`) až PO úspěšném syncu, ne při pouhém hledání — noční
+   trigger (etapa 4) tak vždy naváže na ověřenou konfiguraci.
+6. Výsledek (počty přidáno/změněno/smazáno u filiálek a LC, počet platných
+   uzavírek) appka zobrazí přímo ve formuláři — zatím se NIKAM neukládá,
+   žádná trvalá historie ani oznámení.
+
+**Plánované další etapy** (viz SPECIFIKACE.md changelog konverzace):
+etapa 2 — sekce **Filiálky** a **LC** v menu (čtení `calendar_read`, u LC
+navíc úprava `cislo`/`zkratka` přes `settings_manage`), obě řazené podle
+Čísla; etapa 3 — `_import_log` (trvalá historie synchronizací) + oznámení
+zvonečkem (`import.sync` v `NOTIFY_ACTIONS`); etapa 4 — noční trigger
+6:00–7:00 založený jednorázově přes `TOOLS_` funkci.
 
 ---
 

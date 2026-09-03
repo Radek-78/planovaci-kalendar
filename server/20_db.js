@@ -54,6 +54,35 @@ const DB_SCHEMA = {
   // color = barva ikony/textu, bg_color = barva podkladu (chip, ikona
   // v seznamech…) — dvě NEZÁVISLÉ barvy, viz apiSaveEventType.
   _event_types: ['id', 'label', 'icon', 'color', 'bg_color', 'created_at', 'created_by', 'updated_at', 'updated_by'],
+
+  // ── Import dat filiálek (viz 60_import.js) ───────────────────────────
+  // Zrcadlo listů Organizace_Detail/Zavrene_Openings ve zdrojovém souboru
+  // na Disku — appka je jen ČTE a jednou denně přepisuje, needituje se nic
+  // ručně (kromě _logistic_centers.cislo/zkratka, viz níže). Proto žádné
+  // created_at/created_by u _stores/_store_closures — "kdo založil" tu
+  // nedává smysl, vždycky je to import.
+  //
+  // id u _stores i _store_closures = sloupec "Číslo" ve zdroji (číslo
+  // filiálky) — díky tomu funguje beze změny obecná dbFindById_/dbUpdate_/
+  // dbDelete_ i pro tyhle tabulky. "kod" = sloupec "ID" ve zdroji
+  // (CZ-0100…), jen pro zobrazení, appka podle něj nic nepáruje.
+  _stores: [
+    'id', 'kod', 'nazev', 'lc',
+    'telefon_prodejny', 'vt', 'telefon_vt', 'rm', 'telefon_rm', 'zastupce_rm', 'telefon_zastupce',
+    'ulice', 'mesto', 'psc',
+    'po_otevreno', 'po_zavreno', 'ut_otevreno', 'ut_zavreno', 'st_otevreno', 'st_zavreno',
+    'ct_otevreno', 'ct_zavreno', 'pa_otevreno', 'pa_zavreno', 'so_otevreno', 'so_zavreno',
+    'ne_otevreno', 'ne_zavreno',
+    'updated_at',
+  ],
+  // LC se odvozují ze sloupce "LC" u filiálek — "nazev" je tedy ze zdroje
+  // (needituje se), "cislo"/"zkratka" zadává ručně SUPERADMIN v appce (viz
+  // apiSaveLogisticCenter) a synchronizace je při refreshi zachovává.
+  _logistic_centers: ['id', 'cislo', 'zkratka', 'nazev', 'created_at', 'created_by', 'updated_at', 'updated_by'],
+  // Snímek "co je teď zavřené" — při každém syncu se celá tabulka nahradí
+  // (ne upsert), staré uzavírky tak zmizí samy, jakmile je zdroj přestane
+  // posílat (viz _importSyncClosures_).
+  _store_closures: ['id', 'nazev', 'od', 'do', 'celkem_dni', 'updated_at'],
 };
 
 /**
@@ -76,6 +105,15 @@ const TEXT_COLUMNS = {
   _positions: ['created_at', 'updated_at'],
   _event_types: ['created_at', 'updated_at'],
   _departments: ['created_at', 'updated_at'],
+  // otevírací doba (např. "7:00") i updated_at — obojí by Sheets rádo
+  // převedlo na čas/datum, viz komentář výše.
+  _stores: [
+    'po_otevreno', 'po_zavreno', 'ut_otevreno', 'ut_zavreno', 'st_otevreno', 'st_zavreno',
+    'ct_otevreno', 'ct_zavreno', 'pa_otevreno', 'pa_zavreno', 'so_otevreno', 'so_zavreno',
+    'ne_otevreno', 'ne_zavreno', 'updated_at',
+  ],
+  _logistic_centers: ['created_at', 'updated_at'],
+  _store_closures: ['od', 'do', 'updated_at'],
 };
 
 /**
@@ -407,6 +445,54 @@ function dbDelete_(table, id) {
     dbSheet_(table).deleteRow(existing._row);
     dbInvalidate_(table);
     return existing;
+  });
+}
+
+/**
+ * Nahradí CELÝ obsah tabulky (kromě hlavičky) zadanými záznamy najednou —
+ * jedno čtení, jeden zápis, místo řádku po řádku jako dbInsert_/dbUpdate_/
+ * dbDelete_. Používá se pro hromadný import (viz 60_import.js): cyklus
+ * stovek jednotlivých volání by byl kvůli dbInvalidate_() po KAŽDÉM zápisu
+ * neúnosně pomalý — každé další volání by si muselo znovu přečíst celou
+ * tabulku od začátku, než by mohlo zapsat další řádek.
+ *
+ * Doplní `id` (když chybí), `created_at`/`created_by` (jen když chybí —
+ * u záznamu, který volající sestavil z JIŽ EXISTUJÍCÍHO řádku, se tak
+ * zachová) a vždycky obnoví `updated_at`, stejně jako dbInsert_/dbUpdate_.
+ * `updated_by` se nedoplňuje — stejně jako dbUpdate_ ho nechává čistě na
+ * volajícím (viz komentář u DB_SCHEMA._logistic_centers).
+ *
+ * @param {string} table
+ * @param {Object[]} records  kompletní nový obsah tabulky, v tomto pořadí
+ * @returns {number} počet zapsaných řádků
+ */
+function dbReplaceAll_(table, records) {
+  return withLock_(() => {
+    const headers = DB_SCHEMA[table];
+    const now = nowIso_();
+    const email = currentEmail_() || 'system';
+    const hasColumn = (name) => headers.indexOf(name) !== -1;
+
+    const rows = records.map((record) => {
+      const complete = Object.assign({}, record);
+      if (hasColumn('id') && !complete.id) complete.id = uuid_();
+      if (hasColumn('created_at') && !complete.created_at) complete.created_at = now;
+      if (hasColumn('created_by') && !complete.created_by) complete.created_by = email;
+      if (hasColumn('updated_at')) complete.updated_at = now;
+      return dbRecordToRow_(table, complete);
+    });
+
+    const sheet = dbSheet_(table);
+    const lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      sheet.getRange(2, 1, lastRow - 1, headers.length).clearContent();
+    }
+    if (rows.length > 0) {
+      sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+    }
+
+    dbInvalidate_(table);
+    return rows.length;
   });
 }
 

@@ -1354,6 +1354,103 @@
     vertical-align: middle;
   }
 
+  /* ── Import dat filiálek (Nastavení → Import dat, viz server/60_import.js) ── */
+
+  .import-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+  }
+
+  .import-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .import-results-label {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0 0 8px;
+  }
+
+  .import-file-list {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  .import-file-row {
+    align-items: center;
+    border-bottom: 1px solid var(--line-soft);
+    cursor: pointer;
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .import-file-row:last-child {
+    border-bottom: none;
+  }
+
+  .import-file-row:hover {
+    background: var(--page);
+  }
+
+  .import-file-row input[type="radio"] {
+    flex-shrink: 0;
+  }
+
+  .import-file-name {
+    color: var(--text);
+    flex: 1;
+    font-size: 13.5px;
+    font-weight: 700;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .import-file-date {
+    color: var(--muted);
+    flex-shrink: 0;
+    font-size: 12px;
+  }
+
+  /* Souhrn poslední synchronizace — jen na obrazovku, žádná trvalá historie
+     zatím (přibude v etapě 3, viz komentář v 60_import.js). */
+  .import-result-box {
+    background: #e5f5ea;
+    border: 1px solid #bfe4cb;
+    border-radius: var(--radius);
+    padding: 12px 14px;
+  }
+
+  .import-result-title {
+    align-items: center;
+    color: #16a34a;
+    display: flex;
+    font-size: 13.5px;
+    font-weight: 700;
+    gap: 8px;
+    margin: 0 0 6px;
+  }
+
+  .import-result-box ul {
+    color: var(--text);
+    font-size: 13px;
+    margin: 0;
+    padding-left: 20px;
+  }
+
+  .import-result-box li {
+    padding: 2px 0;
+  }
+
   /* ── Formulář typu události — mřížka dlaždic s ikonou (výběr místo
      volného textu, viz renderEventTypeIconPicker/EVENT_TYPE_ICONS). ── */
 
