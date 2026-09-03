@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.1.39 - 03.09.2026 14:02
+- Drobná oprava komentáře u ORG_FIELD_MAX (00_config.js) — upřesnění, že Oddělení a Pozice se od minulé verze vybírají ze seznamu v Nastavení, i když uložená hodnota je pořád jen text, bez vazby na cizí klíč
+
 ## v0.1.38 - 03.09.2026 14:01
 - Nastavení — nová záložka Oddělení (na prvním místě, před Pracovní pozice), stejný vzor jako pracovní pozice: jednoduchý seznam s vytvořením/úpravou/smazáním (nová tabulka _departments), bez vazby na uživatele
 - pole Oddělení ve formuláři uživatele je teď výběr z tohoto seznamu místo volného textu, čtení seznamu smí i administrátor, správu jen správce aplikace

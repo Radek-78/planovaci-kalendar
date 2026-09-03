@@ -30,7 +30,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.1.38',
+  version: 'v0.1.39',
   releaseDate: '3.9.2026',
 
   /**
@@ -180,7 +180,14 @@ const LIMITS = {
   EVENT_MAX_DAYS: 31,
   /** Komentář k události — chatová zpráva, ne článek. */
   COMMENT_MAX: 500,
-  /** Organizační údaje uživatele (Umístění/Oddělení/Pozice) — zatím volný text. */
+  /**
+   * Organizační údaje uživatele (Umístění/Oddělení/Pozice) — validace na
+   * serveru je pro všechny tři stejná (prostý text do tohoto limitu), i když
+   * Oddělení a Pozice appka nabízí jako výběr ze seznamu v Nastavení
+   * (`_departments`/`_positions`) — uložená hodnota je ale pořád jen text,
+   * žádná cizí klíč vazba (viz komentář u `_users` v 20_db.js). Umístění
+   * zůstává zatím čistě volný text bez seznamu.
+   */
   ORG_FIELD_MAX: 60,
   /** Nejvíc oznámení, které apiGetBootstrap vrátí najednou — pojistka proti obřímu seznamu (např. hodně starý last_visit_at). */
   NOTIFY_MAX_ITEMS: 30,
