@@ -5,6 +5,14 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.3.0 - 03.09.2026 18:37
+- Vzhled a interakce datových tabulek — oprava zásadní chyby layoutu: .app mělo min-height místo height 100vh, takže appka rostla nad výšku okna a scrollovala se celá stránka najednou
+- horní lišta sekce i hlavička tabulky teď zůstávají napevno na místě ve všech záložkách, data pod nimi scrollují samostatně
+- kliknutím na hlavičku sloupce (kromě Akce) se otevře okno s řazením (text A-Z, čísla podle hodnoty, u Stavu zavřené/otevřené nahoře) a filtrem podle hodnot ve sloupci, druhý klik okno zavře
+- v záložce Filiálky zmizel sloupec Město (obsažené v názvu), sloupec Stav je nově vždy dvouřádkový (stav / rozsah dat), aktuálně zavřené červeně, jen očekávané zavření černě, filtr rozlišuje zavřeno/zavře se brzy/otevřeno nezávisle na konkrétním datu
+- přibyl sloupec Akce s deaktivací filiálky (stejně jako u LC, přežije další synchronizaci)
+- modal detailu filiálky je širší a rozdělený do tří sloupců (adresa, kontakty, otevírací doba)
+
 ## v0.2.3 - 03.09.2026 15:20
 - Filiálky/LC — oprava chyby ve sloupci Stav: appka dřív ukazovala „Zavřeno" plošně u všech filiálek se záznamem v Zavrene_Openings bez ohledu na to, jestli uzavírka vůbec nastává teď (list obsahuje i uzavírky s budoucím i už proběhlým termínem)
 - teď se každá vyhodnocuje vůči dnešku — aktuálně zavřené červeně s rozsahem dat, plánované do budoucna jako „Zavře se za N dní" s rozsahem, proběhlé se ignorují

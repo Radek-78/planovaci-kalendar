@@ -794,10 +794,17 @@
      aplikace vizuálně odpovídaly. Rozdíl oproti šabloně: bez sbalitelného
      sidebaru (sidebar-toggle) — se třemi položkami menu nemá smysl. ── */
 
+  /* height (ne min-height) je tu záměrně — appka spoléhá na to, že hlavička
+     sekce (.section-header) i hlavička tabulky (.data-table-head/
+     .users-table-head) zůstanou napevno na místě, zatímco jen samotná data
+     pod nimi scrollují (viz .view-panel/.users-panel-wrap níže). Bez pevné
+     výšky by .app rostla podle obsahu nad výšku okna a scrollovala by
+     celá stránka najednou — obě "pevné" hlavičky by tak odjížděly pryč
+     spolu s daty, ne zůstávaly na místě. */
   .app {
     display: grid;
     grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
-    min-height: 100vh;
+    height: 100vh;
   }
 
   .sidebar {
@@ -1267,38 +1274,39 @@
 
   .stores-table-head,
   .store-row {
-    grid-template-columns: 64px 1.5fr 0.8fr 0.9fr 0.8fr 0.8fr 210px;
+    grid-template-columns: 60px 1.4fr 0.7fr 0.8fr 0.7fr 0.7fr 190px 60px;
   }
 
-  /* Celý řádek filiálky je klikací (otevře detail, viz openStoreDetailModal) — na rozdíl od Uživatelé/LC, kde klik nese jen tlačítko Akce. */
+  /* Celý řádek filiálky je klikací (otevře detail, viz openStoreDetailModal)
+     — na rozdíl od Uživatelé/LC, kde klik nese jen tlačítko Akce. Klik na
+     tlačítko Akce samo se přesto zastaví dřív, viz bindStores. */
   .store-row {
     cursor: pointer;
   }
 
-  /* Bez white-space: nowrap — text uzavírky (datum od–do, u výhledu i "za
-     N dní") může být delší, než se vejde na řádek, radši se zalomí na
-     druhý, než aby přetekl mimo buňku mřížky (ta sama neořezává). */
+  /* Sloupec Stav je VŽDY dvouřádkový (i prázdný druhý řádek u "Otevřeno"),
+     ať mají všechny řádky tabulky stejnou výšku bez ohledu na obsah —
+     viz komentář u App.renderStoreStatus. */
   .store-status {
-    color: var(--green);
+    display: flex;
+    flex-direction: column;
     font-size: 12px;
     font-weight: 700;
+    gap: 2px;
+    justify-content: center;
+    line-height: 1.3;
   }
 
-  .store-status.is-closed,
-  .store-status.is-upcoming {
-    align-items: center;
-    display: inline-flex;
-    gap: 4px;
+  .store-status-line2 {
+    font-size: 11px;
+    font-weight: 600;
+    min-height: 1em; /* rezervuje místo i když je prázdný (Otevřeno) */
   }
 
+  /* Jen "zavřeno TEĎ" má vlastní (červenou) barvu — očekávané zavření
+     zůstává výchozí černou barvou textu, přesně podle zadání. */
   .store-status.is-closed {
     color: var(--lidl-red);
-  }
-
-  /* Výhled zavření (uzavírka teprve v budoucnu) — odlišené od "zavřeno
-     teď" (červená), ale pořád viditelně jiné než "Otevřeno" (zelená). */
-  .store-status.is-upcoming {
-    color: #b45309;
   }
 
   .lc-table-head,
@@ -1314,12 +1322,161 @@
     width: 280px;
   }
 
+  /* ── Hlavička sloupce s řazením/filtrem (Excel-like popover) ──────────
+     Celá hlavička je tlačítko (ne jen ikona) — snazší klikací plocha. Ikona
+     řazení se ukáže, jen když je sloupec zrovna aktivně seřazený; ikona
+     filtru je vidět vždycky, ale zmodrá, když je na sloupci aktivní filtr
+     (.has-filter), ať je hned vidět, který sloupec je zúžený. ── */
+
+  .data-col-header {
+    align-items: center;
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    display: flex;
+    font: inherit;
+    gap: 4px;
+    letter-spacing: inherit;
+    margin: 0;
+    padding: 0;
+    text-align: left;
+    text-transform: inherit;
+  }
+
+  .data-col-header span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .data-col-header i {
+    flex-shrink: 0;
+    font-size: 11px;
+  }
+
+  .data-col-header:hover,
+  .data-col-header.has-filter {
+    color: var(--lidl-blue);
+  }
+
+  /* ── Popover řazení/filtru sloupce (Excel-like) ──────────────────────── */
+
+  .column-filter-popover {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: 0 16px 40px rgba(0, 20, 80, 0.2);
+    padding: 12px;
+    position: absolute;
+    width: 260px;
+    z-index: 60;
+  }
+
+  .column-filter-section {
+    border-bottom: 1px solid var(--line-soft);
+    padding-bottom: 10px;
+  }
+
+  .column-filter-section:last-of-type {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .column-filter-section + .column-filter-section {
+    margin-top: 10px;
+  }
+
+  .column-filter-heading {
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin: 0 0 6px;
+    text-transform: uppercase;
+  }
+
+  .column-filter-sort-btn {
+    align-items: center;
+    background: var(--page);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    font-size: 12.5px;
+    gap: 6px;
+    padding: 6px 8px;
+    text-align: left;
+    width: 100%;
+  }
+
+  .column-filter-sort-btn + .column-filter-sort-btn {
+    margin-top: 4px;
+  }
+
+  .column-filter-sort-btn:hover {
+    border-color: var(--lidl-blue);
+  }
+
+  .column-filter-sort-btn.is-active {
+    background: var(--lidl-blue);
+    border-color: var(--lidl-blue);
+    color: var(--white);
+  }
+
+  .column-filter-check-all {
+    align-items: center;
+    display: flex;
+    font-size: 12.5px;
+    font-weight: 700;
+    gap: 6px;
+    padding: 2px 0 6px;
+  }
+
+  .column-filter-values {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .column-filter-values label {
+    align-items: center;
+    border-radius: 4px;
+    display: flex;
+    font-size: 12.5px;
+    gap: 6px;
+    overflow: hidden;
+    padding: 3px 4px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .column-filter-values label:hover {
+    background: var(--page);
+  }
+
+  .column-filter-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .column-filter-actions .button {
+    flex: 1;
+    font-size: 12.5px;
+    justify-content: center;
+    padding: 7px 8px;
+  }
+
   /* ── Detail filiálky (modal, klik na řádek v sekci Filiálky) ── */
 
   .store-detail {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 18px;
   }
 
   .store-detail-badges {
@@ -1345,15 +1502,26 @@
     gap: 4px;
   }
 
+  /* Očekávané (ne aktuální) zavření zůstává neutrální — stejné pravidlo jako u .store-status.is-closed v tabulce. */
   .store-detail-badge.is-upcoming {
     align-items: center;
-    background: #f7ece1;
-    color: #b45309;
     display: inline-flex;
     gap: 4px;
   }
 
-  .store-detail-block .kicker {
+  /* Tři sloupce vedle sebe, každý vlastní oddíl (Adresa/Kontakty/Otevírací
+     doba) — modal je proto dost široký (.modal-xwide). */
+  .store-detail-columns {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .store-detail-col {
+    min-width: 0;
+  }
+
+  .store-detail-col .kicker {
     margin-bottom: 6px;
   }
 
@@ -1540,8 +1708,10 @@
 
   .import-panel {
     display: flex;
+    flex: 1;
     flex-direction: column;
     gap: 16px;
+    min-height: 0;
     overflow-y: auto;
   }
 
@@ -2355,6 +2525,11 @@
   /* Širší varianta pro dvousloupcové modaly (detail události, uživatel). */
   .modal-wide {
     max-width: min(720px, calc(100vw - 32px));
+  }
+
+  /* Ještě širší varianta — pro modaly se sloupci vedle sebe (viz detail filiálky, .store-detail-columns). */
+  .modal-xwide {
+    max-width: min(960px, calc(100vw - 32px));
   }
 
   .modal::backdrop {

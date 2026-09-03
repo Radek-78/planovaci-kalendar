@@ -159,15 +159,7 @@
         <input type="search" id="storesFilterInput" placeholder="Hledat podle čísla, názvu, města, LC…">
       </div>
       <div class="users-panel-wrap">
-        <div class="data-table-head stores-table-head">
-          <span>Číslo</span>
-          <span>Název</span>
-          <span>LC</span>
-          <span>Telefon prodejny</span>
-          <span>VT</span>
-          <span>RM</span>
-          <span>Stav</span>
-        </div>
+        <div class="data-table-head stores-table-head" id="storesTableHead"><!-- vykresleno JS, viz renderDataTableHead --></div>
         <div class="data-table-body" id="storesList"><!-- vykresleno JS --></div>
       </div>
     </section>
@@ -180,13 +172,7 @@
         <h2>LC</h2>
       </div>
       <div class="users-panel-wrap">
-        <div class="data-table-head lc-table-head">
-          <span>Číslo</span>
-          <span>Zkratka</span>
-          <span>Název</span>
-          <span>Filiálek</span>
-          <span id="lcActionsHead">Akce</span>
-        </div>
+        <div class="data-table-head lc-table-head" id="lcTableHead"><!-- vykresleno JS, viz renderDataTableHead --></div>
         <div class="data-table-body" id="lcList"><!-- vykresleno JS --></div>
       </div>
     </section>
@@ -364,7 +350,7 @@
 <!-- ══ Modal: detail filiálky (klik na řádek v sekci Filiálky) ══
      Jen ke čtení — data přichází importem (viz server/60_import.js),
      appka je needituje. -->
-<dialog class="modal modal-wide modal-grow" id="storeDetailModal">
+<dialog class="modal modal-xwide modal-grow" id="storeDetailModal">
   <div class="modal-header">
     <span class="modal-icon"><i class="ph ph-storefront" aria-hidden="true"></i></span>
     <div class="modal-header-text">
@@ -937,7 +923,10 @@
       this.bindChipTooltip();
       this.bindStores();
       this.bindLc();
-      if (!canManageSettings) document.querySelector('#lcActionsHead').classList.add('is-hidden');
+      if (!canManageSettings) {
+        document.querySelector('#storesActionsHead').classList.add('is-hidden');
+        document.querySelector('#lcActionsHead').classList.add('is-hidden');
+      }
       if (canManageUsers) this.bindUserForm();
       if (canManageSettings) this.bindSettings();
       this.renderCalendar();
@@ -1927,9 +1916,258 @@
     },
 
     /* ── Filiálky / LC ────────────────────────────────────────────────────
-       Data přichází importem (viz server/60_import.js) — appka je tu jen
-       ČTE (u LC navíc dovolí SUPERADMINovi upravit číslo/zkratku), žádné
-       vytváření/mazání jako u Nastavení. Vidí každý přihlášený uživatel. */
+       Data přichází importem (viz server/60_import.js) — appka u obou
+       needituje nic ze zdroje (u LC číslo/zkratku, u obou (de)aktivaci
+       ano, viz apiSetLogisticCenterActive/apiSetStoreActive). Vidí každý
+       přihlášený uživatel. */
+
+    /**
+     * Konfigurace sloupců pro řazení/filtrování hlaviček (Excel-like
+     * popover, viz openColumnFilterPopover) — jeden zdroj pravdy, ze
+     * kterého se vykresluje i samotná hlavička (renderDataTableHead), ne
+     * ruční HTML.
+     *
+     * `filterValue` řídí, do jaké skupiny zaškrtávacích položek popoveru
+     * řádek spadá (u Stavu je to kategorie zavřeno/brzy/otevřeno, ne
+     * konkrétní datum — "chceme filtrovat všechny zavřené spolu nezávisle
+     * na datumu", viz konverzace), `filterLabel` jak se skupina popíše,
+     * `filterOrder`/`filterSort` jak se seznam skupin seřadí. `sortValue`
+     * řídí řazení ŘÁDKŮ, `sortAsc`/`sortDesc` jsou popisky tlačítek (liší
+     * se podle typu sloupce — text/číslo/kategorie). Sloupec bez
+     * `filterValue` (`actionsOnly`) se vykreslí jako obyčejný <span>,
+     * neklikací — pro Akce, kde řazení/filtrování nedává smysl.
+     */
+    DATA_TABLE_COLUMNS: {
+      stores: [
+        { key: 'cislo', label: 'Číslo', filterValue: (s) => s.id, sortValue: (s) => Number(s.id), filterSort: 'number', sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší' },
+        { key: 'nazev', label: 'Název', filterValue: (s) => s.nazev, sortValue: (s) => s.nazev, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
+        { key: 'lc', label: 'LC', filterValue: (s) => s.lc || '—', sortValue: (s) => s.lc, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
+        { key: 'telefonProdejny', label: 'Telefon prodejny', filterValue: (s) => s.telefonProdejny || '—', sortValue: (s) => s.telefonProdejny, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
+        { key: 'vt', label: 'VT', filterValue: (s) => s.vt || '—', sortValue: (s) => s.vt, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
+        { key: 'rm', label: 'RM', filterValue: (s) => s.rm || '—', sortValue: (s) => s.rm, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
+        {
+          key: 'stav', label: 'Stav',
+          filterValue: (s) => s.closure ? s.closure.status : 'open',
+          filterLabel: (v) => ({ current: 'Zavřeno', upcoming: 'Zavře se brzy', open: 'Otevřeno' }[v] || v),
+          filterOrder: ['current', 'upcoming', 'open'],
+          sortValue: (s) => s.closure ? (s.closure.status === 'current' ? 0 : 1 + (s.closure.daysUntil || 0) / 100000) : 2,
+          sortAsc: 'Zavřené nahoře', sortDesc: 'Otevřené nahoře',
+        },
+        { key: 'akce', label: 'Akce', actionsOnly: true },
+      ],
+      lc: [
+        { key: 'cislo', label: 'Číslo', filterValue: (l) => l.cislo || '—', sortValue: (l) => l.cislo ? Number(l.cislo) : null, filterSort: 'number', sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší' },
+        { key: 'zkratka', label: 'Zkratka', filterValue: (l) => l.zkratka || '—', sortValue: (l) => l.zkratka, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
+        { key: 'nazev', label: 'Název', filterValue: (l) => l.nazev, sortValue: (l) => l.nazev, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
+        { key: 'storeCount', label: 'Filiálek', filterValue: (l) => String(l.storeCount), sortValue: (l) => l.storeCount, filterSort: 'number', sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší' },
+        { key: 'akce', label: 'Akce', actionsOnly: true },
+      ],
+    },
+
+    /** Aktuální řazení/filtry obou tabulek — čistě na klientovi, nic se neukládá na server. */
+    dataTableState: {
+      stores: { sortKey: null, sortDir: 'asc', filters: {} },
+      lc: { sortKey: null, sortDir: 'asc', filters: {} },
+    },
+
+    /** Vykreslí hlavičku tabulky (#storesTableHead/#lcTableHead) z DATA_TABLE_COLUMNS — jediné místo, které hlavičku sestavuje. */
+    renderDataTableHead(tableName) {
+      const head = document.querySelector('#' + tableName + 'TableHead');
+      const state = this.dataTableState[tableName];
+
+      head.innerHTML = this.DATA_TABLE_COLUMNS[tableName].map((col) => {
+        if (col.actionsOnly) {
+          return '<span id="' + tableName + 'ActionsHead">' + Ui.escape(col.label) + '</span>';
+        }
+        const isSorted = state.sortKey === col.key;
+        const hasFilter = !!state.filters[col.key];
+        return '<button type="button" class="data-col-header' + (hasFilter ? ' has-filter' : '') + '" data-col="' + col.key + '">' +
+          '<span>' + Ui.escape(col.label) + '</span>' +
+          (isSorted ? '<i class="ph ph-' + (state.sortDir === 'desc' ? 'sort-descending' : 'sort-ascending') + '" aria-hidden="true"></i>' : '') +
+          '<i class="ph ph-funnel-simple" aria-hidden="true"></i>' +
+        '</button>';
+      }).join('');
+    },
+
+    /** Deleguje klik na kteroukoli hlavičku sloupce dané tabulky — volá se jednou při bindStores/bindLc. */
+    bindDataTableHead(tableName) {
+      document.querySelector('#' + tableName + 'TableHead').addEventListener('click', (e) => {
+        const btn = e.target.closest('.data-col-header');
+        if (!btn) return;
+        this.toggleColumnFilterPopover(tableName, btn.dataset.col, btn);
+      });
+    },
+
+    /** Aplikuje aktivní filtry a řazení dané tabulky na pole řádků — volá se před vykreslením (viz renderStores/renderLc). */
+    applyDataTableView(tableName, rows) {
+      const cols = this.DATA_TABLE_COLUMNS[tableName];
+      const state = this.dataTableState[tableName];
+      let result = rows;
+
+      Object.keys(state.filters).forEach((colKey) => {
+        const allowed = state.filters[colKey];
+        const col = cols.find((c) => c.key === colKey);
+        result = result.filter((row) => allowed.has(String(col.filterValue(row))));
+      });
+
+      if (state.sortKey) {
+        const col = cols.find((c) => c.key === state.sortKey);
+        const dir = state.sortDir === 'desc' ? -1 : 1;
+        result = result.slice().sort((a, b) => {
+          const va = col.sortValue(a);
+          const vb = col.sortValue(b);
+          if (va === vb) return 0;
+          // chybějící hodnota (např. LC bez čísla) jde vždycky na konec, bez ohledu na směr řazení
+          if (va === null || va === undefined || va === '') return 1;
+          if (vb === null || vb === undefined || vb === '') return -1;
+          if (typeof va === 'string') return va.localeCompare(vb, 'cs') * dir;
+          return (va > vb ? 1 : -1) * dir;
+        });
+      }
+
+      return result;
+    },
+
+    /** Znovu vykreslí hlavičku i data dané tabulky — po každé změně řazení/filtru. */
+    refreshDataTable(tableName) {
+      this.renderDataTableHead(tableName);
+      if (tableName === 'stores') this.renderStores();
+      else this.renderLc();
+    },
+
+    /** Druhý klik na stejný sloupec popover jen zavře, klik na jiný ho přepne. */
+    toggleColumnFilterPopover(tableName, colKey, headerEl) {
+      const existing = document.querySelector('.column-filter-popover');
+      if (existing) {
+        const wasThisColumn = existing.dataset.table === tableName && existing.dataset.col === colKey;
+        this.closeColumnFilterPopover();
+        if (wasThisColumn) return;
+      }
+      this.openColumnFilterPopover(tableName, colKey, headerEl);
+    },
+
+    closeColumnFilterPopover() {
+      const el = document.querySelector('.column-filter-popover');
+      if (el) el.remove();
+      if (this._columnFilterOutsideHandler) {
+        document.removeEventListener('mousedown', this._columnFilterOutsideHandler);
+        this._columnFilterOutsideHandler = null;
+      }
+    },
+
+    /**
+     * Otevře popover se řazením a filtrem pro jeden sloupec — vzhled/chování
+     * podobné Excelu (viz konverzace): nahoře řadit vzestupně/sestupně
+     * (popisek podle typu sloupce), pod tím zaškrtávací seznam DISTINCT
+     * hodnot z CELÉHO (nefiltrovaného) zdroje dat, ať jde filtr i rozšířit
+     * zpátky, ne jen zužovat.
+     */
+    openColumnFilterPopover(tableName, colKey, headerEl) {
+      const col = this.DATA_TABLE_COLUMNS[tableName].find((c) => c.key === colKey);
+      const rows = tableName === 'stores' ? this.storesCache : this.lcCache;
+      const state = this.dataTableState[tableName];
+
+      const seen = {};
+      const values = [];
+      rows.forEach((row) => {
+        const v = String(col.filterValue(row));
+        if (!(v in seen)) { seen[v] = true; values.push(v); }
+      });
+      if (col.filterOrder) {
+        values.sort((a, b) => col.filterOrder.indexOf(a) - col.filterOrder.indexOf(b));
+      } else if (col.filterSort === 'number') {
+        values.sort((a, b) => Number(a) - Number(b));
+      } else {
+        values.sort((a, b) => a.localeCompare(b, 'cs'));
+      }
+
+      const activeFilter = state.filters[colKey]; // Set povolených hodnot, nebo undefined = vše
+
+      const popover = document.createElement('div');
+      popover.className = 'column-filter-popover';
+      popover.dataset.table = tableName;
+      popover.dataset.col = colKey;
+      popover.innerHTML =
+        '<div class="column-filter-section">' +
+          '<p class="column-filter-heading">Řadit</p>' +
+          '<button type="button" class="column-filter-sort-btn' + (state.sortKey === colKey && state.sortDir === 'asc' ? ' is-active' : '') + '" data-dir="asc">' +
+            '<i class="ph ph-sort-ascending" aria-hidden="true"></i> ' + Ui.escape(col.sortAsc) + '</button>' +
+          '<button type="button" class="column-filter-sort-btn' + (state.sortKey === colKey && state.sortDir === 'desc' ? ' is-active' : '') + '" data-dir="desc">' +
+            '<i class="ph ph-sort-descending" aria-hidden="true"></i> ' + Ui.escape(col.sortDesc) + '</button>' +
+        '</div>' +
+        '<div class="column-filter-section">' +
+          '<p class="column-filter-heading">Filtrovat</p>' +
+          '<label class="column-filter-check-all"><input type="checkbox" id="columnFilterCheckAll"' + (!activeFilter ? ' checked' : '') + '> Vybrat vše</label>' +
+          '<div class="column-filter-values">' +
+            values.map((v) => {
+              const checked = !activeFilter || activeFilter.has(v);
+              return '<label><input type="checkbox" class="column-filter-value" value="' + Ui.escape(v) + '"' + (checked ? ' checked' : '') + '> ' +
+                Ui.escape(col.filterLabel ? col.filterLabel(v) : v) + '</label>';
+            }).join('') +
+          '</div>' +
+        '</div>' +
+        '<div class="column-filter-actions">' +
+          '<button type="button" class="button button-secondary" id="columnFilterClear">Zrušit filtr</button>' +
+          '<button type="button" class="button button-primary" id="columnFilterApply">Použít</button>' +
+        '</div>';
+
+      document.body.appendChild(popover);
+      this.positionColumnFilterPopover(popover, headerEl);
+      this.bindColumnFilterPopover(popover, tableName, colKey);
+
+      // mousedown (ne click) — jinak by se otevírací klik na hlavičku sám
+      // "prokousal" až sem a popover by se ve stejném okamžiku zase zavřel
+      this._columnFilterOutsideHandler = (e) => {
+        if (!popover.contains(e.target) && !headerEl.contains(e.target)) this.closeColumnFilterPopover();
+      };
+      document.addEventListener('mousedown', this._columnFilterOutsideHandler);
+    },
+
+    /** Umístí popover pod hlavičku sloupce, ať nepřeteče přes pravý okraj okna. */
+    positionColumnFilterPopover(popover, headerEl) {
+      const rect = headerEl.getBoundingClientRect();
+      popover.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+      const maxLeft = window.scrollX + document.documentElement.clientWidth - 300;
+      popover.style.left = Math.max(8, Math.min(rect.left + window.scrollX, maxLeft)) + 'px';
+    },
+
+    bindColumnFilterPopover(popover, tableName, colKey) {
+      popover.querySelectorAll('.column-filter-sort-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const state = this.dataTableState[tableName];
+          state.sortKey = colKey;
+          state.sortDir = btn.dataset.dir;
+          this.closeColumnFilterPopover();
+          this.refreshDataTable(tableName);
+        });
+      });
+
+      const checkAll = popover.querySelector('#columnFilterCheckAll');
+      const valueBoxes = Array.from(popover.querySelectorAll('.column-filter-value'));
+      checkAll.addEventListener('change', () => {
+        valueBoxes.forEach((box) => { box.checked = checkAll.checked; });
+      });
+      valueBoxes.forEach((box) => {
+        box.addEventListener('change', () => {
+          checkAll.checked = valueBoxes.every((b) => b.checked);
+        });
+      });
+
+      popover.querySelector('#columnFilterClear').addEventListener('click', () => {
+        delete this.dataTableState[tableName].filters[colKey];
+        this.closeColumnFilterPopover();
+        this.refreshDataTable(tableName);
+      });
+
+      popover.querySelector('#columnFilterApply').addEventListener('click', () => {
+        const checked = valueBoxes.filter((b) => b.checked).map((b) => b.value);
+        const state = this.dataTableState[tableName];
+        if (checked.length === valueBoxes.length) delete state.filters[colKey]; // vše zaškrtnuté = žádný filtr
+        else state.filters[colKey] = new Set(checked);
+        this.closeColumnFilterPopover();
+        this.refreshDataTable(tableName);
+      });
+    },
 
     loadStores() {
       const list = document.querySelector('#storesList');
@@ -1946,24 +2184,33 @@
         });
     },
 
-    /** Vykreslí #storesList z this.storesCache, s ohledem na aktuální text ve filtru (viz bindStores). */
+    /** Vykreslí #storesList z this.storesCache — textový filtr, pak sloupcové řazení/filtry (viz applyDataTableView), pak samotné řádky. */
     renderStores() {
       const list = document.querySelector('#storesList');
       const filter = document.querySelector('#storesFilterInput').value.trim().toLowerCase();
 
-      const filtered = filter
+      let rows = filter
         ? this.storesCache.filter((s) =>
             (s.id + ' ' + s.nazev + ' ' + s.mesto + ' ' + s.lc).toLowerCase().indexOf(filter) !== -1
           )
         : this.storesCache;
+      rows = this.applyDataTableView('stores', rows);
 
-      list.innerHTML = filtered.length
-        ? filtered.map((s) => this.renderStoreRow(s)).join('')
-        : this.usersPlaceholder(this.storesCache.length ? 'Žádná filiálka neodpovídá hledání.' : 'Zatím žádná data — synchronizujte v Nastavení.');
+      list.innerHTML = rows.length
+        ? rows.map((s) => this.renderStoreRow(s)).join('')
+        : this.usersPlaceholder(this.storesCache.length ? 'Žádná filiálka neodpovídá hledání/filtru.' : 'Zatím žádná data — synchronizujte v Nastavení.');
     },
 
     renderStoreRow(s) {
-      return '<div class="data-row store-row" data-id="' + Ui.escape(s.id) + '">' +
+      const actionBtn = this.canManageSettings
+        ? (s.active
+          ? '<button type="button" class="user-action-btn is-danger" data-action="deactivate" data-id="' + Ui.escape(s.id) + '" title="Deaktivovat" aria-label="Deaktivovat ' + Ui.escape(s.nazev) + '">' +
+            '<i class="ph ph-trash" aria-hidden="true"></i></button>'
+          : '<button type="button" class="user-action-btn is-restore" data-action="activate" data-id="' + Ui.escape(s.id) + '" title="Aktivovat" aria-label="Aktivovat ' + Ui.escape(s.nazev) + '">' +
+            '<i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i></button>')
+        : '';
+
+      return '<div class="data-row store-row' + (s.active ? '' : ' is-inactive') + '" data-id="' + Ui.escape(s.id) + '">' +
         '<span class="user-cell-name">' + Ui.escape(s.id) + '</span>' +
         '<span class="user-cell-name">' + Ui.escape(s.nazev) + '</span>' +
         '<span class="user-cell-muted">' + Ui.escape(s.lc || '—') + '</span>' +
@@ -1971,26 +2218,32 @@
         '<span class="user-cell-muted">' + Ui.escape(s.vt || '—') + '</span>' +
         '<span class="user-cell-muted">' + Ui.escape(s.rm || '—') + '</span>' +
         this.renderStoreStatus(s.closure) +
+        '<span class="user-actions">' + actionBtn + '</span>' +
       '</div>';
     },
 
     /**
      * Stav filiálky podle vyhodnocené uzavírky ze serveru (s.closure, viz
      * _evaluateClosure_ v 60_import.js) — sdílené mezi řádkem v tabulce
-     * i modalem detailu. `current` = zavřeno TEĎ (červeně, s rozsahem
-     * dat), `upcoming` = zavře se teprve v budoucnu (za kolik dní +
-     * rozsah), jinak Otevřeno.
+     * i modalem detailu. VŽDY dva řádky (i u Otevřeno — druhý řádek jen
+     * prázdný), ať mají všechny řádky tabulky stejnou výšku bez ohledu na
+     * to, co je ve sloupci Stav (viz CSS min-height u .store-status-line2).
+     * Barva textu: zavřeno TEĎ červeně, jen očekávané zavření černě
+     * (výchozí barva textu) — podle zadání v konverzaci.
      */
     renderStoreStatus(closure) {
-      if (!closure) return '<span class="store-status">Otevřeno</span>';
+      if (!closure) {
+        return '<span class="store-status"><span class="store-status-line1">Otevřeno</span><span class="store-status-line2"></span></span>';
+      }
 
       const range = Ui.escape(this.formatFullDate(closure.from)) + '–' + Ui.escape(this.formatFullDate(closure.to));
+      const line1 = closure.status === 'current'
+        ? 'Zavřeno'
+        : 'Zavře se za ' + closure.daysUntil + ' ' + this.dayWord(closure.daysUntil);
+      const cls = closure.status === 'current' ? ' is-closed' : '';
 
-      if (closure.status === 'current') {
-        return '<span class="store-status is-closed"><i class="ph ph-door-open" aria-hidden="true"></i> Zavřeno ' + range + '</span>';
-      }
-      return '<span class="store-status is-upcoming"><i class="ph ph-calendar-x" aria-hidden="true"></i> Zavře se za ' +
-        closure.daysUntil + ' ' + this.dayWord(closure.daysUntil) + ' (' + range + ')</span>';
+      return '<span class="store-status' + cls + '"><span class="store-status-line1">' + Ui.escape(line1) + '</span>' +
+        '<span class="store-status-line2">' + range + '</span></span>';
     },
 
     /** Český tvar slova "den" podle počtu (1 den, 2–4 dny, 5+ dní). */
@@ -2000,9 +2253,64 @@
       return 'dní';
     },
 
+    /** Tiché uložení filiálky do this.storesCache bez volání serveru navíc — apiSetStoreActive už vrací kompletní záznam. */
+    applyStoreToCache(record) {
+      const idx = this.storesCache.findIndex((s) => s.id === record.id);
+      if (idx !== -1) this.storesCache[idx] = record;
+      this.renderStores();
+    },
+
+    /** Deaktivace je nevratná bez ručního zásahu zpět → potvrzovací modal, stejný vzor jako u LC/uživatelů. */
+    confirmDeactivateStore(store, originEl) {
+      this.confirmAction({
+        title: 'Deaktivovat filiálku?',
+        body: '„' + store.nazev + '" zůstane v seznamu, jen se vizuálně odliší jako neaktivní. Zůstane deaktivovaná i po další synchronizaci dat.',
+        okLabel: 'Deaktivovat',
+        okIcon: 'ph-trash',
+        okClass: 'button-danger',
+        onConfirm: (okBtn, dialog) => {
+          Ui.setButtonLoading(okBtn, true, 'Deaktivuji…');
+          Ui.call('apiSetStoreActive', { id: store.id, active: false }, { silent: true })
+            .then((record) => {
+              Ui.closeModal(dialog);
+              Ui.toast('Filiálka deaktivována.', 'success');
+              this.applyStoreToCache(record);
+            })
+            .catch((error) => {
+              Ui.setButtonLoading(okBtn, false);
+              Ui.toast(error.message, 'error');
+            });
+        },
+      }, originEl);
+    },
+
+    /** Aktivace zpět jde rovnou, bez potvrzení (stejné jako u LC/uživatelů). */
+    setStoreActive(store, active, button) {
+      if (button) Ui.setButtonLoading(button, true);
+      Ui.call('apiSetStoreActive', { id: store.id, active: active }, { silent: true })
+        .then((record) => {
+          Ui.toast('Filiálka aktivována.', 'success');
+          this.applyStoreToCache(record);
+        })
+        .catch((error) => {
+          if (button) Ui.setButtonLoading(button, false);
+          Ui.toast(error.message, 'error');
+        });
+    },
+
     bindStores() {
+      this.renderDataTableHead('stores');
+      this.bindDataTableHead('stores');
       document.querySelector('#storesFilterInput').addEventListener('input', () => this.renderStores());
       document.querySelector('#storesList').addEventListener('click', (e) => {
+        const btn = e.target.closest('.user-action-btn');
+        if (btn) {
+          const store = this.storesCache.find((s) => s.id === btn.dataset.id);
+          if (!store) return;
+          if (btn.dataset.action === 'deactivate') this.confirmDeactivateStore(store, btn);
+          else if (btn.dataset.action === 'activate') this.setStoreActive(store, true, btn);
+          return;
+        }
         const row = e.target.closest('.store-row');
         if (!row) return;
         const store = this.storesCache.find((s) => s.id === row.dataset.id);
@@ -2028,7 +2336,12 @@
       Ui.openModal(dialog);
     },
 
-    /** Sestaví obsah modalu detailu filiálky — jen ke čtení (viz komentář u #storeDetailModal v HTML). */
+    /**
+     * Sestaví obsah modalu detailu filiálky — jen ke čtení (data needituje
+     * appka, jen (de)aktivace v seznamu, viz renderStoreRow). Tři sloupce
+     * vedle sebe (Adresa / Kontakty / Otevírací doba), každý vlastní oddíl
+     * — modal je proto dost široký (.modal-xwide, viz styles.html).
+     */
     renderStoreDetail(store) {
       const contactRow = (label, name, phone) => {
         if (!name && !phone) return '';
@@ -2050,27 +2363,32 @@
           : '<span class="store-detail-badge is-upcoming"><i class="ph ph-calendar-x" aria-hidden="true"></i> Zavře se za ' +
             store.closure.daysUntil + ' ' + this.dayWord(store.closure.daysUntil) + ' (' + range + ')</span>';
       }
+      const inactiveBadge = store.active ? '' : '<span class="store-detail-badge is-closed">Deaktivovaná</span>';
+
+      const contacts = contactRow('Telefon prodejny', '', store.telefonProdejny) +
+        contactRow('VT', store.vt, store.telefonVt) +
+        contactRow('RM', store.rm, store.telefonRm) +
+        contactRow('Zástupce RM', store.zastupceRm, store.telefonZastupce);
 
       return '<div class="store-detail">' +
         '<div class="store-detail-badges">' +
           '<span class="store-detail-badge">Číslo ' + Ui.escape(store.id) + '</span>' +
           (store.kod ? '<span class="store-detail-badge">' + Ui.escape(store.kod) + '</span>' : '') +
-          closedBadge +
+          closedBadge + inactiveBadge +
         '</div>' +
-        '<div class="store-detail-block">' +
-          '<p class="kicker"><i class="ph ph-map-pin" aria-hidden="true"></i> Adresa</p>' +
-          '<p>' + Ui.escape(store.ulice || '—') + (store.psc || store.mesto ? ', ' + Ui.escape((store.psc + ' ' + store.mesto).trim()) : '') + '</p>' +
-        '</div>' +
-        '<div class="store-detail-block">' +
-          '<p class="kicker"><i class="ph ph-phone" aria-hidden="true"></i> Kontakty</p>' +
-          (contactRow('Telefon prodejny', '', store.telefonProdejny) +
-           contactRow('VT', store.vt, store.telefonVt) +
-           contactRow('RM', store.rm, store.telefonRm) +
-           contactRow('Zástupce RM', store.zastupceRm, store.telefonZastupce) || '<p class="store-detail-empty">Bez kontaktů.</p>') +
-        '</div>' +
-        '<div class="store-detail-block">' +
-          '<p class="kicker"><i class="ph ph-clock" aria-hidden="true"></i> Otevírací doba</p>' +
-          '<table class="store-detail-hours"><tbody>' + hoursRows + '</tbody></table>' +
+        '<div class="store-detail-columns">' +
+          '<div class="store-detail-col">' +
+            '<p class="kicker"><i class="ph ph-map-pin" aria-hidden="true"></i> Adresa</p>' +
+            '<p>' + Ui.escape(store.ulice || '—') + (store.psc || store.mesto ? ', ' + Ui.escape((store.psc + ' ' + store.mesto).trim()) : '') + '</p>' +
+          '</div>' +
+          '<div class="store-detail-col">' +
+            '<p class="kicker"><i class="ph ph-phone" aria-hidden="true"></i> Kontakty</p>' +
+            (contacts || '<p class="store-detail-empty">Bez kontaktů.</p>') +
+          '</div>' +
+          '<div class="store-detail-col">' +
+            '<p class="kicker"><i class="ph ph-clock" aria-hidden="true"></i> Otevírací doba</p>' +
+            '<table class="store-detail-hours"><tbody>' + hoursRows + '</tbody></table>' +
+          '</div>' +
         '</div>' +
       '</div>';
     },
@@ -2090,11 +2408,14 @@
         });
     },
 
+    /** Vykreslí #lcList z this.lcCache — nejdřív sloupcové řazení/filtry (viz applyDataTableView), pak samotné řádky. */
     renderLc() {
       const list = document.querySelector('#lcList');
-      list.innerHTML = this.lcCache.length
-        ? this.lcCache.map((lc) => this.renderLcRow(lc)).join('')
-        : this.usersPlaceholder('Zatím žádná data — synchronizujte v Nastavení.');
+      const rows = this.applyDataTableView('lc', this.lcCache);
+
+      list.innerHTML = rows.length
+        ? rows.map((lc) => this.renderLcRow(lc)).join('')
+        : this.usersPlaceholder(this.lcCache.length ? 'Žádné LC neodpovídá filtru.' : 'Zatím žádná data — synchronizujte v Nastavení.');
     },
 
     /** Řádek LC — sloupec Akce nese tužku (úprava čísla/zkratky) i (de)aktivaci, stejný jazyk jako u uživatelů (viz apiSetLogisticCenterActive). */
@@ -2165,6 +2486,8 @@
     },
 
     bindLc() {
+      this.renderDataTableHead('lc');
+      this.bindDataTableHead('lc');
       document.querySelector('#lcList').addEventListener('click', (e) => {
         const btn = e.target.closest('.user-action-btn');
         if (!btn) return;

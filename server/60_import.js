@@ -298,12 +298,14 @@ function apiSyncImportFile(payload) {
 /**
  * Porovná uložený a nově importovaný záznam filiálky a vrátí pole změn
  * `{ field, from, to }` — jen sledovaná pole ze zdroje, ne interní
- * (id/updated_at). Prázdné pole = beze změny.
+ * (id/updated_at) ani "active" (to appka řídí ručně, viz apiSetStoreActive
+ * — sync ho nikdy neposílá, takže by se jako "změna" hlásilo úplně vždycky
+ * a zbytečně by to zaplavovalo Log importu). Prázdné pole = beze změny.
  */
 function _storeRowChanges_(existing, incoming) {
   const changes = [];
   DB_SCHEMA[SHEETS.STORES].forEach((field) => {
-    if (field === 'id' || field === 'updated_at') return;
+    if (field === 'id' || field === 'updated_at' || field === 'active') return;
     const from = String(existing[field] || '');
     const to = String(incoming[field] || '');
     if (from !== to) changes.push({ field: field, from: from, to: to });
@@ -311,7 +313,13 @@ function _storeRowChanges_(existing, incoming) {
   return changes;
 }
 
-/** Nahradí _stores daty ze zdroje, vrátí PODROBNÝ rozdíl (ne jen počty) — viz _importWriteLog_/apiGetImportLog. */
+/**
+ * Nahradí _stores daty ze zdroje, vrátí PODROBNÝ rozdíl (ne jen počty) —
+ * viz _importWriteLog_/apiGetImportLog. U existující filiálky se "active"
+ * přenese ze STARÉHO řádku (sync o něm nic neví, appka ho řídí ručně přes
+ * apiSetStoreActive) — stejný princip jako u LC, deaktivace tak přežije
+ * i tuhle synchronizaci.
+ */
 function _importSyncStores_(storeRows) {
   const before = dbGetAll_(SHEETS.STORES);
   const beforeMap = {};
@@ -320,22 +328,23 @@ function _importSyncStores_(storeRows) {
   const afterIds = {};
   const added = [];
   const changed = [];
-  storeRows.forEach((row) => {
+  const records = storeRows.map((row) => {
     afterIds[row.id] = true;
     const existing = beforeMap[row.id];
     if (!existing) {
       added.push({ id: row.id, nazev: row.nazev });
-    } else {
-      const fields = _storeRowChanges_(existing, row);
-      if (fields.length) changed.push({ id: row.id, nazev: row.nazev, fields: fields });
+      return Object.assign({}, row, { active: true });
     }
+    const fields = _storeRowChanges_(existing, row);
+    if (fields.length) changed.push({ id: row.id, nazev: row.nazev, fields: fields });
+    return Object.assign({}, row, { active: existing.active });
   });
   const removed = before
     .filter((row) => !afterIds[String(row.id)])
     .map((row) => ({ id: String(row.id), nazev: String(row.nazev) }));
 
-  dbReplaceAll_(SHEETS.STORES, storeRows);
-  return { total: storeRows.length, added: added, changed: changed, removed: removed };
+  dbReplaceAll_(SHEETS.STORES, records);
+  return { total: records.length, added: added, changed: changed, removed: removed };
 }
 
 /**
@@ -574,6 +583,18 @@ function _evaluateClosure_(closure, today) {
   return null; // doD < today — uzavírka už doběhla
 }
 
+/**
+ * Je filiálka aktivní? Záměrně NE přes toBool_ (ta by prázdnou hodnotu
+ * vzala jako false) — sloupec `active` přibyl do schématu později, než
+ * appka poprvé filiálky naseje, takže starší řádky mají tuhle buňku
+ * prázdnou. Prázdná hodnota tu musí znamenat "aktivní" (chybějící
+ * deaktivace nesmí filiálku potichu schovat), jedině výslovné `false`
+ * znamená deaktivováno. Stejný princip jako _lcIsActive_ u LC.
+ */
+function _storeIsActive_(row) {
+  return String(row.active) !== 'false';
+}
+
 /** Přemění řádek filiálky na podobu pro klienta — camelCase pole + vyhodnocená uzavírka (viz _evaluateClosure_). */
 function _publicStore_(row, closuresByStore, today) {
   return {
@@ -581,6 +602,7 @@ function _publicStore_(row, closuresByStore, today) {
     kod: String(row.kod || ''),
     nazev: String(row.nazev || ''),
     lc: String(row.lc || ''),
+    active: _storeIsActive_(row),
     telefonProdejny: String(row.telefon_prodejny || ''),
     vt: String(row.vt || ''),
     telefonVt: String(row.telefon_vt || ''),
@@ -621,6 +643,37 @@ function apiGetStores() {
       .slice()
       .sort((a, b) => Number(a.id) - Number(b.id))
       .map((row) => _publicStore_(row, closuresByStore, today));
+  });
+}
+
+/**
+ * (De)aktivuje filiálku — appka jinak filiálky needituje (všechna ostatní
+ * data přepisuje synchronizace), tohle je jediný ručně řízený příznak.
+ * Stejný vzor jako apiSetLogisticCenterActive/apiSetUserActive: potvrzovací
+ * modal na deaktivaci, aktivace zpět rovnou. Přežije další synchronizaci
+ * (viz _importSyncStores_ — "active" se přebírá ze starého řádku), ale
+ * nechrání filiálku před smazáním, když v novém importu úplně zmizí.
+ *
+ * @param {Object} payload  { id, active }
+ */
+function apiSetStoreActive(payload) {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    const data = payload || {};
+    const id = cleanText_(data.id, 'ID filiálky', 100, true);
+    const active = data.active === true;
+
+    const existing = dbFindById_(SHEETS.STORES, id);
+    if (!existing) {
+      throw userError_('Filiálka nebyla nalezena — mohla ji mezitím smazat synchronizace.');
+    }
+
+    dbUpdate_(SHEETS.STORES, id, { active: active });
+    audit_(active ? 'store.activate' : 'store.deactivate',
+      (active ? 'Aktivována' : 'Deaktivována') + ' filiálka „' + existing.nazev + '"');
+
+    const closuresByStore = {};
+    dbGetAll_(SHEETS.STORE_CLOSURES).forEach((row) => { closuresByStore[String(row.id)] = row; });
+    return _publicStore_(dbFindById_(SHEETS.STORES, id), closuresByStore, todayIso_());
   });
 }
 

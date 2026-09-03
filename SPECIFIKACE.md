@@ -139,7 +139,7 @@ const DB_SCHEMA = {
   '_event_types': ['id','label','icon','color','bg_color','created_at','created_by','updated_at','updated_by'],
   // Import dat filiálek (viz kapitola 9.6) — zrcadlo cizího souboru na
   // Disku, appka jen čte a jednou za čas přepisuje (dbReplaceAll_).
-  '_stores': ['id','kod','nazev','lc',
+  '_stores': ['id','kod','nazev','lc','active',
               'telefon_prodejny','vt','telefon_vt','rm','telefon_rm','zastupce_rm','telefon_zastupce',
               'ulice','mesto','psc',
               'po_otevreno','po_zavreno','ut_otevreno','ut_zavreno','st_otevreno','st_zavreno',
@@ -369,6 +369,7 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiGetLogisticCenters()` | `calendar_read` | — | seznam LC, řazený podle Čísla (bez čísla vždy na konec) — čtení smí každý přihlášený |
 | `apiSaveLogisticCenter(payload)` | `settings_manage` | `{ id, cislo, zkratka }` | uložené LC — edituje jen tato dvě pole, název je needitovatelný |
 | `apiSetLogisticCenterActive(payload)` | `settings_manage` | `{ id, active }` | uložené LC — deaktivace přežije i další synchronizaci, viz 9.6 |
+| `apiSetStoreActive(payload)` | `settings_manage` | `{ id, active }` | uložená filiálka — jediné ručně řízené pole u filiálky, přežije i další synchronizaci |
 
 **Rozsah v `apiGetEvents`** se vyhodnocuje jako **průnik**, ne jako „start
 uvnitř rozsahu" — jinak by vícedenní událost začínající minulý měsíc v aktuální
@@ -549,20 +550,25 @@ přístupné každému přihlášenému (`calendar_read` — appka slouží i ja
 firemní adresář):
 
 - **Filiálky** — čtecí přehled (Číslo, Název, LC, Telefon prodejny, VT,
-  RM, Stav — bez sloupce Město, to je prakticky obsažené v Název), výchozí
-  řazení podle Čísla (numericky). Filtr nad tabulkou hledá v čísle/názvu/
-  městě/LC (jen na klientovi, nad už načteným seznamem — appka počítá
-  s řádově stovkami filiálek, ne tisíci). Klik na řádek otevře detail
-  (adresa, kontakty VT/RM/zástupce s telefony, otevírací doba po dnech,
-  odznak podle uzavírky) — čistě ke čtení, appka filiálky needituje.
+  RM, Stav, Akce — bez sloupce Město, to je prakticky obsažené v Název),
+  výchozí řazení podle Čísla (numericky). Filtr nad tabulkou hledá
+  v čísle/názvu/městě/LC (jen na klientovi, nad už načteným seznamem —
+  appka počítá s řádově stovkami filiálek, ne tisíci). Klik na řádek
+  otevře detail (adresa, kontakty VT/RM/zástupce s telefony, otevírací
+  doba po dnech, odznak podle uzavírky) — data appka needituje, jediné
+  ručně řízené pole je **aktivní/neaktivní** (`apiSetStoreActive`, sloupec
+  Akce, stejný vzor jako u LC — přežije další synchronizaci, viz
+  `_importSyncStores_`, nechrání ale před smazáním).
   **Stav** — `_store_closures` obsahuje i uzavírky s budoucím Od nebo už
   proběhlým Do, appka proto na serveru vyhodnocuje každou vůči DNEŠKU
   (`_evaluateClosure_` v 60_import.js): `current` (dnešek v rozsahu Od–Do)
-  = červeně „Zavřeno" s rozsahem dat, `upcoming` (Od v budoucnu) = „Zavře
-  se za N dní" s rozsahem, jinak (Do už proběhlo) se bere, jako by
+  = červeně „Zavřeno" s rozsahem dat, `upcoming` (Od v budoucnu) = černě
+  „Zavře se za N dní" s rozsahem, jinak (Do už proběhlo) se bere, jako by
   uzavírka neexistovala. Bez tohohle rozlišení appka dřív ukazovala
   „Zavřeno" plošně u všech filiálek se záznamem v listu bez ohledu na
-  to, jestli uzavírka vůbec nastává teď — to byla nahlášená chyba.
+  to, jestli uzavírka vůbec nastává teď — to byla nahlášená chyba. Sloupec
+  je ve dvou řádkách VŽDY (stav / rozsah dat, druhý řádek prázdný
+  u „Otevřeno"), ať mají všechny řádky tabulky stejnou výšku.
 - **LC** — řazení podle Čísla (LC bez čísla až na konec), sloupec Filiálek
   = kolik filiálek má aktuálně tohle LC v `lc` (jen doplňková informace).
   Editovat smí SUPERADMIN (`settings_manage`) **číslo** a **zkratku**
@@ -577,6 +583,32 @@ firemní adresář):
   (`_importSyncLogisticCenters_` bere existující řádek při refreshi
   CELÝ, ne jen název) — nechrání ale LC před smazáním, když v novém
   importu už u žádné filiálky nefiguruje.
+
+**Vzhled a interakce tabulkových přehledů (Filiálky, LC — implementováno):**
+
+- **Pevná horní lišta a pevná hlavička tabulky.** `.app` má `height: 100vh`
+  (ne `min-height`) — bez toho by appka rostla podle obsahu nad výšku
+  okna a scrollovala by se celá stránka najednou, takže by `.section-header`
+  i `.data-table-head`/`.users-table-head` (obě `position: sticky`)
+  odjížděly pryč spolu s daty místo aby zůstávaly na místě. Týká se
+  všech sekcí, ne jen Filiálky/LC — oprava jedné vlastnosti nahoře
+  v layoutu zprovoznila scrollování uvnitř kontejneru (`flex: 1;
+  min-height: 0; overflow-y: auto`) všude, kde už bylo připravené, ale
+  fakticky nefungovalo.
+- **Hlavička sloupce = řazení + filtr (Excel-like).** Klik na hlavičku
+  (kromě Akce) otevře popover (`App.openColumnFilterPopover`) se dvěma
+  tlačítky řazení (popisek podle typu sloupce — text „A → Z"/„Z → A",
+  číslo „Nejmenší → největší"/…, u Stavu „Zavřené nahoře"/„Otevřené
+  nahoře") a zaškrtávacím seznamem DISTINCT hodnot pro filtr. Druhý klik
+  na stejnou hlavičku popover jen zavře. Filtr u Stavu funguje na
+  KATEGORII (zavřeno/zavře se brzy/otevřeno), ne na konkrétním textu
+  buňky — jinak by šlo zaškrtnout jen jedno konkrétní datum, appka chce
+  filtrovat všechny zavřené najednou bez ohledu na datum. Konfigurace
+  sloupců (`App.DATA_TABLE_COLUMNS`) je jediný zdroj pravdy, ze kterého
+  se vykresluje i samotná hlavička — žádné ruční HTML.
+- **Detail filiálky ve třech sloupcích** (Adresa / Kontakty / Otevírací
+  doba), každý vlastní oddíl — modal proto používá novou širší třídu
+  `.modal-xwide` (960 px) místo `.modal-wide` (720 px).
 
 **Etapa 3 (implementováno)** — podrobný rozdíl a trvalá historie:
 

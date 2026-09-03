@@ -58,16 +58,19 @@ const DB_SCHEMA = {
   // ── Import dat filiálek (viz 60_import.js) ───────────────────────────
   // Zrcadlo listů Organizace_Detail/Zavrene_Openings ve zdrojovém souboru
   // na Disku — appka je jen ČTE a jednou denně přepisuje, needituje se nic
-  // ručně (kromě _logistic_centers.cislo/zkratka, viz níže). Proto žádné
-  // created_at/created_by u _stores/_store_closures — "kdo založil" tu
-  // nedává smysl, vždycky je to import.
+  // ručně kromě "active" (viz apiSetStoreActive) a _logistic_centers.
+  // cislo/zkratka/active. Proto žádné created_at/created_by u _stores/
+  // _store_closures — "kdo založil" tu nedává smysl, vždycky je to import.
   //
   // id u _stores i _store_closures = sloupec "Číslo" ve zdroji (číslo
   // filiálky) — díky tomu funguje beze změny obecná dbFindById_/dbUpdate_/
   // dbDelete_ i pro tyhle tabulky. "kod" = sloupec "ID" ve zdroji
   // (CZ-0100…), jen pro zobrazení, appka podle něj nic nepáruje.
+  // "active" prázdné (starší řádky založené před přidáním sloupce, i každý
+  // čerstvě naimportovaný) = aktivní, viz _storeIsActive_ v 60_import.js —
+  // synchronizace ho při refreshi zachovává stejně jako u LC.
   _stores: [
-    'id', 'kod', 'nazev', 'lc',
+    'id', 'kod', 'nazev', 'lc', 'active',
     'telefon_prodejny', 'vt', 'telefon_vt', 'rm', 'telefon_rm', 'zastupce_rm', 'telefon_zastupce',
     'ulice', 'mesto', 'psc',
     'po_otevreno', 'po_zavreno', 'ut_otevreno', 'ut_zavreno', 'st_otevreno', 'st_zavreno',
