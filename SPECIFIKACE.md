@@ -147,6 +147,11 @@ const DB_SCHEMA = {
               'ne_otevreno','ne_zavreno','updated_at'],
   '_logistic_centers': ['id','cislo','zkratka','nazev','created_at','created_by','updated_at','updated_by'],
   '_store_closures':   ['id','nazev','od','do','celkem_dni','updated_at'],
+  // Trvalá historie synchronizací (Log importu) — append-only.
+  '_import_log': ['id','file_name',
+                   'stores_added','stores_changed','stores_removed',
+                   'lc_added','lc_removed','closures_added','closures_removed',
+                   'summary','detail','created_at','created_by'],
 };
 ```
 
@@ -358,7 +363,8 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiGetAuditLog(limit)` | `settings_manage` | limit | posledních N záznamů |
 | `apiGetImportSettings()` | `settings_manage` | — | naposledy odsouhlasená složka/výraz (viz 9.6) |
 | `apiSearchImportFiles(payload)` | `settings_manage` | `{ folderInput, searchTerm }` | nalezené Sheets soubory, od nejnovější úpravy |
-| `apiSyncImportFile(payload)` | `settings_manage` | `{ fileId, folderInput, searchTerm }` | souhrn synchronizace (počty přidáno/změněno/smazáno) |
+| `apiSyncImportFile(payload)` | `settings_manage` | `{ fileId, folderInput, searchTerm }` | souhrn synchronizace (počty přidáno/změněno/smazáno); zapíše i řádek do `_import_log` a pošle oznámení zvonečkem |
+| `apiGetImportLog()` | `settings_manage` | — | posledních 60 záznamů historie synchronizací, od nejnovějšího (Log importu) |
 | `apiGetStores()` | `calendar_read` | — | seznam filiálek, řazený podle Čísla (numericky) — čtení smí každý přihlášený |
 | `apiGetLogisticCenters()` | `calendar_read` | — | seznam LC, řazený podle Čísla (bez čísla vždy na konec) — čtení smí každý přihlášený |
 | `apiSaveLogisticCenter(payload)` | `settings_manage` | `{ id, cislo, zkratka }` | uložené LC — edituje jen tato dvě pole, název je needitovatelný |
@@ -437,9 +443,10 @@ akce (`App.NOTIFY_TYPE_META`) a je oddělená od dalších spodní linkou.
    „teď" — nikdo nedostane nálož oznámení o celé historii appky).
 2. Spočítají se řádky `_audit_log` novější než `last_visit_at`, s akcí
    z whitelistu `NOTIFY_ACTIONS` (`event.create/update/delete`,
-   `comment.create/delete` — správa uživatelů se do oznámení nepočítá) a
-   od NĚKOHO JINÉHO, než je přihlášený (vlastní změny si nikdo nemusí
-   připomínat). Omezeno na `LIMITS.NOTIFY_MAX_ITEMS` posledních.
+   `comment.create/delete`, `import.sync` — správa uživatelů se do
+   oznámení nepočítá) a od NĚKOHO JINÉHO, než je přihlášený (vlastní změny
+   si nikdo nemusí připomínat). Omezeno na `LIMITS.NOTIFY_MAX_ITEMS`
+   posledních.
 
 **Kdy se `last_visit_at` posouvá** — teprve `apiMarkNotificationsSeen`,
 kterou klient zavolá přesně v okamžiku, kdy uživatel OTEVŘE `#notifyModal`
@@ -457,6 +464,13 @@ na který klik v panelu vede, nese samostatný sloupec `_audit_log.entity_id`
 Klik funguje, jen když je událost mezi už načtenými pro zobrazený měsíc
 (`this.currentEvents`) — jinak (jiný měsíc, nebo už smazaná) appka jasně
 řekne, že ji nenašla, místo tichého kliku do prázdna.
+
+`import.sync` je výjimka z pravidla „proklik na událost" — nevztahuje se
+k žádné, `entity_id` u něj nese id řádku `_import_log` (viz 9.6), ale klik
+vede rovnou na Log importu v Nastavení, ne na detail podle entity_id.
+Appka to pozná podle `action`, ne podle entity_id (`App.renderNotifyItem`/
+`bindNotifications`) — a jen tomu, kdo do Nastavení vůbec má přístup
+(SUPERADMIN), ostatním se položka netváří jako klikací.
 
 **Formát data a času** — `D.M.RRRR HH:MM` (bez úvodních nul, české
 zvyklosti) je jediný formát v celé appce, kdekoli se datum zobrazuje spolu
@@ -545,9 +559,26 @@ firemní adresář):
   (tužka → `#lcFormModal`) — **název** je needitovatelný, přichází ze
   zdroje a synchronizace by ruční změnu stejně přepsala zpět.
 
-**Plánované další etapy:** etapa 3 — `_import_log` (trvalá historie
-synchronizací) + oznámení zvonečkem (`import.sync` v `NOTIFY_ACTIONS`);
-etapa 4 — noční trigger 6:00–7:00 založený jednorázově přes `TOOLS_` funkci.
+**Etapa 3 (implementováno)** — podrobný rozdíl a trvalá historie:
+
+- Každá synchronizace teď počítá PODROBNÝ rozdíl oproti stavu před ní, ne
+  jen počty: u filiálek konkrétně KTERÁ pole se změnila (`from`/`to`, popisek
+  sloupce odvozený z `IMPORT_STORE_COLUMNS`), u nových/smazaných filiálek,
+  LC i uzavírek jejich jména/rozsahy.
+- Zapíše se řádek do `_import_log` (append-only, žádná úprava/mazání) —
+  `summary` je krátká věta pro audit log/zvoneček, `detail` delší
+  itemizovaný výpis (max 30 položek na kategorii, zbytek jako „… a dalších
+  N", ať řádek v listu neroste bez mezí) pro rozkliknutí v Logu importu
+  (`<details>` v záložce Import dat, načteno přes `apiGetImportLog`).
+- `audit_('import.sync', summary, entityId)` pošle oznámení zvonečkem
+  všem KROMĚ toho, kdo sync spustil (stejné pravidlo jako u ostatních
+  oznámení) — `entityId` nese id řádku `_import_log`, ale proklik z
+  oznámení nevede na entity_id jako u událostí, vede rovnou na záložku
+  Import dat (viz 9.4, `import.sync` je zdokumentovaná výjimka).
+
+**Plánovaná další etapa:** etapa 4 — noční trigger 6:00–7:00 založený
+jednorázově přes `TOOLS_` funkci, spouští stejnou sdílenou sync logiku
+jako ruční tlačítko.
 
 ---
 

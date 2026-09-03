@@ -1608,6 +1608,78 @@
     padding: 2px 0;
   }
 
+  /* ── Log importu (trvalá historie synchronizací, viz apiGetImportLog) ── */
+
+  .import-log-heading {
+    align-items: center;
+    color: var(--muted);
+    display: flex;
+    font-size: 12px;
+    font-weight: 700;
+    gap: 6px;
+    letter-spacing: 0.03em;
+    margin: 0 0 8px;
+    text-transform: uppercase;
+  }
+
+  .import-log-list {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  .import-log-entry {
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .import-log-entry:last-child {
+    border-bottom: none;
+  }
+
+  .import-log-entry summary {
+    align-items: center;
+    cursor: pointer;
+    display: flex;
+    gap: 12px;
+    list-style: none;
+    padding: 10px 12px;
+  }
+
+  .import-log-entry summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .import-log-entry summary:hover {
+    background: var(--page);
+  }
+
+  .import-log-time {
+    color: var(--muted);
+    flex-shrink: 0;
+    font-size: 12px;
+    width: 120px;
+  }
+
+  .import-log-summary {
+    color: var(--text);
+    font-size: 13px;
+  }
+
+  .import-log-detail {
+    background: var(--page);
+    border-top: 1px solid var(--line-soft);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12.5px;
+    margin: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 10px 12px 10px 144px;
+    white-space: pre-wrap;
+  }
+
   /* ── Formulář typu události — mřížka dlaždic s ikonou (výběr místo
      volného textu, viz renderEventTypeIconPicker/EVENT_TYPE_ICONS). ── */
 

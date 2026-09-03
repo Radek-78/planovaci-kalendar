@@ -293,6 +293,14 @@
             </div>
 
             <div class="import-sync-result" id="importSyncResult"><!-- vykresleno JS --></div>
+
+            <!-- Log importu — trvalá historie synchronizací (viz
+                 apiGetImportLog v server/60_import.js). Každá položka jde
+                 rozkliknout (<details>) na podrobný výpis změn. -->
+            <div class="import-log">
+              <p class="import-log-heading"><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> Historie synchronizací</p>
+              <div class="import-log-list" id="importLogList"><!-- vykresleno JS --></div>
+            </div>
           </div>
         </div>
       </div>
@@ -840,6 +848,9 @@
     /** Poslední nalezené soubory při hledání v Import dat (viz apiSearchImportFiles/renderImportResults). */
     importFiles: [],
 
+    /** Poslední načtená historie synchronizací (Log importu, viz apiGetImportLog). */
+    importLogCache: [],
+
     /** Poslední načtený seznam filiálek — pro dohledání dat při kliku na řádek (openStoreDetailModal). */
     storesCache: [],
 
@@ -1143,10 +1154,21 @@
 
       // Klik na položku oznámení otevře detail události, ke které se
       // vztahuje (viz entityId/renderNotifyItem) — jen ty, co ho mají
-      // (nemrtvý klik nikam, viz is-clickable v CSS).
+      // (nemrtvý klik nikam, viz is-clickable v CSS). Import dat filiálek
+      // je výjimka — vede na Log importu v Nastavení, ne na událost.
       document.querySelector('#calNotifyList').addEventListener('click', (e) => {
         const item = e.target.closest('.notify-item');
-        if (!item || !item.dataset.entityId) return;
+        if (!item) return;
+
+        if (item.dataset.action === 'import.sync') {
+          if (!this.canManageSettings) return; // do Nastavení má přístup jen správce aplikace
+          Ui.closeModal(dialog);
+          this.showSection('settings');
+          this.showSettingsTab('import');
+          return;
+        }
+
+        if (!item.dataset.entityId) return;
         Ui.closeModal(dialog);
         this.openNotificationTarget(item.dataset.entityId, item);
       });
@@ -1230,6 +1252,7 @@
       'event.delete': { icon: 'ph-trash', color: 'var(--lidl-red)', label: 'Smazaná událost' },
       'comment.create': { icon: 'ph-chat-circle', color: 'var(--lidl-blue)', label: 'Nový komentář' },
       'comment.delete': { icon: 'ph-chat-circle-dots', color: 'var(--lidl-red)', label: 'Smazaný komentář' },
+      'import.sync': { icon: 'ph-cloud-arrow-down', color: 'var(--lidl-blue)', label: 'Import dat filiálek' },
     },
 
     /**
@@ -1241,13 +1264,18 @@
      * Klikatelná jen s entityId (viz apiGetBootstrap/_computeNotifications_
      * na serveru) — bez něj (starší řádky logu z doby před přidáním
      * entity_id) by klik neměl kam vést, tak se ani netváří jako tlačítko.
+     * `import.sync` je výjimka — nevede na žádnou konkrétní událost, ale na
+     * Log importu v Nastavení (viz bindNotifications), a to jen tomu, kdo
+     * tam vůbec má přístup (SUPERADMIN) — ostatním se netváří jako tlačítko.
      */
     renderNotifyItem(n) {
       const meta = this.NOTIFY_TYPE_META[n.action] || { icon: 'ph-bell', color: 'var(--muted)', label: 'Oznámení' };
-      const clickable = n.entityId ? ' is-clickable' : '';
+      const isImportLink = n.action === 'import.sync' && this.canManageSettings;
+      const clickable = (n.entityId || isImportLink) ? ' is-clickable' : '';
       const entityAttr = n.entityId ? ' data-entity-id="' + Ui.escape(n.entityId) + '"' : '';
+      const actionAttr = ' data-action="' + Ui.escape(n.action) + '"';
 
-      return '<div class="notify-item' + clickable + '"' + entityAttr + '>' +
+      return '<div class="notify-item' + clickable + '"' + actionAttr + entityAttr + '>' +
         '<span class="notify-item-icon" style="--notify-color:' + Ui.escape(meta.color) + '">' +
           '<i class="ph ' + Ui.escape(meta.icon) + '" aria-hidden="true"></i></span>' +
         '<div class="notify-item-body">' +
@@ -2796,6 +2824,7 @@
           Ui.setButtonLoading(syncButton, false);
           Ui.toast('Synchronizace dokončena.', 'success');
           document.querySelector('#importSyncResult').innerHTML = this.renderImportSyncResult(result);
+          this.loadImportLog(); // čerstvý záznam z právě dokončeného syncu
         })
         .catch((error) => {
           Ui.setButtonLoading(syncButton, false);
@@ -2803,7 +2832,7 @@
         });
     },
 
-    /** Souhrn poslední synchronizace — jen na obrazovku, nikam se neukládá (viz komentář v 60_import.js). */
+    /** Okamžitý souhrn právě dokončené synchronizace — podrobný záznam mezitím zamířil i do Logu importu (viz loadImportLog). */
     renderImportSyncResult(r) {
       return '<div class="import-result-box">' +
         '<p class="import-result-title"><i class="ph ph-check-circle" aria-hidden="true"></i> Soubor „' + Ui.escape(r.fileName) + '"</p>' +
@@ -2813,6 +2842,48 @@
           '<li>Uzavírky: ' + r.closures.total + ' aktuálně platných</li>' +
         '</ul>' +
       '</div>';
+    },
+
+    loadImportLog() {
+      const list = document.querySelector('#importLogList');
+      list.innerHTML = this.settingsPlaceholder('Načítám historii…');
+
+      Ui.call('apiGetImportLog', null, { silent: true })
+        .then((entries) => {
+          this.importLogCache = entries;
+          this.renderImportLog();
+        })
+        .catch((error) => {
+          list.innerHTML = this.settingsPlaceholder('Historii se nepodařilo načíst.');
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    renderImportLog() {
+      const list = document.querySelector('#importLogList');
+      list.innerHTML = this.importLogCache.length
+        ? this.importLogCache.map((e) => this.renderImportLogEntry(e)).join('')
+        : this.settingsPlaceholder('Zatím žádná synchronizace.');
+    },
+
+    /**
+     * Jeden záznam historie — nativní <details>/<summary>, ať appka
+     * nepotřebuje vlastní JS na rozbalení/sbalení. Podrobný výpis (pole
+     * `detail` ze serveru) se zobrazí, jen když se něco skutečně změnilo —
+     * u „beze změn" syncu by byl jen matoucí prázdný/opakující se text.
+     */
+    renderImportLogEntry(e) {
+      const c = e.counts;
+      const hasChanges = c.storesAdded || c.storesChanged || c.storesRemoved ||
+        c.lcAdded || c.lcRemoved || c.closuresAdded || c.closuresRemoved;
+
+      return '<details class="import-log-entry">' +
+        '<summary>' +
+          '<span class="import-log-time">' + Ui.escape(this.formatDateTime(e.createdAt)) + '</span>' +
+          '<span class="import-log-summary">' + Ui.escape(e.summary) + '</span>' +
+        '</summary>' +
+        (hasChanges ? '<pre class="import-log-detail">' + Ui.escape(e.detail) + '</pre>' : '') +
+      '</details>';
     },
 
     showSection(name) {
@@ -2836,6 +2907,7 @@
         this.loadPositions();
         this.loadEventTypesAdmin();
         this.loadImportSettings();
+        this.loadImportLog();
       }
       if (name === 'stores') this.loadStores();
       if (name === 'lc') this.loadLogisticCenters();

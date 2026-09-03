@@ -30,7 +30,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.2.1',
+  version: 'v0.2.2',
   releaseDate: '3.9.2026',
 
   /**
@@ -105,6 +105,7 @@ const SHEETS = {
   STORES: '_stores',
   LOGISTIC_CENTERS: '_logistic_centers',
   STORE_CLOSURES: '_store_closures',
+  IMPORT_LOG: '_import_log',
 };
 
 /**
@@ -123,8 +124,12 @@ const PERM_KEYS = {
  * (viz apiGetBootstrap/zvoneček v kalendáři). Whitelist, ne "všechno kromě"
  * — třeba změny uživatelů (user.*) se sem záměrně nedávají, oznámení mají
  * nosit jen to, co se přímo týká sdíleného kalendáře.
+ *
+ * `import.sync` je jediná výjimka mimo kalendář — synchronizace filiálek
+ * se týká všech (viz SPECIFIKACE.md 9.6), proto má i vlastní klik-through
+ * na Log importu místo na událost (viz App.renderNotifyItem).
  */
-const NOTIFY_ACTIONS = ['event.create', 'event.update', 'event.delete', 'comment.create', 'comment.delete'];
+const NOTIFY_ACTIONS = ['event.create', 'event.update', 'event.delete', 'comment.create', 'comment.delete', 'import.sync'];
 
 /**
  * Typy událostí — od v0.1.33 plně spravované v Nastavení (list `_event_types`

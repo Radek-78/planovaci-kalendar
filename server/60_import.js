@@ -11,13 +11,17 @@
  *
  * ETAPA 1: ruční vyhledání souboru ve složce na Disku podle hledaného
  * výrazu + samotný import (viz apiSearchImportFiles/apiSyncImportFile).
- * ETAPA 2 (tahle verze): čtení pro sekce Filiálky/LC v menu (čtení smí
- * každý přihlášený — appka slouží i jako firemní adresář, viz konverzace)
- * + ruční úprava čísla/zkratky LC (jen SUPERADMIN).
+ * ETAPA 2: čtení pro sekce Filiálky/LC v menu (čtení smí každý přihlášený
+ * — appka slouží i jako firemní adresář) + ruční úprava čísla/zkratky LC
+ * (jen SUPERADMIN).
+ * ETAPA 3 (tahle verze): každá synchronizace teď počítá PODROBNÝ rozdíl
+ * oproti minulému stavu (přidáno/změněno/smazáno, u filiálek i po
+ * jednotlivých polích) a zapisuje ho do _import_log (Log importu
+ * v Nastavení, viz apiGetImportLog) + posílá oznámení zvonečkem
+ * (`import.sync` v NOTIFY_ACTIONS).
  *
- * Hlídání rozdílů oproti minulému stavu, trvalý Log importu a oznámení
- * zvonečkem přibudou v etapě 3, noční automatická synchronizace v etapě 4
- * (viz SPECIFIKACE.md kapitola 9.6).
+ * Noční automatická synchronizace přibude v etapě 4 (viz SPECIFIKACE.md
+ * kapitola 9.6).
  *
  * Sloupce se hledají podle PŘESNÉHO textu hlavičky v řádku 1, ne podle
  * pozice — cizí systém sloupce časem může přeuspořádat, appka na tom nesmí
@@ -251,8 +255,10 @@ function apiSearchImportFiles(payload) {
  * ne řádek po řádku). Použitá složka/výraz se uloží do _settings, ať noční
  * trigger (přibude v etapě 4) navazuje na tuhle odsouhlasenou konfiguraci.
  *
- * Vrací počty pro OKAMŽITOU zpětnou vazbu ve formuláři (přidáno/smazáno/
- * změněno) — trvalá historie a oznámení zvonečkem přibudou v etapě 3.
+ * Rozdíl oproti minulému stavu se zapíše do _import_log (Log importu
+ * v Nastavení) a pošle se jako oznámení zvonečkem (`import.sync`, viz
+ * NOTIFY_ACTIONS v 00_config.js) — appka na to čekala od etapy 1, tohle
+ * je etapa 3 (viz SPECIFIKACE.md 9.6).
  */
 function apiSyncImportFile(payload) {
   return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
@@ -276,42 +282,57 @@ function apiSyncImportFile(payload) {
     if (data.folderInput) settingsSet_('importFolderId', String(data.folderInput).trim());
     if (data.searchTerm) settingsSet_('importSearchTerm', String(data.searchTerm).trim());
 
-    audit_('import.sync', 'Synchronizace dat filiálek ze souboru „' + spreadsheet.getName() + '" — ' +
-      storesResult.total + ' filiálek, ' + lcResult.total + ' LC, ' + closuresResult.total + ' uzavírek');
+    const diffData = { fileName: spreadsheet.getName(), stores: storesResult, logisticCenters: lcResult, closures: closuresResult };
+    const logEntry = _importWriteLog_(diffData);
+    audit_('import.sync', logEntry.summary, logEntry.id);
 
     return {
       fileName: spreadsheet.getName(),
-      stores: storesResult,
-      logisticCenters: lcResult,
-      closures: closuresResult,
+      stores: { total: storesResult.total, added: storesResult.added.length, changed: storesResult.changed.length, removed: storesResult.removed.length },
+      logisticCenters: { total: lcResult.total, added: lcResult.added.length, removed: lcResult.removed.length },
+      closures: { total: closuresResult.total, added: closuresResult.added.length, removed: closuresResult.removed.length },
     };
   });
 }
 
-/** Porovná uložený a nově importovaný záznam filiálky — jen sledovaná pole ze zdroje, ne interní (id/updated_at). */
-function _storeRowDiffers_(existing, incoming) {
-  return DB_SCHEMA[SHEETS.STORES].some((field) => {
-    if (field === 'id' || field === 'updated_at') return false;
-    return String(existing[field] || '') !== String(incoming[field] || '');
+/**
+ * Porovná uložený a nově importovaný záznam filiálky a vrátí pole změn
+ * `{ field, from, to }` — jen sledovaná pole ze zdroje, ne interní
+ * (id/updated_at). Prázdné pole = beze změny.
+ */
+function _storeRowChanges_(existing, incoming) {
+  const changes = [];
+  DB_SCHEMA[SHEETS.STORES].forEach((field) => {
+    if (field === 'id' || field === 'updated_at') return;
+    const from = String(existing[field] || '');
+    const to = String(incoming[field] || '');
+    if (from !== to) changes.push({ field: field, from: from, to: to });
   });
+  return changes;
 }
 
-/** Nahradí _stores daty ze zdroje, vrátí počty přidaných/změněných/smazaných filiálek. */
+/** Nahradí _stores daty ze zdroje, vrátí PODROBNÝ rozdíl (ne jen počty) — viz _importWriteLog_/apiGetImportLog. */
 function _importSyncStores_(storeRows) {
   const before = dbGetAll_(SHEETS.STORES);
   const beforeMap = {};
   before.forEach((row) => { beforeMap[String(row.id)] = row; });
 
   const afterIds = {};
-  let added = 0;
-  let changed = 0;
+  const added = [];
+  const changed = [];
   storeRows.forEach((row) => {
     afterIds[row.id] = true;
     const existing = beforeMap[row.id];
-    if (!existing) added++;
-    else if (_storeRowDiffers_(existing, row)) changed++;
+    if (!existing) {
+      added.push({ id: row.id, nazev: row.nazev });
+    } else {
+      const fields = _storeRowChanges_(existing, row);
+      if (fields.length) changed.push({ id: row.id, nazev: row.nazev, fields: fields });
+    }
   });
-  const removed = before.filter((row) => !afterIds[String(row.id)]).length;
+  const removed = before
+    .filter((row) => !afterIds[String(row.id)])
+    .map((row) => ({ id: String(row.id), nazev: String(row.nazev) }));
 
   dbReplaceAll_(SHEETS.STORES, storeRows);
   return { total: storeRows.length, added: added, changed: changed, removed: removed };
@@ -336,24 +357,171 @@ function _importSyncLogisticCenters_(storeRows) {
   const beforeByName = {};
   before.forEach((row) => { beforeByName[String(row.nazev)] = row; });
 
-  let added = 0;
+  const added = [];
   const records = Object.keys(names).sort().map((name) => {
     const existing = beforeByName[name];
     if (existing) return Object.assign({}, existing, { nazev: name });
-    added++;
+    added.push(name);
     return { nazev: name, cislo: '', zkratka: '' };
   });
-  const removed = before.filter((row) => !names[String(row.nazev)]).length;
+  const removed = before.filter((row) => !names[String(row.nazev)]).map((row) => String(row.nazev));
 
   dbReplaceAll_(SHEETS.LOGISTIC_CENTERS, records);
   return { total: records.length, added: added, removed: removed };
 }
 
-/** Kompletně nahradí _store_closures aktuálním snímkem uzavírek ze zdroje. */
+/** Kompletně nahradí _store_closures aktuálním snímkem uzavírek ze zdroje, vrátí PODROBNÝ rozdíl (nově zavřené/už neuzavřené). */
 function _importSyncClosures_(closureRows) {
   const before = dbGetAll_(SHEETS.STORE_CLOSURES);
+  const beforeIds = {};
+  before.forEach((row) => { beforeIds[String(row.id)] = row; });
+  const afterIds = {};
+  closureRows.forEach((row) => { afterIds[row.id] = true; });
+
+  const added = closureRows
+    .filter((row) => !beforeIds[row.id])
+    .map((row) => ({ id: row.id, nazev: row.nazev, od: row.od, do: row.do }));
+  const removed = before
+    .filter((row) => !afterIds[String(row.id)])
+    .map((row) => ({ id: String(row.id), nazev: String(row.nazev) }));
+
   dbReplaceAll_(SHEETS.STORE_CLOSURES, closureRows);
-  return { total: closureRows.length, previousTotal: before.length };
+  return { total: closureRows.length, added: added, removed: removed };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LOG IMPORTU (_import_log) — trvalá historie synchronizací + oznámení
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Popisek sloupce filiálky pro člověka (Log importu) — odvozený z IMPORT_STORE_COLUMNS, ať se popisky nepíšou dvakrát. */
+function _importFieldLabel_(field) {
+  const col = IMPORT_STORE_COLUMNS.find((c) => c.field === field);
+  return col ? col.header : field;
+}
+
+/** Prvních `limit` položek zformátovaných přes formatFn, zbytek shrne jako "… a dalších N" — ať detail nikdy neroste bez mezí. */
+function _importDetailLines_(items, formatFn, limit) {
+  const lines = items.slice(0, limit).map(formatFn);
+  if (items.length > limit) lines.push('… a dalších ' + (items.length - limit));
+  return lines;
+}
+
+/**
+ * Krátké shrnutí synchronizace — jde do audit logu (a tedy do zvonečku
+ * s oznámeními), musí se vejít na pár řádků. Vypisuje jen sekce, kde se
+ * něco skutečně stalo — „beze změn" se nerozepisuje na nulové položky.
+ */
+function _importBuildSummary_(data) {
+  const parts = [];
+
+  const storeParts = [];
+  if (data.stores.added.length) storeParts.push(data.stores.added.length + ' nových');
+  if (data.stores.changed.length) storeParts.push(data.stores.changed.length + ' změněných');
+  if (data.stores.removed.length) storeParts.push(data.stores.removed.length + ' smazaných');
+  if (storeParts.length) parts.push('filiálky: ' + storeParts.join(', '));
+
+  const lcParts = [];
+  if (data.logisticCenters.added.length) lcParts.push(data.logisticCenters.added.length + ' nových');
+  if (data.logisticCenters.removed.length) lcParts.push(data.logisticCenters.removed.length + ' smazaných');
+  if (lcParts.length) parts.push('LC: ' + lcParts.join(', '));
+
+  const closureParts = [];
+  if (data.closures.added.length) closureParts.push(data.closures.added.length + ' nových');
+  if (data.closures.removed.length) closureParts.push(data.closures.removed.length + ' skončených');
+  if (closureParts.length) parts.push('uzavírky: ' + closureParts.join(', '));
+
+  if (!parts.length) return 'Synchronizace „' + data.fileName + '" — beze změn oproti minulému syncu.';
+  return 'Synchronizace „' + data.fileName + '" — ' + parts.join('; ');
+}
+
+/** Podrobný, itemizovaný výpis změn — pro rozkliknutí přímo v Logu importu (ne pro zvoneček, ten dostává jen _importBuildSummary_). */
+function _importBuildDetailText_(data) {
+  const lines = [];
+
+  if (data.stores.added.length) {
+    lines.push('NOVÉ FILIÁLKY:');
+    Array.prototype.push.apply(lines, _importDetailLines_(data.stores.added, (s) => '- ' + s.id + ' ' + s.nazev, 30));
+  }
+  if (data.stores.removed.length) {
+    lines.push('SMAZANÉ FILIÁLKY:');
+    Array.prototype.push.apply(lines, _importDetailLines_(data.stores.removed, (s) => '- ' + s.id + ' ' + s.nazev, 30));
+  }
+  if (data.stores.changed.length) {
+    lines.push('ZMĚNĚNÉ FILIÁLKY:');
+    Array.prototype.push.apply(lines, _importDetailLines_(data.stores.changed, (s) =>
+      '- ' + s.id + ' ' + s.nazev + ': ' + s.fields.map((f) =>
+        _importFieldLabel_(f.field) + ' „' + f.from + '" → „' + f.to + '"'
+      ).join(', '), 30));
+  }
+  if (data.logisticCenters.added.length) {
+    lines.push('NOVÁ LC: ' + data.logisticCenters.added.join(', '));
+  }
+  if (data.logisticCenters.removed.length) {
+    lines.push('SMAZANÁ LC: ' + data.logisticCenters.removed.join(', '));
+  }
+  if (data.closures.added.length) {
+    lines.push('NOVĚ ZAVŘENO:');
+    Array.prototype.push.apply(lines, _importDetailLines_(data.closures.added, (c) =>
+      '- ' + c.id + ' ' + c.nazev + ' (' + c.od + '–' + c.do + ')', 30));
+  }
+  if (data.closures.removed.length) {
+    lines.push('JIŽ NEZAVŘENO: ' + data.closures.removed.map((c) => c.id + ' ' + c.nazev).join(', '));
+  }
+
+  return lines.length ? lines.join('\n') : 'Beze změn oproti minulému syncu.';
+}
+
+/** Zapíše řádek do _import_log a vrátí ho (i s id, pro entityId auditu — proklik ze zvonečku, viz apiSyncImportFile). */
+function _importWriteLog_(data) {
+  return dbInsert_(SHEETS.IMPORT_LOG, {
+    file_name: data.fileName,
+    stores_added: data.stores.added.length,
+    stores_changed: data.stores.changed.length,
+    stores_removed: data.stores.removed.length,
+    lc_added: data.logisticCenters.added.length,
+    lc_removed: data.logisticCenters.removed.length,
+    closures_added: data.closures.added.length,
+    closures_removed: data.closures.removed.length,
+    summary: _importBuildSummary_(data),
+    detail: _importBuildDetailText_(data),
+  });
+}
+
+/** Přemění řádek Logu importu na podobu pro klienta. */
+function _publicImportLogEntry_(row) {
+  return {
+    id: String(row.id),
+    fileName: String(row.file_name || ''),
+    createdAt: String(row.created_at || ''),
+    createdBy: String(row.created_by || ''),
+    summary: String(row.summary || ''),
+    detail: String(row.detail || ''),
+    counts: {
+      storesAdded: Number(row.stores_added || 0),
+      storesChanged: Number(row.stores_changed || 0),
+      storesRemoved: Number(row.stores_removed || 0),
+      lcAdded: Number(row.lc_added || 0),
+      lcRemoved: Number(row.lc_removed || 0),
+      closuresAdded: Number(row.closures_added || 0),
+      closuresRemoved: Number(row.closures_removed || 0),
+    },
+  };
+}
+
+/**
+ * Posledních NOTIFY_MAX_ITEMS × 2 záznamů historie synchronizací, od
+ * nejnovějšího — pro Log importu v Nastavení. Vlastní limit (ne
+ * NOTIFY_MAX_ITEMS přímo) — tohle je trvalý přehled k prolistování, ne
+ * jednorázové oznámení, klidně unese o něco víc položek.
+ */
+function apiGetImportLog() {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    return dbGetAll_(SHEETS.IMPORT_LOG)
+      .slice()
+      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+      .slice(0, 60)
+      .map(_publicImportLogEntry_);
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════════════════

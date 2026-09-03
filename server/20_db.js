@@ -83,6 +83,19 @@ const DB_SCHEMA = {
   // (ne upsert), staré uzavírky tak zmizí samy, jakmile je zdroj přestane
   // posílat (viz _importSyncClosures_).
   _store_closures: ['id', 'nazev', 'od', 'do', 'celkem_dni', 'updated_at'],
+  // Trvalá historie synchronizací (Log importu v Nastavení) — append-only,
+  // žádný řádek se needituje ani nemaže, proto jen created_at/created_by
+  // (kdo/kdy spustil sync), ne updated_*. `summary` je krátký text pro
+  // zvoneček/audit log (viz audit_), `detail` delší itemizovaný výpis změn
+  // pro rozkliknutí přímo v Logu importu.
+  _import_log: [
+    'id', 'file_name',
+    'stores_added', 'stores_changed', 'stores_removed',
+    'lc_added', 'lc_removed',
+    'closures_added', 'closures_removed',
+    'summary', 'detail',
+    'created_at', 'created_by',
+  ],
 };
 
 /**
@@ -114,6 +127,7 @@ const TEXT_COLUMNS = {
   ],
   _logistic_centers: ['created_at', 'updated_at'],
   _store_closures: ['od', 'do', 'updated_at'],
+  _import_log: ['created_at'],
 };
 
 /**
