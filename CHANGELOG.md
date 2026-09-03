@@ -5,6 +5,12 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.3.1 - 03.09.2026 18:59
+- Oprava scrollování a doladění tabulek — skutečná příčina scrollování celé stránky místo jen pole dat: chybělo min-height 0 na .main (grid položka), appka i po předchozí opravě .app rostla nad výšku okna
+- hlavička sloupce je teď klikací přes celou výšku řádku, ne jen na výšku textu
+- položky v okně filtru mají větší rozestupy
+- řazení a filtrování sloupců nově funguje i v záložce Uživatelé (Jméno, E-mail, Role, Umístění, Oddělení, Pozice, Oprávnění, Stav)
+
 ## v0.3.0 - 03.09.2026 18:37
 - Vzhled a interakce datových tabulek — oprava zásadní chyby layoutu: .app mělo min-height místo height 100vh, takže appka rostla nad výšku okna a scrollovala se celá stránka najednou
 - horní lišta sekce i hlavička tabulky teď zůstávají napevno na místě ve všech záložkách, data pod nimi scrollují samostatně

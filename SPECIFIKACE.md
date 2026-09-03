@@ -584,28 +584,38 @@ firemní adresář):
   CELÝ, ne jen název) — nechrání ale LC před smazáním, když v novém
   importu už u žádné filiálky nefiguruje.
 
-**Vzhled a interakce tabulkových přehledů (Filiálky, LC — implementováno):**
+**Vzhled a interakce tabulkových přehledů (Uživatelé, Filiálky, LC — implementováno):**
 
 - **Pevná horní lišta a pevná hlavička tabulky.** `.app` má `height: 100vh`
-  (ne `min-height`) — bez toho by appka rostla podle obsahu nad výšku
-  okna a scrollovala by se celá stránka najednou, takže by `.section-header`
-  i `.data-table-head`/`.users-table-head` (obě `position: sticky`)
-  odjížděly pryč spolu s daty místo aby zůstávaly na místě. Týká se
-  všech sekcí, ne jen Filiálky/LC — oprava jedné vlastnosti nahoře
-  v layoutu zprovoznila scrollování uvnitř kontejneru (`flex: 1;
-  min-height: 0; overflow-y: auto`) všude, kde už bylo připravené, ale
-  fakticky nefungovalo.
+  (ne `min-height`) a `overflow: hidden` jako pojistka, `.main` (grid
+  položka uvnitř) má `min-height: 0` — bez tohohle třetího kroku appka
+  pořád rostla podle obsahu nad výšku okna a scrollovala se celá stránka
+  najednou i po nastavení `height` na `.app` samotné (klasická past
+  „grid/flex položka se nezmenší pod velikost obsahu bez min-height: 0",
+  stejná jako už ošetřená u `.view-panel`/`.users-panel-wrap` níž v řetězu
+  — jen o úroveň výš, u `.main`, na to se předtím zapomnělo). Bez toho
+  by `.section-header` i `.data-table-head`/`.users-table-head` (obě
+  `position: sticky`) odjížděly pryč spolu s daty místo aby zůstávaly na
+  místě. Týká se všech sekcí, ne jen Filiálky/LC.
 - **Hlavička sloupce = řazení + filtr (Excel-like).** Klik na hlavičku
-  (kromě Akce) otevře popover (`App.openColumnFilterPopover`) se dvěma
-  tlačítky řazení (popisek podle typu sloupce — text „A → Z"/„Z → A",
-  číslo „Nejmenší → největší"/…, u Stavu „Zavřené nahoře"/„Otevřené
-  nahoře") a zaškrtávacím seznamem DISTINCT hodnot pro filtr. Druhý klik
-  na stejnou hlavičku popover jen zavře. Filtr u Stavu funguje na
-  KATEGORII (zavřeno/zavře se brzy/otevřeno), ne na konkrétním textu
-  buňky — jinak by šlo zaškrtnout jen jedno konkrétní datum, appka chce
-  filtrovat všechny zavřené najednou bez ohledu na datum. Konfigurace
-  sloupců (`App.DATA_TABLE_COLUMNS`) je jediný zdroj pravdy, ze kterého
-  se vykresluje i samotná hlavička — žádné ruční HTML.
+  (kromě Akce, u Uživatelů i mimo prázdný sloupec s avatarem) otevře
+  popover (`App.openColumnFilterPopover`) se dvěma tlačítky řazení
+  (popisek podle typu sloupce — text „A → Z"/„Z → A", číslo „Nejmenší →
+  největší"/…, u kategorií jako Stav/Role/Oprávnění vlastní popisky) a
+  zaškrtávacím seznamem DISTINCT hodnot pro filtr. Klikací plocha
+  hlavičky je natažená (`align-self: stretch`) přes CELOU výšku řádku
+  hlavičky, ne jen na výšku textu — jinak by klik kousek nad/pod
+  písmem nezabral. Druhý klik na stejnou hlavičku popover jen zavře.
+  Filtr u Stavu (Filiálky) funguje na KATEGORII (zavřeno/zavře se
+  brzy/otevřeno), ne na konkrétním textu buňky — jinak by šlo zaškrtnout
+  jen jedno konkrétní datum, appka chce filtrovat všechny zavřené
+  najednou bez ohledu na datum. Konfigurace sloupců
+  (`App.DATA_TABLE_COLUMNS`, sekce `users`/`stores`/`lc`) je jediný zdroj
+  pravdy, ze kterého se vykresluje i samotná hlavička — žádné ruční HTML.
+  Funkce v konfiguraci (`filterValue`/`sortValue`/`filterLabel`) se volají
+  bez `this` (šipková funkce v objektovém literálu by si `this` stejně
+  nevzala z `App`) — kde je potřeba mapa popisků, je zapsaná znovu na
+  místě, ne přes `this.ROLE_LABELS` apod.
 - **Detail filiálky ve třech sloupcích** (Adresa / Kontakty / Otevírací
   doba), každý vlastní oddíl — modal proto používá novou širší třídu
   `.modal-xwide` (960 px) místo `.modal-wide` (720 px).

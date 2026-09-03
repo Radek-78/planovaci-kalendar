@@ -134,18 +134,7 @@
         </button>
       </div>
       <div class="users-panel-wrap">
-        <div class="users-table-head">
-          <span></span>
-          <span>Jméno</span>
-          <span>E-mail</span>
-          <span>Role</span>
-          <span>Umístění</span>
-          <span>Oddělení</span>
-          <span>Pozice</span>
-          <span>Oprávnění</span>
-          <span>Stav</span>
-          <span>Akce</span>
-        </div>
+        <div class="users-table-head" id="usersTableHead"><!-- vykresleno JS, viz renderDataTableHead --></div>
         <div class="users-table-body" id="usersList"><!-- vykresleno JS --></div>
       </div>
     </section>
@@ -1547,6 +1536,9 @@
 
     /** Otevírání/zavírání formuláře nového uživatele, přepínání pole "Oprávnění", odeslání. */
     bindUserForm() {
+      this.renderDataTableHead('users');
+      this.bindDataTableHead('users');
+
       document.querySelector('#usersCreateBtn').addEventListener('click', (e) => {
         this.openUserFormModal(null, e.currentTarget);
       });
@@ -1829,12 +1821,20 @@
       this.renderUsersFromCache();
     },
 
-    /** Vykreslí #usersList z this.usersCache beze změny — samostatná funkce, ať ji může použít i applyUserToCache. */
+    /**
+     * Vykreslí #usersList z this.usersCache — samostatná funkce, ať ji
+     * může použít i applyUserToCache/refreshDataTable (po změně sloupcového
+     * řazení/filtru, viz DATA_TABLE_COLUMNS.users). Pořadí v this.usersCache
+     * samotné (podle created_at ze serveru) se přitom nemění, filtr/řazení
+     * se aplikuje jen na to, co se skutečně vykreslí.
+     */
     renderUsersFromCache() {
       const list = document.querySelector('#usersList');
-      list.innerHTML = this.usersCache.length
-        ? this.usersCache.map((u) => this.renderUserRow(u)).join('')
-        : this.usersPlaceholder('Zatím žádní uživatelé.');
+      const rows = this.applyDataTableView('users', this.usersCache);
+
+      list.innerHTML = rows.length
+        ? rows.map((u) => this.renderUserRow(u)).join('')
+        : this.usersPlaceholder(this.usersCache.length ? 'Žádný uživatel neodpovídá filtru.' : 'Zatím žádní uživatelé.');
     },
 
     /**
@@ -1933,11 +1933,51 @@
      * na datumu", viz konverzace), `filterLabel` jak se skupina popíše,
      * `filterOrder`/`filterSort` jak se seznam skupin seřadí. `sortValue`
      * řídí řazení ŘÁDKŮ, `sortAsc`/`sortDesc` jsou popisky tlačítek (liší
-     * se podle typu sloupce — text/číslo/kategorie). Sloupec bez
-     * `filterValue` (`actionsOnly`) se vykreslí jako obyčejný <span>,
-     * neklikací — pro Akce, kde řazení/filtrování nedává smysl.
+     * se podle typu sloupce — text/číslo/kategorie). `actionsOnly` sloupec
+     * (Akce) se vykreslí jako obyčejný <span id="{tabulka}ActionsHead">
+     * (kvůli skrytí celého sloupce uživatelům bez práva — viz onBootstrap),
+     * `plain` jako úplně obyčejný <span> bez id (dekorativní sloupec bez
+     * popisku, např. avatar u Uživatelů) — ani jeden neklikací, řazení/
+     * filtrování u nich nedává smysl.
+     *
+     * POZOR: funkce tady (filterValue/sortValue/filterLabel) se volají
+     * jako obyčejná volání (`col.filterValue(row)`), ne přes `this` — proto
+     * NESMÍ uvnitř sahat na `this` (šipková funkce v literálu objektu by si
+     * `this` stejně nevzala z App, ale z okolního scope). Kde je potřeba
+     * mapa popisků (např. role), je radši zapsaná znovu na místě.
      */
     DATA_TABLE_COLUMNS: {
+      users: [
+        { key: 'avatar', label: '', plain: true },
+        { key: 'jmeno', label: 'Jméno', filterValue: (u) => u.fullName, sortValue: (u) => u.fullName, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
+        { key: 'email', label: 'E-mail', filterValue: (u) => u.email, sortValue: (u) => u.email, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
+        {
+          key: 'role', label: 'Role',
+          filterValue: (u) => u.role,
+          filterLabel: (v) => ({ SUPERADMIN: 'Správce aplikace', ADMIN: 'Administrátor', USER: 'Uživatel' }[v] || v),
+          filterOrder: ['SUPERADMIN', 'ADMIN', 'USER'],
+          sortValue: (u) => ({ SUPERADMIN: 0, ADMIN: 1, USER: 2 }[u.role]),
+          sortAsc: 'Správce nahoře', sortDesc: 'Uživatel nahoře',
+        },
+        { key: 'umisteni', label: 'Umístění', filterValue: (u) => u.location || '—', sortValue: (u) => u.location, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
+        { key: 'oddeleni', label: 'Oddělení', filterValue: (u) => u.department || '—', sortValue: (u) => u.department, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
+        { key: 'pozice', label: 'Pozice', filterValue: (u) => u.position || '—', sortValue: (u) => u.position, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
+        {
+          key: 'opravneni', label: 'Oprávnění',
+          filterValue: (u) => u.permission === 'EDITOR' ? 'Zápis' : 'Jen čtení',
+          sortValue: (u) => u.permission === 'EDITOR' ? 0 : 1,
+          sortAsc: 'Zápis nahoře', sortDesc: 'Jen čtení nahoře',
+        },
+        {
+          key: 'stav', label: 'Stav',
+          filterValue: (u) => u.active ? 'active' : 'inactive',
+          filterLabel: (v) => v === 'active' ? 'Aktivní' : 'Neaktivní',
+          filterOrder: ['active', 'inactive'],
+          sortValue: (u) => u.active ? 0 : 1,
+          sortAsc: 'Aktivní nahoře', sortDesc: 'Neaktivní nahoře',
+        },
+        { key: 'akce', label: 'Akce', actionsOnly: true },
+      ],
       stores: [
         { key: 'cislo', label: 'Číslo', filterValue: (s) => s.id, sortValue: (s) => Number(s.id), filterSort: 'number', sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší' },
         { key: 'nazev', label: 'Název', filterValue: (s) => s.nazev, sortValue: (s) => s.nazev, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
@@ -1966,11 +2006,12 @@
 
     /** Aktuální řazení/filtry obou tabulek — čistě na klientovi, nic se neukládá na server. */
     dataTableState: {
+      users: { sortKey: null, sortDir: 'asc', filters: {} },
       stores: { sortKey: null, sortDir: 'asc', filters: {} },
       lc: { sortKey: null, sortDir: 'asc', filters: {} },
     },
 
-    /** Vykreslí hlavičku tabulky (#storesTableHead/#lcTableHead) z DATA_TABLE_COLUMNS — jediné místo, které hlavičku sestavuje. */
+    /** Vykreslí hlavičku tabulky (#usersTableHead/#storesTableHead/#lcTableHead) z DATA_TABLE_COLUMNS — jediné místo, které hlavičku sestavuje. */
     renderDataTableHead(tableName) {
       const head = document.querySelector('#' + tableName + 'TableHead');
       const state = this.dataTableState[tableName];
@@ -1978,6 +2019,9 @@
       head.innerHTML = this.DATA_TABLE_COLUMNS[tableName].map((col) => {
         if (col.actionsOnly) {
           return '<span id="' + tableName + 'ActionsHead">' + Ui.escape(col.label) + '</span>';
+        }
+        if (col.plain) {
+          return '<span>' + Ui.escape(col.label) + '</span>';
         }
         const isSorted = state.sortKey === col.key;
         const hasFilter = !!state.filters[col.key];
@@ -2031,7 +2075,8 @@
     /** Znovu vykreslí hlavičku i data dané tabulky — po každé změně řazení/filtru. */
     refreshDataTable(tableName) {
       this.renderDataTableHead(tableName);
-      if (tableName === 'stores') this.renderStores();
+      if (tableName === 'users') this.renderUsersFromCache();
+      else if (tableName === 'stores') this.renderStores();
       else this.renderLc();
     },
 
