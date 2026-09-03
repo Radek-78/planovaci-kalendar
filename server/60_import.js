@@ -341,10 +341,12 @@ function _importSyncStores_(storeRows) {
 /**
  * Odvodí seznam LC z distinct hodnot sloupce LC v datech filiálek a nahradí
  * jimi _logistic_centers. Existující řádky (párované podle názvu) si
- * ponechají ručně zadané číslo/zkratku i datum založení, nové se založí
- * prázdné (číslo/zkratku doplní SUPERADMIN v appce). LC, které v novém
- * importu už u žádné filiálky nefiguruje, ze seznamu zmizí — stejné
- * pravidlo jako u filiálek výše.
+ * ponechají ručně zadané číslo/zkratku/aktivní-neaktivní i datum založení
+ * (bere se CELÝ existující řádek, ne jen název — deaktivace tak přežije
+ * i tuhle a všechny další synchronizace). Nové LC se založí prázdné a
+ * rovnou aktivní (číslo/zkratku doplní SUPERADMIN v appce). LC, které
+ * v novém importu už u žádné filiálky nefiguruje, ze seznamu zmizí —
+ * stejné pravidlo jako u filiálek výše (i deaktivované).
  */
 function _importSyncLogisticCenters_(storeRows) {
   const names = {};
@@ -362,7 +364,7 @@ function _importSyncLogisticCenters_(storeRows) {
     const existing = beforeByName[name];
     if (existing) return Object.assign({}, existing, { nazev: name });
     added.push(name);
-    return { nazev: name, cislo: '', zkratka: '' };
+    return { nazev: name, cislo: '', zkratka: '', active: true };
   });
   const removed = before.filter((row) => !names[String(row.nazev)]).map((row) => String(row.nazev));
 
@@ -532,9 +534,48 @@ function apiGetImportLog() {
    (jen číslo/zkratku LC) smí pořád jen SUPERADMIN (`settings_manage`).
    ══════════════════════════════════════════════════════════════════════════ */
 
-/** Přemění řádek filiálky na podobu pro klienta — camelCase pole + info o aktuální uzavírce (viz _store_closures). */
-function _publicStore_(row, closuresByStore) {
-  const closure = closuresByStore[String(row.id)];
+/**
+ * Rozdíl ve dnech mezi dvěma daty "YYYY-MM-DD" (to − from). Obě se
+ * parsují stejně (půlnoc UTC), takže na časovém pásmu pro samotný ROZDÍL
+ * nezáleží — jde jen o počet dní mezi nimi, ne o žádný konkrétní okamžik.
+ */
+function _daysBetween_(fromIso, toIso) {
+  const ms = new Date(toIso).getTime() - new Date(fromIso).getTime();
+  return Math.round(ms / 86400000);
+}
+
+/**
+ * Vyhodnotí uzavírku filiálky vůči DNEŠKU — `_store_closures` totiž není
+ * jen "aktuálně zavřeno", zdroj do něj dává i uzavírky s budoucím Od
+ * (plánované) i takové, jejichž Do už je v minulosti (doběhlé). Appka
+ * proto musí sama rozeznat, do kterého z těch tří stavů řádek patří:
+ *
+ * - `current`  — dnešek leží mezi Od a Do (včetně) → filiálka je zavřená TEĎ
+ * - `upcoming` — Od je v budoucnu → filiálka se teprve zavře, appka k tomu
+ *                dopočítá "za kolik dní" (viz _daysBetween_)
+ * - `null`     — Do už je v minulosti (uzavírka doběhla) → appka ji bere,
+ *                jako by neexistovala (a nešíří ji dál na klienta)
+ *
+ * Bez tohohle rozlišení appka dřív ukazovala "Zavřeno" úplně u všech
+ * filiálek se záznamem v listu, bez ohledu na to, jestli uzavírka vůbec
+ * NĚKDY nastane teď — to byla ta nahlášená chyba.
+ */
+function _evaluateClosure_(closure, today) {
+  if (!closure) return null;
+  const od = String(closure.od);
+  const doD = String(closure.do);
+
+  if (od <= today && today <= doD) {
+    return { status: 'current', from: od, to: doD };
+  }
+  if (od > today) {
+    return { status: 'upcoming', from: od, to: doD, daysUntil: _daysBetween_(today, od) };
+  }
+  return null; // doD < today — uzavírka už doběhla
+}
+
+/** Přemění řádek filiálky na podobu pro klienta — camelCase pole + vyhodnocená uzavírka (viz _evaluateClosure_). */
+function _publicStore_(row, closuresByStore, today) {
   return {
     id: String(row.id),
     kod: String(row.kod || ''),
@@ -560,8 +601,8 @@ function _publicStore_(row, closuresByStore) {
       { label: 'Sobota', otevreno: String(row.so_otevreno || ''), zavreno: String(row.so_zavreno || '') },
       { label: 'Neděle', otevreno: String(row.ne_otevreno || ''), zavreno: String(row.ne_zavreno || '') },
     ],
-    closedFrom: closure ? String(closure.od) : '',
-    closedTo: closure ? String(closure.do) : '',
+    // null | { status: 'current'|'upcoming', from, to, daysUntil? } — viz _evaluateClosure_.
+    closure: _evaluateClosure_(closuresByStore[String(row.id)], today),
   };
 }
 
@@ -572,13 +613,14 @@ function _publicStore_(row, closuresByStore) {
  */
 function apiGetStores() {
   return guard_(PERM_KEYS.CALENDAR_READ, () => {
+    const today = todayIso_();
     const closuresByStore = {};
     dbGetAll_(SHEETS.STORE_CLOSURES).forEach((row) => { closuresByStore[String(row.id)] = row; });
 
     return dbGetAll_(SHEETS.STORES)
       .slice()
       .sort((a, b) => Number(a.id) - Number(b.id))
-      .map((row) => _publicStore_(row, closuresByStore));
+      .map((row) => _publicStore_(row, closuresByStore, today));
   });
 }
 
@@ -592,6 +634,17 @@ function _storeCountByLc_() {
   return counts;
 }
 
+/**
+ * Je LC aktivní? Záměrně NE přes toBool_ (ta by prázdnou hodnotu vzala
+ * jako false) — sloupec `active` přibyl do schématu později, než appka
+ * poprvé LC naseje, takže starší řádky mají tuhle buňku prázdnou. Prázdná
+ * hodnota tu musí znamenat "aktivní" (chybějící deaktivace nesmí LC potichu
+ * schovat), jedině výslovné `false` znamená deaktivováno.
+ */
+function _lcIsActive_(row) {
+  return String(row.active) !== 'false';
+}
+
 /** Přemění řádek LC na podobu pro klienta. */
 function _publicLogisticCenter_(row, storeCountByLc) {
   return {
@@ -599,6 +652,7 @@ function _publicLogisticCenter_(row, storeCountByLc) {
     cislo: String(row.cislo || ''),
     zkratka: String(row.zkratka || ''),
     nazev: String(row.nazev || ''),
+    active: _lcIsActive_(row),
     storeCount: storeCountByLc[String(row.nazev)] || 0,
   };
 }
@@ -648,6 +702,35 @@ function apiSaveLogisticCenter(payload) {
     const record = dbUpdate_(SHEETS.LOGISTIC_CENTERS, id, { cislo: cislo, zkratka: zkratka });
     audit_('logisticCenter.update', 'Upraveno LC „' + existing.nazev + '" (číslo ' +
       (cislo || '—') + ', zkratka ' + (zkratka || '—') + ')');
+
+    return _publicLogisticCenter_(record, _storeCountByLc_());
+  });
+}
+
+/**
+ * (De)aktivuje LC — jen nastaví `active: false`/`true` na existujícím
+ * řádku, stejný vzor jako apiSetUserActive u uživatelů. Deaktivace
+ * přežije i další synchronizace (viz _importSyncLogisticCenters_ —
+ * existující řádek se při syncu přebírá CELÝ, ne jen název), ale
+ * nechrání LC před smazáním: pokud dané LC v novém importu úplně
+ * zmizí (žádná filiálka ho už nemá), smaže se stejně jako aktivní.
+ *
+ * @param {Object} payload  { id, active }
+ */
+function apiSetLogisticCenterActive(payload) {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    const data = payload || {};
+    const id = cleanText_(data.id, 'ID LC', 100, true);
+    const active = data.active === true;
+
+    const existing = dbFindById_(SHEETS.LOGISTIC_CENTERS, id);
+    if (!existing) {
+      throw userError_('LC nebylo nalezeno — mohla ho mezitím smazat synchronizace.');
+    }
+
+    const record = dbUpdate_(SHEETS.LOGISTIC_CENTERS, id, { active: active });
+    audit_(active ? 'logisticCenter.activate' : 'logisticCenter.deactivate',
+      (active ? 'Aktivováno' : 'Deaktivováno') + ' LC „' + existing.nazev + '"');
 
     return _publicLogisticCenter_(record, _storeCountByLc_());
   });

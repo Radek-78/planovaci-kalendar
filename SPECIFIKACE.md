@@ -145,7 +145,7 @@ const DB_SCHEMA = {
               'po_otevreno','po_zavreno','ut_otevreno','ut_zavreno','st_otevreno','st_zavreno',
               'ct_otevreno','ct_zavreno','pa_otevreno','pa_zavreno','so_otevreno','so_zavreno',
               'ne_otevreno','ne_zavreno','updated_at'],
-  '_logistic_centers': ['id','cislo','zkratka','nazev','created_at','created_by','updated_at','updated_by'],
+  '_logistic_centers': ['id','cislo','zkratka','nazev','active','created_at','created_by','updated_at','updated_by'],
   '_store_closures':   ['id','nazev','od','do','celkem_dni','updated_at'],
   // Trvalá historie synchronizací (Log importu) — append-only.
   '_import_log': ['id','file_name',
@@ -368,6 +368,7 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiGetStores()` | `calendar_read` | — | seznam filiálek, řazený podle Čísla (numericky) — čtení smí každý přihlášený |
 | `apiGetLogisticCenters()` | `calendar_read` | — | seznam LC, řazený podle Čísla (bez čísla vždy na konec) — čtení smí každý přihlášený |
 | `apiSaveLogisticCenter(payload)` | `settings_manage` | `{ id, cislo, zkratka }` | uložené LC — edituje jen tato dvě pole, název je needitovatelný |
+| `apiSetLogisticCenterActive(payload)` | `settings_manage` | `{ id, active }` | uložené LC — deaktivace přežije i další synchronizaci, viz 9.6 |
 
 **Rozsah v `apiGetEvents`** se vyhodnocuje jako **průnik**, ne jako „start
 uvnitř rozsahu" — jinak by vícedenní událost začínající minulý měsíc v aktuální
@@ -547,17 +548,35 @@ si z něj bere kopii do vlastních tabulek (`_stores`, `_logistic_centers`,
 přístupné každému přihlášenému (`calendar_read` — appka slouží i jako
 firemní adresář):
 
-- **Filiálky** — čtecí přehled, výchozí řazení podle Čísla (numericky).
-  Filtr nad tabulkou hledá v čísle/názvu/městě/LC (jen na klientovi, nad
-  už načteným seznamem — appka počítá s řádově stovkami filiálek, ne
-  tisíci). Klik na řádek otevře detail (adresa, kontakty VT/RM/zástupce
-  s telefony, otevírací doba po dnech, odznak „Zavřeno do…" podle
-  `_store_closures`) — čistě ke čtení, appka filiálky needituje.
+- **Filiálky** — čtecí přehled (Číslo, Název, LC, Telefon prodejny, VT,
+  RM, Stav — bez sloupce Město, to je prakticky obsažené v Název), výchozí
+  řazení podle Čísla (numericky). Filtr nad tabulkou hledá v čísle/názvu/
+  městě/LC (jen na klientovi, nad už načteným seznamem — appka počítá
+  s řádově stovkami filiálek, ne tisíci). Klik na řádek otevře detail
+  (adresa, kontakty VT/RM/zástupce s telefony, otevírací doba po dnech,
+  odznak podle uzavírky) — čistě ke čtení, appka filiálky needituje.
+  **Stav** — `_store_closures` obsahuje i uzavírky s budoucím Od nebo už
+  proběhlým Do, appka proto na serveru vyhodnocuje každou vůči DNEŠKU
+  (`_evaluateClosure_` v 60_import.js): `current` (dnešek v rozsahu Od–Do)
+  = červeně „Zavřeno" s rozsahem dat, `upcoming` (Od v budoucnu) = „Zavře
+  se za N dní" s rozsahem, jinak (Do už proběhlo) se bere, jako by
+  uzavírka neexistovala. Bez tohohle rozlišení appka dřív ukazovala
+  „Zavřeno" plošně u všech filiálek se záznamem v listu bez ohledu na
+  to, jestli uzavírka vůbec nastává teď — to byla nahlášená chyba.
 - **LC** — řazení podle Čísla (LC bez čísla až na konec), sloupec Filiálek
   = kolik filiálek má aktuálně tohle LC v `lc` (jen doplňková informace).
-  Editovat smí SUPERADMIN (`settings_manage`) jen **číslo** a **zkratku**
+  Editovat smí SUPERADMIN (`settings_manage`) **číslo** a **zkratku**
   (tužka → `#lcFormModal`) — **název** je needitovatelný, přichází ze
-  zdroje a synchronizace by ruční změnu stejně přepsala zpět.
+  zdroje a synchronizace by ruční změnu stejně přepsala zpět. LC lze i
+  **deaktivovat** (`apiSetLogisticCenterActive`, stejný vzor jako
+  aktivace/deaktivace uživatele — potvrzovací modal na deaktivaci,
+  aktivace zpět rovnou) — na rozdíl od čísla/zkratky jde o sloupec, který
+  appka přidala k datům ze zdroje, takže existující řádky ho mají prázdný
+  (`_lcIsActive_` bere prázdnou hodnotu jako aktivní, jen výslovné
+  `false` jako deaktivované). Deaktivace přežije další synchronizaci
+  (`_importSyncLogisticCenters_` bere existující řádek při refreshi
+  CELÝ, ne jen název) — nechrání ale LC před smazáním, když v novém
+  importu už u žádné filiálky nefiguruje.
 
 **Etapa 3 (implementováno)** — podrobný rozdíl a trvalá historie:
 

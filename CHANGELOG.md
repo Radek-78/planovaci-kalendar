@@ -5,6 +5,12 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.2.3 - 03.09.2026 15:20
+- Filiálky/LC — oprava chyby ve sloupci Stav: appka dřív ukazovala „Zavřeno" plošně u všech filiálek se záznamem v Zavrene_Openings bez ohledu na to, jestli uzavírka vůbec nastává teď (list obsahuje i uzavírky s budoucím i už proběhlým termínem)
+- teď se každá vyhodnocuje vůči dnešku — aktuálně zavřené červeně s rozsahem dat, plánované do budoucna jako „Zavře se za N dní" s rozsahem, proběhlé se ignorují
+- v tabulce Filiálky nahrazen sloupec Město sloupcem VT (před RM)
+- LC lze nově deaktivovat (tlačítko v Akce, potvrzovací okno), deaktivace zůstává zachovaná i po další synchronizaci dat
+
 ## v0.2.2 - 03.09.2026 15:10
 - Import dat filiálek — etapa 3: každá synchronizace teď počítá podrobný rozdíl oproti minulému stavu (u filiálek konkrétně která pole se změnila, u nových/smazaných filiálek, LC i uzavírek jejich jména), zapíše ho do nové trvalé historie (Log importu — rozklikávací seznam v záložce Import dat) a pošle oznámení zvonečkem stejně jako u událostí
 - klik na oznámení o synchronizaci vede rovnou na záložku Import dat, ne na konkrétní událost, a vidí ho jen ten, kdo do Nastavení vůbec má přístup

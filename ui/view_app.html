@@ -163,8 +163,8 @@
           <span>Číslo</span>
           <span>Název</span>
           <span>LC</span>
-          <span>Město</span>
           <span>Telefon prodejny</span>
+          <span>VT</span>
           <span>RM</span>
           <span>Stav</span>
         </div>
@@ -1963,19 +1963,41 @@
     },
 
     renderStoreRow(s) {
-      const status = s.closedTo
-        ? '<span class="store-status is-closed"><i class="ph ph-door-open" aria-hidden="true"></i> Zavřeno do ' + Ui.escape(this.formatFullDate(s.closedTo)) + '</span>'
-        : '<span class="store-status">Otevřeno</span>';
-
       return '<div class="data-row store-row" data-id="' + Ui.escape(s.id) + '">' +
         '<span class="user-cell-name">' + Ui.escape(s.id) + '</span>' +
         '<span class="user-cell-name">' + Ui.escape(s.nazev) + '</span>' +
         '<span class="user-cell-muted">' + Ui.escape(s.lc || '—') + '</span>' +
-        '<span class="user-cell-muted">' + Ui.escape(s.mesto || '—') + '</span>' +
         '<span class="user-cell-muted">' + Ui.escape(s.telefonProdejny || '—') + '</span>' +
+        '<span class="user-cell-muted">' + Ui.escape(s.vt || '—') + '</span>' +
         '<span class="user-cell-muted">' + Ui.escape(s.rm || '—') + '</span>' +
-        status +
+        this.renderStoreStatus(s.closure) +
       '</div>';
+    },
+
+    /**
+     * Stav filiálky podle vyhodnocené uzavírky ze serveru (s.closure, viz
+     * _evaluateClosure_ v 60_import.js) — sdílené mezi řádkem v tabulce
+     * i modalem detailu. `current` = zavřeno TEĎ (červeně, s rozsahem
+     * dat), `upcoming` = zavře se teprve v budoucnu (za kolik dní +
+     * rozsah), jinak Otevřeno.
+     */
+    renderStoreStatus(closure) {
+      if (!closure) return '<span class="store-status">Otevřeno</span>';
+
+      const range = Ui.escape(this.formatFullDate(closure.from)) + '–' + Ui.escape(this.formatFullDate(closure.to));
+
+      if (closure.status === 'current') {
+        return '<span class="store-status is-closed"><i class="ph ph-door-open" aria-hidden="true"></i> Zavřeno ' + range + '</span>';
+      }
+      return '<span class="store-status is-upcoming"><i class="ph ph-calendar-x" aria-hidden="true"></i> Zavře se za ' +
+        closure.daysUntil + ' ' + this.dayWord(closure.daysUntil) + ' (' + range + ')</span>';
+    },
+
+    /** Český tvar slova "den" podle počtu (1 den, 2–4 dny, 5+ dní). */
+    dayWord(n) {
+      if (n === 1) return 'den';
+      if (n >= 2 && n <= 4) return 'dny';
+      return 'dní';
     },
 
     bindStores() {
@@ -2020,10 +2042,14 @@
         '</td></tr>'
       ).join('');
 
-      const closedBadge = store.closedTo
-        ? '<span class="store-detail-badge is-closed"><i class="ph ph-door-open" aria-hidden="true"></i> Zavřeno ' +
-          Ui.escape(this.formatFullDate(store.closedFrom)) + '–' + Ui.escape(this.formatFullDate(store.closedTo)) + '</span>'
-        : '';
+      let closedBadge = '';
+      if (store.closure) {
+        const range = Ui.escape(this.formatFullDate(store.closure.from)) + '–' + Ui.escape(this.formatFullDate(store.closure.to));
+        closedBadge = store.closure.status === 'current'
+          ? '<span class="store-detail-badge is-closed"><i class="ph ph-door-open" aria-hidden="true"></i> Zavřeno ' + range + '</span>'
+          : '<span class="store-detail-badge is-upcoming"><i class="ph ph-calendar-x" aria-hidden="true"></i> Zavře se za ' +
+            store.closure.daysUntil + ' ' + this.dayWord(store.closure.daysUntil) + ' (' + range + ')</span>';
+      }
 
       return '<div class="store-detail">' +
         '<div class="store-detail-badges">' +
@@ -2071,19 +2097,71 @@
         : this.usersPlaceholder('Zatím žádná data — synchronizujte v Nastavení.');
     },
 
+    /** Řádek LC — sloupec Akce nese tužku (úprava čísla/zkratky) i (de)aktivaci, stejný jazyk jako u uživatelů (viz apiSetLogisticCenterActive). */
     renderLcRow(lc) {
-      const editBtn = this.canManageSettings
-        ? '<button type="button" class="user-action-btn is-edit" data-id="' + Ui.escape(lc.id) + '" title="Upravit" aria-label="Upravit ' + Ui.escape(lc.nazev) + '">' +
-          '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>'
-        : '';
+      let actions = '';
+      if (this.canManageSettings) {
+        actions += '<button type="button" class="user-action-btn is-edit" data-action="edit" data-id="' + Ui.escape(lc.id) + '" title="Upravit" aria-label="Upravit ' + Ui.escape(lc.nazev) + '">' +
+          '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>';
+        actions += lc.active
+          ? '<button type="button" class="user-action-btn is-danger" data-action="deactivate" data-id="' + Ui.escape(lc.id) + '" title="Deaktivovat" aria-label="Deaktivovat ' + Ui.escape(lc.nazev) + '">' +
+            '<i class="ph ph-trash" aria-hidden="true"></i></button>'
+          : '<button type="button" class="user-action-btn is-restore" data-action="activate" data-id="' + Ui.escape(lc.id) + '" title="Aktivovat" aria-label="Aktivovat ' + Ui.escape(lc.nazev) + '">' +
+            '<i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i></button>';
+      }
 
-      return '<div class="data-row lc-row">' +
+      return '<div class="data-row lc-row' + (lc.active ? '' : ' is-inactive') + '">' +
         '<span class="user-cell-muted">' + Ui.escape(lc.cislo || '—') + '</span>' +
         '<span class="user-cell-muted">' + Ui.escape(lc.zkratka || '—') + '</span>' +
         '<span class="user-cell-name">' + Ui.escape(lc.nazev) + '</span>' +
         '<span class="user-cell-muted">' + lc.storeCount + '</span>' +
-        '<span class="user-actions">' + editBtn + '</span>' +
+        '<span class="user-actions">' + actions + '</span>' +
       '</div>';
+    },
+
+    /** Tiché uložení LC do this.lcCache bez volání serveru navíc — apiSaveLogisticCenter/apiSetLogisticCenterActive už vrací kompletní záznam. */
+    applyLcToCache(record) {
+      const idx = this.lcCache.findIndex((lc) => lc.id === record.id);
+      if (idx !== -1) this.lcCache[idx] = record;
+      this.renderLc();
+    },
+
+    /** Deaktivace je nevratná bez ručního zásahu zpět → potvrzovací modal, stejný vzor jako u uživatelů (confirmDeactivateUser). */
+    confirmDeactivateLc(lc, originEl) {
+      this.confirmAction({
+        title: 'Deaktivovat LC?',
+        body: '„' + lc.nazev + '" zůstane v seznamu, jen se vizuálně odliší jako neaktivní. Zůstane deaktivované i po další synchronizaci dat filiálek.',
+        okLabel: 'Deaktivovat',
+        okIcon: 'ph-trash',
+        okClass: 'button-danger',
+        onConfirm: (okBtn, dialog) => {
+          Ui.setButtonLoading(okBtn, true, 'Deaktivuji…');
+          Ui.call('apiSetLogisticCenterActive', { id: lc.id, active: false }, { silent: true })
+            .then((record) => {
+              Ui.closeModal(dialog);
+              Ui.toast('LC deaktivováno.', 'success');
+              this.applyLcToCache(record);
+            })
+            .catch((error) => {
+              Ui.setButtonLoading(okBtn, false);
+              Ui.toast(error.message, 'error');
+            });
+        },
+      }, originEl);
+    },
+
+    /** Aktivace zpět jde rovnou, bez potvrzení (stejné jako u uživatelů, viz setUserActive). */
+    setLcActive(lc, active, button) {
+      if (button) Ui.setButtonLoading(button, true);
+      Ui.call('apiSetLogisticCenterActive', { id: lc.id, active: active }, { silent: true })
+        .then((record) => {
+          Ui.toast('LC aktivováno.', 'success');
+          this.applyLcToCache(record);
+        })
+        .catch((error) => {
+          if (button) Ui.setButtonLoading(button, false);
+          Ui.toast(error.message, 'error');
+        });
     },
 
     bindLc() {
@@ -2091,7 +2169,10 @@
         const btn = e.target.closest('.user-action-btn');
         if (!btn) return;
         const item = this.lcCache.find((lc) => lc.id === btn.dataset.id);
-        if (item) this.openLcFormModal(item, btn);
+        if (!item) return;
+        if (btn.dataset.action === 'edit') this.openLcFormModal(item, btn);
+        else if (btn.dataset.action === 'deactivate') this.confirmDeactivateLc(item, btn);
+        else if (btn.dataset.action === 'activate') this.setLcActive(item, true, btn);
       });
 
       const dialog = document.querySelector('#lcFormModal');
@@ -2138,9 +2219,7 @@
           Ui.setButtonLoading(submitButton, false);
           Ui.closeModal(document.querySelector('#lcFormModal'));
           Ui.toast('LC upraveno.', 'success');
-          const idx = this.lcCache.findIndex((lc) => lc.id === record.id);
-          if (idx !== -1) this.lcCache[idx] = record;
-          this.renderLc();
+          this.applyLcToCache(record);
         })
         .catch((error) => {
           Ui.setButtonLoading(submitButton, false);

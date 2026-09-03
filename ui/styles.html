@@ -1255,6 +1255,11 @@
     background: var(--page);
   }
 
+  /* Neaktivní LC — celý řádek vybledlý, ale pořád čitelný, stejný jazyk jako .user-row.is-inactive u uživatelů. */
+  .data-row.is-inactive {
+    opacity: 0.55;
+  }
+
   .data-table-head > *:not(:last-child),
   .data-row > *:not(:last-child) {
     border-right: 1px solid var(--line-soft);
@@ -1262,7 +1267,7 @@
 
   .stores-table-head,
   .store-row {
-    grid-template-columns: 64px 1.6fr 0.9fr 0.9fr 1fr 1fr 140px;
+    grid-template-columns: 64px 1.5fr 0.8fr 0.9fr 0.8fr 0.8fr 210px;
   }
 
   /* Celý řádek filiálky je klikací (otevře detail, viz openStoreDetailModal) — na rozdíl od Uživatelé/LC, kde klik nese jen tlačítko Akce. */
@@ -1270,18 +1275,30 @@
     cursor: pointer;
   }
 
+  /* Bez white-space: nowrap — text uzavírky (datum od–do, u výhledu i "za
+     N dní") může být delší, než se vejde na řádek, radši se zalomí na
+     druhý, než aby přetekl mimo buňku mřížky (ta sama neořezává). */
   .store-status {
     color: var(--green);
     font-size: 12px;
     font-weight: 700;
-    white-space: nowrap;
+  }
+
+  .store-status.is-closed,
+  .store-status.is-upcoming {
+    align-items: center;
+    display: inline-flex;
+    gap: 4px;
   }
 
   .store-status.is-closed {
-    align-items: center;
     color: var(--lidl-red);
-    display: inline-flex;
-    gap: 4px;
+  }
+
+  /* Výhled zavření (uzavírka teprve v budoucnu) — odlišené od "zavřeno
+     teď" (červená), ale pořád viditelně jiné než "Otevřeno" (zelená). */
+  .store-status.is-upcoming {
+    color: #b45309;
   }
 
   .lc-table-head,
@@ -1324,6 +1341,14 @@
     align-items: center;
     background: #fce6e7;
     color: var(--lidl-red);
+    display: inline-flex;
+    gap: 4px;
+  }
+
+  .store-detail-badge.is-upcoming {
+    align-items: center;
+    background: #f7ece1;
+    color: #b45309;
     display: inline-flex;
     gap: 4px;
   }

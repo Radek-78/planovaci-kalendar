@@ -76,9 +76,13 @@ const DB_SCHEMA = {
     'updated_at',
   ],
   // LC se odvozují ze sloupce "LC" u filiálek — "nazev" je tedy ze zdroje
-  // (needituje se), "cislo"/"zkratka" zadává ručně SUPERADMIN v appce (viz
-  // apiSaveLogisticCenter) a synchronizace je při refreshi zachovává.
-  _logistic_centers: ['id', 'cislo', 'zkratka', 'nazev', 'created_at', 'created_by', 'updated_at', 'updated_by'],
+  // (needituje se), "cislo"/"zkratka"/"active" zadává ručně SUPERADMIN
+  // v appce (viz apiSaveLogisticCenter/apiSetLogisticCenterActive) a
+  // synchronizace je při refreshi zachovává (viz _importSyncLogisticCenters_
+  // — existující řádek se přebírá celý, ne jen název). "active" prázdné
+  // (starší řádky založené před přidáním sloupce) = aktivní, viz
+  // _lcIsActive_ — chybějící hodnota nesmí LC "ztratit" ze seznamu.
+  _logistic_centers: ['id', 'cislo', 'zkratka', 'nazev', 'active', 'created_at', 'created_by', 'updated_at', 'updated_by'],
   // Snímek "co je teď zavřené" — při každém syncu se celá tabulka nahradí
   // (ne upsert), staré uzavírky tak zmizí samy, jakmile je zdroj přestane
   // posílat (viz _importSyncClosures_).
