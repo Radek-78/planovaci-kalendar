@@ -130,8 +130,12 @@ const DB_SCHEMA = {
                  'location','department','position'],
   '_settings':  ['key','value','updated_at','updated_by'],
   '_audit_log': ['timestamp','user','action','detail','entity_id'],
+  // recurrence_id (viz kapitola 9.9) — prázdné u jednorázové události,
+  // jinak sdílené UUID napříč všemi výskyty jedné opakující se série.
+  // Každý výskyt je ale ÚPLNÝ, samostatný řádek (appka celou sérii
+  // vygeneruje najednou při založení), ne dopočítávané pravidlo.
   'events':     ['id','start','end','all_day','type','title','description',
-                 'owner_email','created_at','created_by','updated_at','updated_by'],
+                 'owner_email','recurrence_id','created_at','created_by','updated_at','updated_by'],
   'event_comments': ['id','event_id','author_email','text','created_at'],
   // Nastavení (viz kapitola 9.5) — všechno spravované v appce, ne v kódu.
   '_departments': ['id','name','created_at','created_by','updated_at','updated_by'],
@@ -155,6 +159,11 @@ const DB_SCHEMA = {
   // Státní svátky ČR (viz kapitola 9.7) — plně editovatelný seznam, appka
   // pro nový rok jen JEDNOU naseje výchozí zákonnou sadu.
   '_holidays': ['id','date','name','created_at','created_by','updated_at','updated_by'],
+  // Šablony událostí (viz kapitola 9.9) — jen výchozí obsah pro
+  // předvyplnění formuláře nové události, appka je nikam neváže.
+  // start_time/end_time prázdné u celodenní šablony (all_day=true).
+  '_event_templates': ['id','label','type','all_day','start_time','end_time','duration_days','description',
+                        'created_at','created_by','updated_at','updated_by'],
 };
 ```
 
@@ -356,9 +365,12 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 |---|---|---|---|
 | `apiGetBootstrap()` | `calendar_read` | — | uživatel, jeho práva, nastavení, typy událostí, oznámení (viz 9.4) — ČISTÉ ČTENÍ, `last_visit_at` neposouvá |
 | `apiMarkNotificationsSeen()` | `calendar_read` | — | — (posune `last_visit_at` uživatele na teď, viz 9.4) |
-| `apiGetEvents(payload)` | `calendar_read` | `{ startDate, endDate }`, obě `YYYY-MM-DD` | pole událostí protínajících rozsah |
-| `apiSaveEvent(payload)` | `calendar_write` | s `id` = úprava, bez = nová | uložená událost |
-| `apiDeleteEvent(id)` | `calendar_write` | id | — |
+| `apiGetEvents(payload)` | `calendar_read` | `{ startDate, endDate }`, obě `YYYY-MM-DD` | pole událostí protínajících rozsah, včetně `recurrenceId` (viz 9.9) |
+| `apiSaveEvent(payload)` | `calendar_write` | s `id` = úprava (+ `scope: 'single'\|'following'` u výskytu ze série, viz 9.9), bez `id` = nová (+ `recurrence: { freq, count } \| { freq, until }` založí celou sérii) | `{ id }` prvního/upraveného výskytu |
+| `apiDeleteEvent(payload)` | `calendar_write` | `{ id, scope: 'single'\|'following' }` — scope jen u výskytu ze série | — |
+| `apiGetEventTemplates()` | `calendar_write` | — | šablony událostí, řazené podle názvu — čtení smí kdokoli s právem zápisu, správa (níže) jen SUPERADMIN |
+| `apiSaveEventTemplate(payload)` | `settings_manage` | s `id` = úprava, bez = nová; `{ label, type, allDay, startTime?, endTime?, durationDays, description }` | uložená šablona |
+| `apiDeleteEventTemplate(payload)` | `settings_manage` | `{ id }` | — |
 | `apiGetUsers()` | `users_manage` | — | seznam uživatelů, řazený podle data vytvoření (od nejstaršího) |
 | `apiSaveUser(payload)` | `users_manage` | s `id` = úprava (e-mail neměnný), bez = nový uživatel | uložený uživatel |
 | `apiSetUserActive(payload)` | `users_manage` | `{ id, active }` | uložený uživatel |
@@ -419,7 +431,7 @@ mřížce chyběla. Podmínka: `start <= to && end >= from`.
 | **Uživatelé** | tabulka, přidání, změna role/oprávnění, deaktivace |
 | **Filiálky** | čtecí přehled filiálek (import dat, viz 9.6), detail na klik na řádek |
 | **LC** | čtecí přehled logistických center (import dat, viz 9.6), editace čísla/zkratky |
-| **Nastavení** | záložky: Oddělení, Pracovní pozice, Typy událostí (viz 9.5), Import dat (viz 9.6), Státní svátky ČR (viz 9.7) |
+| **Nastavení** | záložky: Oddělení, Pracovní pozice, Typy událostí (viz 9.5), Šablony událostí (viz 9.9), Import dat (viz 9.6), Státní svátky ČR (viz 9.7) |
 
 ### 9.2 Kalendář
 
@@ -916,6 +928,74 @@ formulář události a svátku:
 - **Detail filiálky** (jen ke čtení, ne formulář) — tři sloupce (Adresa/
   Kontakty/Otevírací doba) dostaly stejné karty s modrým orámováním, viz
   9.6.
+
+### 9.9 Opakující se událost, duplikování, šablony
+
+**Opakující se událost** — appka při založení vygeneruje CELOU sérii
+najednou jako samostatné, úplné řádky v `events` (ne jedno pravidlo,
+které by se dopočítávalo za běhu). Každý výskyt je tak normální událost
+jako každá jiná — `apiGetEvents`, vykreslení mřížky ani komentáře se
+vůbec nemusely měnit, přibyl jen sloupec `events.recurrence_id`
+(prázdný u jednorázové události, jinak sdílené UUID napříč všemi výskyty
+jedné série).
+
+- **Založení** — formulář nové události má v kartě Termín pole
+  "Opakování" (Neopakovat / Každý den / Každý týden / Každé 2 týdny /
+  Každý měsíc) a při vybrané frekvenci navíc "Počet opakování" NEBO
+  "Nebo do data" (aspoň jedno z obojí je povinné). Appka pošle
+  `payload.recurrence = { freq, count }` nebo `{ freq, until }` —
+  `_saveRecurringEvent_` (50_api.js) spočítá data všech výskytů
+  (`_recurrenceOccurrenceDates_`/`_recurrenceStepDate_`, čistě datová
+  aritmetika přes `_addDaysToIsoDate_`/`_addMonthsToIsoDate_` — u
+  měsíčního opakování ořízne den v měsíci na poslední platný, NE
+  automatické přetečení do dalšího měsíce, jak by to udělal obyčejný
+  `new Date(y, m+1, 31)`) a vloží je JEDNÍM zápisem (`dbInsertMany_` —
+  nová obecná DB primitiva vedle `dbReplaceAll_`, jedno čtení/zápis
+  místo N jednotlivých `dbInsert_`). V audit logu/oznámení je to jeden
+  souhrnný záznam ("Vytvořena opakující se událost „X" (5×, každý
+  týden)"), ne N jednotlivých.
+- **Strop** — `LIMITS.RECURRENCE_MAX_COUNT` (52) — pojistka proti tomu,
+  aby překlep v „Do data" (např. o desítky let dál) nevygeneroval tisíce
+  řádků najednou.
+- **Úprava výskytu ze série** — formulář při editaci výskytu, který
+  `recurrenceId` MÁ, nabídne místo nastavení opakování přepínač rozsahu
+  (`#eventFormRecurrenceScope`): **Jen tuto** (výchozí) — uloží se běžně,
+  ale zároveň se odpojí ze série (`recurrence_id` se vynuluje, stejný
+  princip jako v běžných kalendářích — úprava jednoho výskytu ho vyjme
+  z hromadné správy), nebo **Tuto a všechny následující** — appka pošle
+  `payload.scope = 'following'`, server (`_saveFollowingOccurrences_`)
+  najde všechny výskyty té série od tohoto data dál a aplikuje na ně
+  stejnou změnu (název/typ/popis/celý den i ČAS DNE), datum KAŽDÉHO
+  výskytu zůstává jeho vlastní. Dřívější výskyty appka nikdy hromadně
+  nemění.
+- **Smazání** — stejná dvojí volba u výskytu ze série (přepínač v
+  potvrzovacím okně, `confirmDeleteEvent`) — Jen tuto / Tuto a všechny
+  následující (`apiDeleteEvent` s `payload.scope`).
+- **Vizuál** — malá ikonka opakování (`ph-repeat`) na chipu v mřížce
+  (jen první den vícedenní události) i v seznamu dne, a vedle popisku
+  "Kdy" v detailu události.
+
+**Duplikovat** — v hlavičce detailu události (`#eventModalActions`,
+vedle Upravit/Smazat, viditelné komukoli s právem zápisu — `canWrite`,
+nezávisle na vlastnictví/možnosti spravovat cizí události, protože jen
+zakládá NOVOU, nezávislou událost) otevře formulář nové události
+předvyplněný obsahem té existující (název/typ/celý den/časy/délka
+trvání/popis), ale BEZ vazby na ni — datum výchozí dnešek, uživatel si
+ho před uložením může změnit. Recurrence se nikdy nekopíruje — duplikát
+je vždy jednorázová událost, i když byl zdroj součástí série.
+
+**Šablony událostí** (Nastavení → Šablony událostí, `_holidays`-obdobný
+vzor: `_event_templates`, `SETTINGS_MANAGE` na správu, `CALENDAR_WRITE`
+na čtení/použití) — pojmenovaný, uložený předvyplněný obsah (název/typ/
+celý den/čas od-do/délka trvání ve dnech/popis) nabízený ve formuláři
+nové události přes `<select id="eventFormTemplatePicker">` (zobrazí se,
+jen když appka nějakou šablonu má). Vybraná šablona (`applyEventTemplate`)
+vyplní pole formuláře od AKTUÁLNĚ NASTAVENÉHO data (to appka neměnní) —
+mechanicky stejný princip jako Duplikovat, jen zdroj dat je jiný (uložená
+šablona místo existující události), appka na použitou šablonu neudržuje
+žádnou trvalou vazbu. Formulář šablony v Nastavení používá obyčejný
+`<select>` pro Typ, ne `.type-picker` s ikonami — vidí a používá ho jen
+SUPERADMIN, nestálo za to kvůli němu zobecňovat celou komponentu.
 
 ---
 

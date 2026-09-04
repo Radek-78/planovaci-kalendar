@@ -30,7 +30,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.7.5',
+  version: 'v0.8.0',
   releaseDate: '4.9.2026',
 
   /**
@@ -107,6 +107,7 @@ const SHEETS = {
   STORE_CLOSURES: '_store_closures',
   IMPORT_LOG: '_import_log',
   HOLIDAYS: '_holidays',
+  EVENT_TEMPLATES: '_event_templates',
 };
 
 /**
@@ -244,6 +245,15 @@ const LIMITS = {
   LC_CISLO_MAX: 20,
   /** Název svátku (Nastavení → Státní svátky ČR) — pár nejdelších zákonných názvů má přes 40 znaků, proto víc než u typu události. */
   HOLIDAY_NAME_MAX: 100,
+  /**
+   * Nejvíc výskytů, které smí vygenerovat jedno založení opakující se
+   * události (viz apiSaveEvent/_recurrenceCount_) — pojistka proti tomu,
+   * aby překlep v "Do data" (např. o pár desítek let dál) nevygeneroval
+   * tisíce řádků najednou. 52 pokrývá i týdenní opakování na celý rok.
+   */
+  RECURRENCE_MAX_COUNT: 52,
+  /** Název šablony události (Nastavení → Šablony událostí) — zároveň se použije jako předvyplněný název nové události. */
+  EVENT_TEMPLATE_LABEL_MAX: 120,
 };
 
 /**

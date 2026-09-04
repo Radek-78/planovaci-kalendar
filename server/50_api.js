@@ -129,13 +129,21 @@ function apiMarkNotificationsSeen() {
  * ten, komu to dovolí canEditPastEvents_ (řízené nastavením
  * pastEditAdminOnly, viz SPECIFIKACE.md kapitola 7.2).
  *
- * @param {Object} payload  { id?, start, end, allDay, type, title, description } —
- *                          start/end RRRR-MM-DDTHH:mm
+ * Opakující se událost (viz SPECIFIKACE.md 9.9): `payload.recurrence`
+ * u NOVÉ události ({ freq, count? nebo until? }) založí celou sérii
+ * najednou (_saveRecurringEvent_). `payload.scope` u ÚPRAVY existujícího
+ * výskytu ze série rozhoduje mezi „jen tuto" (výchozí — a zároveň ji
+ * odpojí ze série, stejný princip jako v běžných kalendářích) a „tuto
+ * a všechny následující" (_saveFollowingOccurrences_).
+ *
+ * @param {Object} payload  { id?, start, end, allDay, type, title, description,
+ *                            recurrence?, scope? } — start/end RRRR-MM-DDTHH:mm
  */
 function apiSaveEvent(payload) {
   return guard_(PERM_KEYS.CALENDAR_WRITE, (user) => {
     const data = payload || {};
     const id = data.id ? String(data.id) : null;
+    const scope = data.scope === 'following' ? 'following' : 'single';
     const existing = id ? dbFindById_(SHEETS.EVENTS, id) : null;
     if (id && !existing) {
       throw userError_('Událost nebyla nalezena — mohl ji mezitím upravit někdo jiný.');
@@ -187,9 +195,22 @@ function apiSaveEvent(payload) {
     };
 
     const whenText = formatDateTimeCz_(start) + ' – ' + formatDateTimeCz_(end);
+
+    if (!existing && data.recurrence) {
+      return _saveRecurringEvent_(user, fields, data.recurrence, startDate, dayCount, whenText);
+    }
+
+    if (existing && scope === 'following' && existing.recurrence_id) {
+      return _saveFollowingOccurrences_(existing, fields, start, end, whenText);
+    }
+
     let record;
     if (existing) {
-      record = dbUpdate_(SHEETS.EVENTS, id, fields);
+      // „Jen tuto" u výskytu ze série ji odpojí (stane se samostatnou
+      // událostí) — stejný princip jako v běžných kalendářích: úprava
+      // jednoho výskytu ho vyjme z hromadné správy série.
+      const detach = existing.recurrence_id ? { recurrence_id: '' } : {};
+      record = dbUpdate_(SHEETS.EVENTS, id, Object.assign({}, fields, detach));
       audit_('event.update', 'Upravena událost „' + title + '" (' + whenText + ')', id);
     } else {
       record = dbInsert_(SHEETS.EVENTS, Object.assign({ owner_email: user.email }, fields));
@@ -207,12 +228,17 @@ function apiSaveEvent(payload) {
  * komentáře k té události — jinak by v `event_comments` zůstaly osiřelé
  * řádky odkazující na neexistující událost.
  *
- * @param {Object} payload  { id }
+ * `payload.scope: 'following'` u výskytu opakující se série smaže tenhle
+ * a všechny pozdější výskyty téže série (dřívější zůstanou) — výchozí
+ * (`'single'`, i bez scope) smaže jen tenhle jeden.
+ *
+ * @param {Object} payload  { id, scope? }
  */
 function apiDeleteEvent(payload) {
   return guard_(PERM_KEYS.CALENDAR_WRITE, (user) => {
     const data = payload || {};
     const id = cleanText_(data.id, 'ID události', 100, true);
+    const scope = data.scope === 'following' ? 'following' : 'single';
 
     const event = dbFindById_(SHEETS.EVENTS, id);
     if (!event) {
@@ -228,14 +254,172 @@ function apiDeleteEvent(payload) {
       throw userError_('Proběhlou událost může smazat jen administrátor.');
     }
 
-    dbGetAll_(SHEETS.EVENT_COMMENTS)
-      .filter((row) => String(row.event_id) === id)
-      .forEach((row) => dbDelete_(SHEETS.EVENT_COMMENTS, row.id));
+    const targets = scope === 'following' && event.recurrence_id
+      ? dbGetAll_(SHEETS.EVENTS).filter((row) =>
+          String(row.recurrence_id) === String(event.recurrence_id) &&
+          String(row.start).slice(0, 10) >= String(event.start).slice(0, 10))
+      : [event];
 
-    dbDelete_(SHEETS.EVENTS, id);
-    audit_('event.delete', 'Smazána událost „' + event.title + '"', id);
+    targets.forEach((row) => {
+      const rowId = String(row.id);
+      dbGetAll_(SHEETS.EVENT_COMMENTS)
+        .filter((c) => String(c.event_id) === rowId)
+        .forEach((c) => dbDelete_(SHEETS.EVENT_COMMENTS, c.id));
+      dbDelete_(SHEETS.EVENTS, rowId);
+    });
+
+    audit_('event.delete',
+      targets.length > 1
+        ? 'Smazána opakující se událost „' + event.title + '" (' + targets.length + '× od tohoto data dál)'
+        : 'Smazána událost „' + event.title + '"',
+      id);
     return null;
   });
+}
+
+/**
+ * Založí celou sérii opakující se události najednou (dbInsertMany_) — jedno
+ * sdílené recurrence_id, jeden souhrnný záznam v audit logu/oznámení místo
+ * N jednotlivých. `dayCount`/čas dne zůstávají u všech výskytů stejné jako
+ * u prvního (zadaného ve `fields.start`/`fields.end`), mění se jen DATUM
+ * podle frekvence (viz _recurrenceOccurrenceDates_).
+ *
+ * @param {Object} recurrence  { freq: 'daily'|'weekly'|'biweekly'|'monthly', count? nebo until? }
+ */
+function _saveRecurringEvent_(user, fields, recurrence, startDate, dayCount, whenText) {
+  const freq = pickFrom_((recurrence || {}).freq, ['daily', 'weekly', 'biweekly', 'monthly'], 'Frekvence opakování');
+  const count = _recurrenceCount_(recurrence || {}, startDate, freq);
+
+  const recurrenceId = uuid_();
+  const startTime = fields.start.slice(11);
+  const endTime = fields.end.slice(11);
+  const occurrenceDates = _recurrenceOccurrenceDates_(startDate, freq, count);
+
+  const records = occurrenceDates.map((occStartDate) => {
+    const occEndDate = _addDaysToIsoDate_(occStartDate, dayCount - 1);
+    return Object.assign({ owner_email: user.email, recurrence_id: recurrenceId }, fields, {
+      start: occStartDate + 'T' + startTime,
+      end: occEndDate + 'T' + endTime,
+    });
+  });
+
+  const inserted = dbInsertMany_(SHEETS.EVENTS, records);
+  audit_('event.create',
+    'Vytvořena opakující se událost „' + fields.title + '" (' + whenText + ', ' + count + '× ' + _recurrenceFreqLabel_(freq) + ')',
+    inserted[0].id);
+
+  return { id: inserted[0].id };
+}
+
+/**
+ * Upraví TENTO výskyt a všechny pozdější ve stejné sérii („tuto a všechny
+ * následující") — datum každého výskytu zůstává jeho vlastní (jinak by se
+ * všechny sesypaly na jeden den), mění se jen čas dne a délka trvání
+ * (podle nově zadaného start/end u TOHOTO výskytu) a ostatní pole (název/
+ * typ/popis/celý den) stejně pro všechny naráz. Dřívější výskyty (před
+ * tímto) appka nikdy hromadně nemění, jen tenhle a novější.
+ */
+function _saveFollowingOccurrences_(existing, fields, start, end, whenText) {
+  const startTime = start.slice(11);
+  const endTime = end.slice(11);
+  const dayCount = Math.round(
+    (new Date(end.slice(0, 10) + 'T00:00') - new Date(start.slice(0, 10) + 'T00:00')) / 86400000
+  ) + 1;
+
+  const series = dbGetAll_(SHEETS.EVENTS).filter((row) =>
+    String(row.recurrence_id) === String(existing.recurrence_id) &&
+    String(row.start).slice(0, 10) >= String(existing.start).slice(0, 10));
+
+  series.forEach((row) => {
+    const occStartDate = String(row.start).slice(0, 10);
+    const occEndDate = _addDaysToIsoDate_(occStartDate, dayCount - 1);
+    dbUpdate_(SHEETS.EVENTS, String(row.id), Object.assign({}, fields, {
+      start: occStartDate + 'T' + startTime,
+      end: occEndDate + 'T' + endTime,
+    }));
+  });
+
+  audit_('event.update',
+    'Upravena opakující se událost „' + fields.title + '" (' + whenText + ', ' + series.length + '× od tohoto data dál)',
+    existing.id);
+
+  return { id: existing.id };
+}
+
+/** Datum n-tého výskytu (0 = první, sám startDate) opakující se události dané frekvence — čistě datová aritmetika, žádný čas. */
+function _recurrenceStepDate_(startDate, freq, n) {
+  if (n === 0) return startDate;
+  if (freq === 'daily') return _addDaysToIsoDate_(startDate, n);
+  if (freq === 'weekly') return _addDaysToIsoDate_(startDate, n * 7);
+  if (freq === 'biweekly') return _addDaysToIsoDate_(startDate, n * 14);
+  if (freq === 'monthly') return _addMonthsToIsoDate_(startDate, n);
+  throw userError_('Neplatná frekvence opakování.');
+}
+
+/** Data (RRRR-MM-DD) všech `count` výskytů opakující se události, od startDate. */
+function _recurrenceOccurrenceDates_(startDate, freq, count) {
+  const dates = [];
+  for (let i = 0; i < count; i++) dates.push(_recurrenceStepDate_(startDate, freq, i));
+  return dates;
+}
+
+/**
+ * Počet výskytů opakující se události — buď přímo zadaný (recurrence.count),
+ * nebo dopočítaný z recurrence.until (poslední den, kdy má ještě vzniknout
+ * výskyt). Právě jedno z obojí musí přijít z klienta. Vždy omezeno na
+ * LIMITS.RECURRENCE_MAX_COUNT, ať appka nevygeneruje neúnosně dlouhou sérii
+ * (např. kvůli překlepu v „Do data" o pár desítek let dál).
+ */
+function _recurrenceCount_(recurrence, startDate, freq) {
+  if (recurrence.count) {
+    const count = parseInt(recurrence.count, 10);
+    if (!count || count < 1) throw userError_('Počet výskytů musí být kladné číslo.');
+    if (count > LIMITS.RECURRENCE_MAX_COUNT) {
+      throw userError_('Opakování může mít nejvýše ' + LIMITS.RECURRENCE_MAX_COUNT + ' výskytů.');
+    }
+    return count;
+  }
+  if (recurrence.until) {
+    const until = cleanDateOnly_(recurrence.until, 'Konec opakování');
+    if (until < startDate) throw userError_('Konec opakování musí být až po datu začátku.');
+    let count = 1;
+    while (count <= LIMITS.RECURRENCE_MAX_COUNT && _recurrenceStepDate_(startDate, freq, count) <= until) count++;
+    return count;
+  }
+  throw userError_('Zadejte počet opakování, nebo datum konce.');
+}
+
+/** Český popisek frekvence opakování pro audit log/oznámení. */
+function _recurrenceFreqLabel_(freq) {
+  return { daily: 'denně', weekly: 'týdně', biweekly: 'co 2 týdny', monthly: 'měsíčně' }[freq] || freq;
+}
+
+/**
+ * Přidá dny k datu RRRR-MM-DD — přes bezpečnou UTC aritmetiku
+ * _addDaysToDate_ (viz výše, u státních svátků), jen ve tvaru pro
+ * datum-jako-řetězec, se kterým pracuje zbytek téhle funkce.
+ */
+function _addDaysToIsoDate_(isoDate, deltaDays) {
+  const parts = isoDate.split('-').map(Number);
+  const shifted = _addDaysToDate_(parts[0], parts[1], parts[2], deltaDays);
+  return shifted.year + '-' + _pad2_(shifted.month) + '-' + _pad2_(shifted.day);
+}
+
+/**
+ * Přidá měsíce k datu RRRR-MM-DD — den v měsíci ořízne na poslední platný
+ * den cílového měsíce (např. 31. 1. + 1 měsíc => 28./29. 2., NE automatické
+ * přetečení do března, jak by to udělal obyčejný `new Date(y, m+1, 31)`).
+ * Čistě celočíselná aritmetika + `Date.UTC` jen pro zjištění počtu dní
+ * v cílovém měsíci — žádný lokální čas, stejný princip jako u svátků.
+ */
+function _addMonthsToIsoDate_(isoDate, months) {
+  const parts = isoDate.split('-').map(Number);
+  const totalMonths = (parts[0] * 12 + (parts[1] - 1)) + months;
+  const targetYear = Math.floor(totalMonths / 12);
+  const targetMonth = totalMonths % 12; // 0-11
+  const lastDayOfTargetMonth = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+  const day = Math.min(parts[2], lastDayOfTargetMonth);
+  return targetYear + '-' + _pad2_(targetMonth + 1) + '-' + _pad2_(day);
 }
 
 /**
@@ -275,6 +459,11 @@ function apiGetEvents(payload) {
         description: String(row.description || ''),
         ownerEmail: String(row.owner_email || ''),
         ownerName: _resolveUserName_(row.owner_email, nameCache),
+        // Prázdné u jednorázové události, jinak sdílené napříč výskyty
+        // jedné opakující se série (viz DB_SCHEMA.events v 20_db.js) —
+        // klient podle toho pozná, že má u úpravy/smazání nabídnout volbu
+        // „jen tuto" / „tuto a všechny následující" (viz openEventFormModal).
+        recurrenceId: String(row.recurrence_id || ''),
       }))
       .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
   });
@@ -715,6 +904,102 @@ function _publicEventType_(row) {
     icon: String(row.icon),
     color: String(row.color),
     bgColor: String(row.bg_color),
+  };
+}
+
+/**
+ * Šablony událostí (Nastavení → Šablony událostí, viz SPECIFIKACE.md 9.9) —
+ * appka je jen nabízí k předvyplnění formuláře nové události
+ * (App.applyEventTemplate), nikam je needituje. Guard CALENDAR_WRITE (ne
+ * SETTINGS_MANAGE jako správa níže) — použít šablonu smí každý, kdo smí
+ * zakládat události, spravovat seznam (přidat/upravit/smazat) jen SUPERADMIN,
+ * stejný vzor jako u apiGetPositions/apiGetDepartments výše.
+ */
+function apiGetEventTemplates() {
+  return guard_(PERM_KEYS.CALENDAR_WRITE, () => {
+    return dbGetAll_(SHEETS.EVENT_TEMPLATES)
+      .map(_publicEventTemplate_)
+      .sort((a, b) => a.label.localeCompare(b.label, 'cs'));
+  });
+}
+
+/**
+ * Vytvoří novou šablonu, nebo upraví existující (payload.id = úprava) —
+ * stejný vzor jako apiSaveEventType. `label` slouží zároveň jako
+ * předvyplněný název události při použití šablony.
+ *
+ * @param {Object} payload  { id?, label, type, allDay, startTime?, endTime?, durationDays, description }
+ */
+function apiSaveEventTemplate(payload) {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    const data = payload || {};
+    const id = data.id ? String(data.id) : null;
+    const existing = id ? dbFindById_(SHEETS.EVENT_TEMPLATES, id) : null;
+    if (id && !existing) {
+      throw userError_('Šablona nebyla nalezena — mohl ji mezitím upravit někdo jiný.');
+    }
+
+    const label = cleanText_(data.label, 'Název šablony', LIMITS.EVENT_TEMPLATE_LABEL_MAX, true);
+    const type = pickFrom_(data.type, Object.keys(_eventTypesMap_()), 'Typ');
+    const allDay = data.allDay === true;
+    const startTime = allDay ? '' : cleanTimeOnly_(data.startTime, 'Čas od');
+    const endTime = allDay ? '' : cleanTimeOnly_(data.endTime, 'Čas do');
+    if (!allDay && endTime <= startTime) {
+      throw userError_('Čas do musí být později než čas od.');
+    }
+    const durationDays = parseInt(data.durationDays, 10) || 1;
+    if (durationDays < 1 || durationDays > LIMITS.EVENT_MAX_DAYS) {
+      throw userError_('Délka trvání musí být 1 až ' + LIMITS.EVENT_MAX_DAYS + ' dní.');
+    }
+    const description = cleanText_(data.description, 'Popis', LIMITS.DESCRIPTION_MAX, false);
+
+    const fields = {
+      label: label, type: type, all_day: allDay,
+      start_time: startTime, end_time: endTime,
+      duration_days: durationDays, description: description,
+    };
+
+    let record;
+    if (existing) {
+      record = dbUpdate_(SHEETS.EVENT_TEMPLATES, id, fields);
+      audit_('eventTemplate.update', 'Upravena šablona události „' + label + '"');
+    } else {
+      record = dbInsert_(SHEETS.EVENT_TEMPLATES, fields);
+      audit_('eventTemplate.create', 'Vytvořena šablona události „' + label + '"');
+    }
+
+    return _publicEventTemplate_(record);
+  });
+}
+
+/** Smaže šablonu. Bez dopadu na existující události (appka jimi šablonu jen jednorázově předvyplní, žádná trvalá vazba). */
+function apiDeleteEventTemplate(payload) {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    const data = payload || {};
+    const id = cleanText_(data.id, 'ID šablony', 100, true);
+
+    const template = dbFindById_(SHEETS.EVENT_TEMPLATES, id);
+    if (!template) {
+      throw userError_('Šablona nebyla nalezena — možná ji mezitím smazal někdo jiný.');
+    }
+
+    dbDelete_(SHEETS.EVENT_TEMPLATES, id);
+    audit_('eventTemplate.delete', 'Smazána šablona události „' + template.label + '"');
+    return null;
+  });
+}
+
+/** Přemění řádek šablony na podobu pro klienta. */
+function _publicEventTemplate_(row) {
+  return {
+    id: String(row.id),
+    label: String(row.label),
+    type: String(row.type),
+    allDay: toBool_(row.all_day),
+    startTime: String(row.start_time || ''),
+    endTime: String(row.end_time || ''),
+    durationDays: parseInt(row.duration_days, 10) || 1,
+    description: String(row.description || ''),
   };
 }
 

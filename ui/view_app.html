@@ -185,6 +185,9 @@
           <button class="settings-tab" type="button" data-settings-tab="eventTypes">
             <i class="ph ph-tag" aria-hidden="true"></i> Typy událostí
           </button>
+          <button class="settings-tab" type="button" data-settings-tab="eventTemplates">
+            <i class="ph ph-copy" aria-hidden="true"></i> Šablony událostí
+          </button>
           <button class="settings-tab" type="button" data-settings-tab="import">
             <i class="ph ph-cloud-arrow-down" aria-hidden="true"></i> Import dat
           </button>
@@ -232,6 +235,21 @@
           </div>
           <div class="settings-list-wrap">
             <div class="settings-list" id="eventTypesAdminList"><!-- vykresleno JS --></div>
+          </div>
+        </div>
+
+        <!-- Šablony událostí — jen výchozí obsah pro předvyplnění formuláře
+             nové události (viz applyEventTemplate na klientovi), appka je
+             nikam neváže. -->
+        <div class="settings-panel" data-settings-panel="eventTemplates">
+          <div class="settings-panel-head">
+            <p class="settings-panel-desc">Předvyplněný obsah nabízený při zakládání nové události ("Šablona").</p>
+            <button class="button button-primary" type="button" id="eventTemplatesCreateBtn">
+              <i class="ph ph-plus" aria-hidden="true"></i> Přidat šablonu
+            </button>
+          </div>
+          <div class="settings-list-wrap">
+            <div class="settings-list" id="eventTemplatesList"><!-- vykresleno JS --></div>
           </div>
         </div>
 
@@ -373,9 +391,13 @@
 </dialog>
 
 <!-- ══ Modal: detail JEDNÉ události — info vlevo, komentáře vpravo ══
-     Info o události je zatím jen ke čtení (úprava/mazání události samotné
-     je až další krok); komentáře jsou plně funkční — přidat i smazat
-     vlastní (nebo kterýkoli, když má uživatel právo spravovat cizí události). -->
+     Komentáře jsou plně funkční — přidat i smazat vlastní (nebo kterýkoli,
+     když má uživatel právo spravovat cizí události). Akce (Upravit/
+     Duplikovat/Smazat) se vykreslí do #eventModalActions podle práv
+     (viz openEventModal) — stejná pravidla jako u tužky/koše u chipu
+     v mřížce (canManageEvent), Duplikovat navíc smí kdokoli s právem
+     zápisu (canWrite), i u cizí/proběhlé události — jen předvyplní
+     formulář NOVÉ, nezávislé události, nic neupravuje. -->
 <dialog class="modal modal-wide modal-grow" id="eventModal">
   <div class="modal-header">
     <span class="modal-icon is-event-color" id="eventModalIcon"><i class="ph ph-calendar-blank" aria-hidden="true"></i></span>
@@ -383,6 +405,7 @@
       <p class="kicker" id="eventModalKicker">Typ</p>
       <h2 id="eventModalTitle"></h2>
     </div>
+    <div class="event-modal-actions" id="eventModalActions"><!-- vykresleno JS --></div>
     <button class="modal-close" type="button" id="eventModalClose" aria-label="Zavřít">
       <i class="ph ph-x" aria-hidden="true"></i>
     </button>
@@ -456,6 +479,13 @@
   </div>
   <form id="eventForm">
     <div class="modal-body event-form-body">
+      <label class="event-form-template-field is-hidden" id="eventFormTemplateField">
+        <span>Šablona (nepovinné)</span>
+        <select id="eventFormTemplatePicker">
+          <option value="">— Vybrat šablonu —</option>
+        </select>
+      </label>
+
       <label class="form-hero-field">
         <span>Název *</span>
         <input type="text" id="eventFormTitle" maxlength="120" required class="form-hero-input">
@@ -505,6 +535,44 @@
             <label>
               <span>Čas do</span>
               <input type="time" id="eventFormEndTime">
+            </label>
+          </div>
+
+          <!-- Nastavení opakování — jen u NOVÉ události (viz updateRecurrenceUi). -->
+          <div class="event-form-row" id="eventFormRecurrenceRow">
+            <label>
+              <span>Opakování</span>
+              <select id="eventFormRecurrenceFreq">
+                <option value="">Neopakovat</option>
+                <option value="daily">Každý den</option>
+                <option value="weekly">Každý týden</option>
+                <option value="biweekly">Každé 2 týdny</option>
+                <option value="monthly">Každý měsíc</option>
+              </select>
+            </label>
+          </div>
+          <div class="event-form-row is-hidden" id="eventFormRecurrenceEndRow">
+            <label>
+              <span>Počet opakování</span>
+              <input type="number" id="eventFormRecurrenceCount" min="1" max="52" placeholder="např. 10">
+            </label>
+            <label>
+              <span>Nebo do data</span>
+              <input type="date" id="eventFormRecurrenceUntil">
+            </label>
+          </div>
+
+          <!-- Volba rozsahu úpravy — jen při editaci výskytu, který je součástí
+               opakující se série (viz openEventFormModal/updateRecurrenceUi). -->
+          <div class="event-form-recurrence-scope is-hidden" id="eventFormRecurrenceScope">
+            <span class="event-form-recurrence-scope-note"><i class="ph ph-repeat" aria-hidden="true"></i> Součást opakující se série</span>
+            <label class="event-form-recurrence-scope-option">
+              <input type="radio" name="eventFormRecurrenceScopeRadio" value="single" checked>
+              <span>Upravit jen tuto</span>
+            </label>
+            <label class="event-form-recurrence-scope-option">
+              <input type="radio" name="eventFormRecurrenceScopeRadio" value="following">
+              <span>Upravit tuto a všechny následující</span>
             </label>
           </div>
         </div>
@@ -820,6 +888,81 @@
   </form>
 </dialog>
 
+<!-- ══ Modal: šablona události (nová/upravovaná) ══
+     Typ tu je obyčejný <select> (ne .type-picker s ikonami jako ve
+     formuláři události) — tenhle formulář vidí a používá jen SUPERADMIN
+     v Nastavení, nestojí za to kvůli němu zobecňovat celou komponentu. -->
+<dialog class="modal modal-wide modal-grow" id="eventTemplateFormModal">
+  <div class="modal-header">
+    <span class="modal-icon" id="eventTemplateFormModalIcon"><i class="ph ph-copy" aria-hidden="true"></i></span>
+    <div class="modal-header-text">
+      <p class="kicker" id="eventTemplateFormKicker">Nová šablona</p>
+      <h2 id="eventTemplateFormModalTitle">Přidat šablonu</h2>
+    </div>
+    <button class="modal-close" type="button" id="eventTemplateFormClose" aria-label="Zavřít">
+      <i class="ph ph-x" aria-hidden="true"></i>
+    </button>
+  </div>
+  <form id="eventTemplateForm">
+    <div class="modal-body event-type-form-body">
+      <label class="form-hero-field">
+        <span>Název šablony *</span>
+        <input type="text" id="eventTemplateFormLabel" maxlength="120" required class="form-hero-input">
+      </label>
+
+      <div class="field-group field-group-accent">
+        <p class="kicker"><i class="ph ph-tag" aria-hidden="true"></i> Typ a délka</p>
+        <div class="event-form-row">
+          <label>
+            <span>Typ</span>
+            <select id="eventTemplateFormType"><!-- vykresleno JS --></select>
+          </label>
+          <label>
+            <span>Délka trvání (dny)</span>
+            <input type="number" id="eventTemplateFormDuration" min="1" max="31" value="1">
+          </label>
+        </div>
+        <label class="event-form-toggle-field">
+          <span>Celý den</span>
+          <span class="toggle-switch">
+            <input type="checkbox" id="eventTemplateFormAllDay">
+            <span class="toggle-switch-track"><span class="toggle-switch-knob"></span></span>
+          </span>
+        </label>
+      </div>
+
+      <div class="field-group field-group-accent" id="eventTemplateFormTimeGroup">
+        <p class="kicker"><i class="ph ph-clock" aria-hidden="true"></i> Čas</p>
+        <div class="event-form-row">
+          <label>
+            <span>Čas od</span>
+            <input type="time" id="eventTemplateFormStartTime" value="09:00">
+          </label>
+          <label>
+            <span>Čas do</span>
+            <input type="time" id="eventTemplateFormEndTime" value="10:00">
+          </label>
+        </div>
+      </div>
+
+      <div class="field-group field-group-accent">
+        <p class="kicker"><i class="ph ph-note-pencil" aria-hidden="true"></i> Popis</p>
+        <label aria-label="Popis">
+          <textarea id="eventTemplateFormDescription" maxlength="2000" rows="3"></textarea>
+        </label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="button button-secondary" id="eventTemplateFormCancel">
+        <i class="ph ph-x" aria-hidden="true"></i> Zrušit
+      </button>
+      <button type="submit" class="button button-primary" id="eventTemplateFormSubmit">
+        <i class="ph ph-check" aria-hidden="true"></i> Vytvořit
+      </button>
+    </div>
+  </form>
+</dialog>
+
 <!-- ══ Modal: obecné potvrzení citlivé/nevratné akce ══
      Nativní window.confirm/alert se v appce záměrně nepoužívá (jiný vzhled
      než zbytek aplikace i nejisté chování v sandboxované iframe Apps
@@ -968,6 +1111,9 @@
     /** Whitelist ikon pro výběr typu události — ze serveru (apiGetEventTypes), stejný jako EVENT_TYPE_ICONS v 00_config.js. */
     eventTypeIcons: [],
 
+    /** Šablony událostí — pro nabídku "Šablona" ve formuláři nové události (viz applyEventTemplate) i pro správu v Nastavení. */
+    eventTemplatesCache: [],
+
     /** Poslední nalezené soubory při hledání v Import dat (viz apiSearchImportFiles/renderImportResults). */
     importFiles: [],
 
@@ -1068,6 +1214,7 @@
       this.notifications = data.notifications || { unseenCount: 0, items: [] };
       this.fillEventTypeSelect();
       this.fillUserRoleSelect();
+      if (this.canWrite) this.loadEventTemplates();
 
       this.bindNav();
       this.bindMonthPicker();
@@ -1106,6 +1253,29 @@
           '<span class="type-picker-option-label">' + Ui.escape(t.label) + '</span>' +
         '</button>';
       }).join('');
+    },
+
+    /**
+     * Načte šablony událostí jednou při startu (jen když appka vůbec smí
+     * zakládat události — viz onBootstrap) — používá je nabídka "Šablona"
+     * ve formuláři nové události (viz updateEventFormTemplatePicker) i
+     * jejich správa v Nastavení. Tichá chyba — appka bez šablon prostě
+     * jen tu nabídku nezobrazí, nejde o nic, bez čeho by nešlo pracovat.
+     */
+    loadEventTemplates() {
+      return Ui.call('apiGetEventTemplates', null, { silent: true })
+        .then((templates) => {
+          this.eventTemplatesCache = templates;
+          this.renderEventFormTemplateOptions();
+        })
+        .catch(() => {});
+    },
+
+    /** Naplní <select> "Šablona" ve formuláři nové události z this.eventTemplatesCache. */
+    renderEventFormTemplateOptions() {
+      const select = document.querySelector('#eventFormTemplatePicker');
+      select.innerHTML = '<option value="">— Vybrat šablonu —</option>' +
+        this.eventTemplatesCache.map((t) => '<option value="' + Ui.escape(t.id) + '">' + Ui.escape(t.label) + '</option>').join('');
     },
 
     /**
@@ -1622,6 +1792,33 @@
         const button = e.target.closest('.comment-item-delete');
         if (button && button.dataset.commentId) this.deleteComment(button.dataset.commentId, button);
       });
+
+      // Upravit/Duplikovat/Smazat v hlavičce detailu — viz renderEventModalActions.
+      document.querySelector('#eventModalActions').addEventListener('click', (e) => {
+        const button = e.target.closest('.user-action-btn');
+        if (!button || !button.dataset.eventId) return;
+        const event = this.currentEvents.find((ev) => ev.id === button.dataset.eventId);
+        if (!event) return;
+        if (button.dataset.action === 'edit') this.openEditEventModal(event.id, button);
+        else if (button.dataset.action === 'duplicate') this.openDuplicateEventModal(event, button);
+        else if (button.dataset.action === 'delete') this.confirmDeleteEvent(event.id, button);
+      });
+    },
+
+    /** Sestaví Upravit/Duplikovat/Smazat v hlavičce detailu události — podle práv (viz canManageEvent/canWrite), žádná mrtvá ikona. */
+    renderEventModalActions(event) {
+      let html = '';
+      if (this.canWrite) {
+        html += '<button type="button" class="user-action-btn" data-action="duplicate" data-event-id="' + Ui.escape(event.id) + '" title="Duplikovat" aria-label="Duplikovat událost">' +
+          '<i class="ph ph-copy" aria-hidden="true"></i></button>';
+      }
+      if (this.canManageEvent(event)) {
+        html += '<button type="button" class="user-action-btn is-edit" data-action="edit" data-event-id="' + Ui.escape(event.id) + '" title="Upravit" aria-label="Upravit událost">' +
+          '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>' +
+          '<button type="button" class="user-action-btn is-danger" data-action="delete" data-event-id="' + Ui.escape(event.id) + '" title="Smazat" aria-label="Smazat událost">' +
+          '<i class="ph ph-trash" aria-hidden="true"></i></button>';
+      }
+      document.querySelector('#eventModalActions').innerHTML = html;
     },
 
     /**
@@ -1641,6 +1838,8 @@
       });
 
       document.querySelector('#eventFormAllDay').addEventListener('change', () => this.updateEventFormTimeVisibility());
+      document.querySelector('#eventFormRecurrenceFreq').addEventListener('change', () => this.updateRecurrenceEndVisibility());
+      document.querySelector('#eventFormTemplatePicker').addEventListener('change', () => this.applyEventTemplate());
       document.querySelector('#eventForm').addEventListener('submit', (e) => {
         e.preventDefault();
         this.submitEventForm();
@@ -1660,12 +1859,80 @@
     },
 
     /**
+     * Přepne mezi třemi stavy pole Opakování v Termínu (viz eventFormModal):
+     * u NOVÉ události nabídne nastavení opakování; u úpravy výskytu, který
+     * už součástí opakující se série JE, nabídne místo toho volbu rozsahu
+     * úpravy (jen tuto / tuto a následující); u obyčejné (nikdy neopakující
+     * se) úpravy nezobrazí nic z toho.
+     */
+    updateRecurrenceUi(event) {
+      const isRecurringInstance = !!(event && event.recurrenceId);
+      document.querySelector('#eventFormRecurrenceRow').classList.toggle('is-hidden', !!event);
+      document.querySelector('#eventFormRecurrenceScope').classList.toggle('is-hidden', !isRecurringInstance);
+
+      if (!event) {
+        document.querySelector('#eventFormRecurrenceFreq').value = '';
+        document.querySelector('#eventFormRecurrenceCount').value = '';
+        document.querySelector('#eventFormRecurrenceUntil').value = '';
+        this.updateRecurrenceEndVisibility();
+      }
+      if (isRecurringInstance) {
+        document.querySelector('input[name="eventFormRecurrenceScopeRadio"][value="single"]').checked = true;
+      }
+    },
+
+    /** Řádek "Počet opakování / Nebo do data" se zobrazí, jen když je vybraná nějaká frekvence. */
+    updateRecurrenceEndVisibility() {
+      const freq = document.querySelector('#eventFormRecurrenceFreq').value;
+      document.querySelector('#eventFormRecurrenceEndRow').classList.toggle('is-hidden', !freq);
+    },
+
+    /**
+     * Šablona (viz #eventFormTemplateField) — jen u NOVÉ události a jen
+     * když appka nějaké šablony vůbec má (žádné prázdné "— Vybrat šablonu —"
+     * u appky bez jediné definované, viz Nastavení → Šablony událostí).
+     */
+    updateEventFormTemplatePicker(isNew) {
+      const field = document.querySelector('#eventFormTemplateField');
+      document.querySelector('#eventFormTemplatePicker').value = '';
+      field.classList.toggle('is-hidden', !isNew || this.eventTemplatesCache.length === 0);
+    },
+
+    /**
+     * Načte šablonu do právě otevřeného formuláře — vyplní název/typ/celý
+     * den/čas/popis/délku trvání OD AKTUÁLNĚ NASTAVENÉHO data (to appka
+     * neměnní, uživatel ho už má podle dne, na který klikl).
+     */
+    applyEventTemplate() {
+      const templateId = document.querySelector('#eventFormTemplatePicker').value;
+      if (!templateId) return;
+      const template = this.eventTemplatesCache.find((t) => t.id === templateId);
+      if (!template) return;
+
+      document.querySelector('#eventFormTitle').value = template.label;
+      this.setEventFormType(template.type);
+      document.querySelector('#eventFormAllDay').checked = template.allDay;
+      document.querySelector('#eventFormStartTime').value = template.startTime || '09:00';
+      document.querySelector('#eventFormEndTime').value = template.endTime || '10:00';
+      document.querySelector('#eventFormDescription').value = template.description || '';
+
+      const startDate = document.querySelector('#eventFormStartDate').value;
+      if (startDate) {
+        document.querySelector('#eventFormEndDate').value = this.addDaysToIsoDate(startDate, template.durationDays - 1);
+      }
+
+      this.updateEventFormTimeVisibility();
+    },
+
+    /**
      * Otevře formulář události — bez parametru event založí novou (datum
      * předvyplněné podle dne, na který se kliklo), s ním upraví existující
      * (viz openEditEventModal). `originEl` řídí, odkud modal vizuálně
-     * "vyjede".
+     * "vyjede". `prefill` (jen u nové události — viz openDuplicateEventModal)
+     * předvyplní pole obsahem existující události/šablony, ale bez vazby na
+     * ni — uloží se jako úplně nová, nezávislá událost.
      */
-    openEventFormModal(event, dateIso, originEl) {
+    openEventFormModal(event, dateIso, originEl, prefill) {
       this.hideChipTooltip();
       this.closeTypePicker(); // ať menu typu nezůstane omylem otevřené z minulého otevření formuláře
 
@@ -1673,6 +1940,7 @@
         '<i class="ph ' + (event ? 'ph-pencil-simple' : 'ph-calendar-plus') + '" aria-hidden="true"></i>';
       document.querySelector('#eventFormKicker').textContent = event ? 'Upravit událost' : 'Nová událost';
       document.querySelector('#eventForm').dataset.editId = event ? event.id : '';
+      document.querySelector('#eventForm').dataset.editRecurrenceId = event ? event.recurrenceId : '';
 
       if (event) {
         Ui.setText('#eventFormDateLabel', event.title);
@@ -1687,16 +1955,18 @@
       } else {
         const date = new Date(dateIso + 'T00:00');
         Ui.setText('#eventFormDateLabel', date.getDate() + '. ' + this.MONTH_NAMES[date.getMonth()] + ' ' + date.getFullYear());
-        document.querySelector('#eventFormTitle').value = '';
-        this.setEventFormType('default');
-        document.querySelector('#eventFormAllDay').checked = false;
+        document.querySelector('#eventFormTitle').value = prefill ? prefill.title : '';
+        this.setEventFormType(prefill ? prefill.type : 'default');
+        document.querySelector('#eventFormAllDay').checked = prefill ? prefill.allDay : false;
         document.querySelector('#eventFormStartDate').value = dateIso;
-        document.querySelector('#eventFormEndDate').value = dateIso;
-        document.querySelector('#eventFormStartTime').value = '09:00';
-        document.querySelector('#eventFormEndTime').value = '10:00';
-        document.querySelector('#eventFormDescription').value = '';
+        document.querySelector('#eventFormEndDate').value = this.addDaysToIsoDate(dateIso, (prefill ? prefill.durationDays : 1) - 1);
+        document.querySelector('#eventFormStartTime').value = prefill ? (prefill.startTime || '09:00') : '09:00';
+        document.querySelector('#eventFormEndTime').value = prefill ? (prefill.endTime || '10:00') : '10:00';
+        document.querySelector('#eventFormDescription').value = prefill ? (prefill.description || '') : '';
       }
       this.updateEventFormTimeVisibility();
+      this.updateRecurrenceUi(event);
+      this.updateEventFormTemplatePicker(!event);
 
       document.querySelector('#eventFormSubmit').innerHTML =
         '<i class="ph ph-check" aria-hidden="true"></i> ' + (event ? 'Uložit' : 'Vytvořit');
@@ -1711,6 +1981,25 @@
     /** Založení nové události — tenký obal nad openEventFormModal, ať se nemusí měnit stávající volání (openDayModal, tlačítko "Nová událost"). */
     openCreateEventModal(dateIso, originEl) {
       this.openEventFormModal(null, dateIso, originEl);
+    },
+
+    /**
+     * Duplikovat — otevře formulář NOVÉ události předvyplněný obsahem té
+     * existující (název/typ/celý den/časy/délka trvání/popis), ale BEZ
+     * vazby na ni — uloží se jako úplně nezávislá událost. Datum výchozí
+     * dnešek (uživatel si ho před uložením může změnit).
+     */
+    openDuplicateEventModal(event, originEl) {
+      const durationDays = this.dateDiffDays(event.start.slice(0, 10), event.end.slice(0, 10)) + 1;
+      this.openEventFormModal(null, this.todayIso(), originEl, {
+        title: event.title,
+        type: event.type,
+        allDay: event.allDay,
+        startTime: event.start.slice(11, 16),
+        endTime: event.end.slice(11, 16),
+        durationDays: durationDays,
+        description: event.description,
+      });
     },
 
     /** Úprava existující události — bere ji z už načtených dat (this.currentEvents), stejně jako openEventModal. */
@@ -1730,9 +2019,17 @@
      * probíhá na SERVERU — tady se jen poskládá payload a klientsky ověří
      * to nejzákladnější, ať uživatel nečeká na odpověď serveru kvůli
      * prázdnému názvu.
+     *
+     * U NOVÉ události s vybraným Opakováním appka pošle `recurrence`
+     * (server podle něj založí celou sérii najednou, viz
+     * _saveRecurringEvent_). U úpravy výskytu, který JE součástí série,
+     * appka pošle `scope` podle vybraného přepínače (viz updateRecurrenceUi/
+     * eventFormRecurrenceScope) — jinak se scope vůbec neposílá (server ho
+     * bez recurrence_id na existující události stejně ignoruje).
      */
     submitEventForm() {
       const editId = document.querySelector('#eventForm').dataset.editId || '';
+      const editRecurrenceId = document.querySelector('#eventForm').dataset.editRecurrenceId || '';
       const title = document.querySelector('#eventFormTitle').value.trim();
       if (!title) {
         Ui.toast('Vyplňte název události.', 'error');
@@ -1758,7 +2055,24 @@
         title: title,
         description: document.querySelector('#eventFormDescription').value.trim(),
       };
-      if (editId) payload.id = editId;
+
+      if (editId) {
+        payload.id = editId;
+        if (editRecurrenceId) {
+          payload.scope = document.querySelector('input[name="eventFormRecurrenceScopeRadio"]:checked').value;
+        }
+      } else {
+        const freq = document.querySelector('#eventFormRecurrenceFreq').value;
+        if (freq) {
+          const count = document.querySelector('#eventFormRecurrenceCount').value;
+          const until = document.querySelector('#eventFormRecurrenceUntil').value;
+          if (!count && !until) {
+            Ui.toast('U opakování vyplňte počet opakování, nebo datum konce.', 'error');
+            return;
+          }
+          payload.recurrence = count ? { freq: freq, count: Number(count) } : { freq: freq, until: until };
+        }
+      }
 
       const submitButton = document.querySelector('#eventFormSubmit');
       Ui.setButtonLoading(submitButton, true, 'Ukládám…');
@@ -1776,20 +2090,44 @@
         });
     },
 
-    /** Smazání události je nevratné → potvrzovací modal (viz confirmAction, sdílené s deaktivací uživatele). */
+    /**
+     * Smazání události je nevratné → potvrzovací modal (viz confirmAction,
+     * sdílené s deaktivací uživatele). U výskytu, který je součástí
+     * opakující se série, appka do potvrzení navíc vloží přepínač rozsahu
+     * (jen tato / tato a následující, viz opts.bodyHtml) — vybraná hodnota
+     * se čte až v onConfirm, ať appka nepotřebuje druhý modal navíc.
+     */
     confirmDeleteEvent(eventId, originEl) {
       const event = this.currentEvents.find((e) => e.id === eventId);
       if (!event) return;
 
+      const scopeHtml = event.recurrenceId
+        ? '<div class="event-form-recurrence-scope">' +
+            '<span class="event-form-recurrence-scope-note"><i class="ph ph-repeat" aria-hidden="true"></i> Součást opakující se série</span>' +
+            '<label class="event-form-recurrence-scope-option">' +
+              '<input type="radio" name="confirmDeleteScope" value="single" checked>' +
+              '<span>Smazat jen tuto</span>' +
+            '</label>' +
+            '<label class="event-form-recurrence-scope-option">' +
+              '<input type="radio" name="confirmDeleteScope" value="following">' +
+              '<span>Smazat tuto a všechny následující</span>' +
+            '</label>' +
+          '</div>'
+        : '';
+
       this.confirmAction({
         title: 'Smazat událost?',
-        body: '„' + event.title + '" (' + this.eventTimeLabel(event) + ') bude nenávratně smazána i se všemi komentáři.',
+        bodyHtml: '<p>„' + Ui.escape(event.title) + '" (' + Ui.escape(this.eventTimeLabel(event)) + ') bude nenávratně smazána i se všemi komentáři.</p>' + scopeHtml,
         okLabel: 'Smazat',
         okIcon: 'ph-trash',
         okClass: 'button-danger',
         onConfirm: (okBtn, dialog) => {
+          const scopeRadio = dialog.querySelector('input[name="confirmDeleteScope"]:checked');
+          const payload = { id: eventId };
+          if (scopeRadio) payload.scope = scopeRadio.value;
+
           Ui.setButtonLoading(okBtn, true, 'Mažu…');
-          Ui.call('apiDeleteEvent', { id: eventId }, { silent: true })
+          Ui.call('apiDeleteEvent', payload, { silent: true })
             .then(() => {
               Ui.closeModal(dialog);
               Ui.closeModal(document.querySelector('#dayModal')); // seznam dne by ukazoval smazanou událost
@@ -2017,10 +2355,17 @@
      * dostane OK tlačítko a dialog — sám si řídí Ui.setButtonLoading a
      * zavře modal až po úspěchu, ať při chybě uživatel vidí hlášku, ne
      * prázdno po zmizelém modalu.
+     *
+     * `opts.bodyHtml` (nepovinné) — appkou sestavené (ne uživatelský vstup)
+     * HTML místo prostého textu, např. přepínač rozsahu smazání u opakující
+     * se události (viz confirmDeleteEvent) — `opts.body` se v tom případě
+     * ignoruje.
      */
     confirmAction(opts, originEl) {
       document.querySelector('#confirmModalTitle').textContent = opts.title;
-      document.querySelector('#confirmModalBody').textContent = opts.body;
+      const bodyEl = document.querySelector('#confirmModalBody');
+      if (opts.bodyHtml) bodyEl.innerHTML = opts.bodyHtml;
+      else bodyEl.textContent = opts.body;
 
       const okBtn = document.querySelector('#confirmModalOk');
       okBtn.className = 'button ' + (opts.okClass || 'button-danger');
@@ -3035,6 +3380,9 @@
       document.querySelector('#eventTypesCreateBtn').addEventListener('click', (e) => {
         this.openEventTypeFormModal(null, e.currentTarget);
       });
+      document.querySelector('#eventTemplatesCreateBtn').addEventListener('click', (e) => {
+        this.openEventTemplateFormModal(null, e.currentTarget);
+      });
 
       // Delegované listenery na seznamech — přežijí opakované překreslení
       // (stejný vzor jako u uživatelů). Tužka/koš sdílí vzhled i třídu
@@ -3066,9 +3414,19 @@
         else if (btn.dataset.action === 'delete') this.confirmDeleteEventType(item, btn);
       });
 
+      document.querySelector('#eventTemplatesList').addEventListener('click', (e) => {
+        const btn = e.target.closest('.user-action-btn');
+        if (!btn || !btn.dataset.id) return;
+        const item = this.eventTemplatesCache.find((t) => t.id === btn.dataset.id);
+        if (!item) return;
+        if (btn.dataset.action === 'edit') this.openEventTemplateFormModal(item, btn);
+        else if (btn.dataset.action === 'delete') this.confirmDeleteEventTemplate(item, btn);
+      });
+
       this.bindDepartmentForm();
       this.bindPositionForm();
       this.bindEventTypeForm();
+      this.bindEventTemplateForm();
       this.bindImportForm();
       this.bindHolidaysTab();
     },
@@ -3603,6 +3961,190 @@
       }, originEl);
     },
 
+    /* ── Šablony událostí (Nastavení → Šablony událostí) ──────────────────
+       Jen výchozí obsah pro předvyplnění formuláře nové události (viz
+       applyEventTemplate) — appka je nikam neváže, žádná trvalá vazba na
+       vytvořené události. Sdílená cache (this.eventTemplatesCache) i s
+       nabídkou "Šablona" ve formuláři nové události (viz loadEventTemplates
+       při startu) — po každé změně appka obojí drží v synchronu. */
+
+    loadEventTemplatesAdmin() {
+      const list = document.querySelector('#eventTemplatesList');
+      list.innerHTML = this.settingsPlaceholder('Načítám šablony…');
+
+      Ui.call('apiGetEventTemplates', null, { silent: true })
+        .then((templates) => {
+          this.eventTemplatesCache = templates;
+          this.renderEventTemplatesAdmin();
+          this.renderEventFormTemplateOptions();
+        })
+        .catch((error) => {
+          list.innerHTML = this.settingsPlaceholder('Šablony se nepodařilo načíst.');
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    renderEventTemplatesAdmin() {
+      const list = document.querySelector('#eventTemplatesList');
+      list.innerHTML = this.eventTemplatesCache.length
+        ? this.eventTemplatesCache.map((t) => this.renderEventTemplateRow(t)).join('')
+        : this.settingsPlaceholder('Zatím žádné šablony.');
+    },
+
+    /** Tiché uložení šablony do cache BEZ volání serveru navíc (apiSaveEventTemplate už vrací kompletní záznam). */
+    applyEventTemplateToCache(record, isNew) {
+      if (isNew) {
+        this.eventTemplatesCache.push(record);
+      } else {
+        const idx = this.eventTemplatesCache.findIndex((t) => t.id === record.id);
+        if (idx === -1) this.eventTemplatesCache.push(record);
+        else this.eventTemplatesCache[idx] = record;
+      }
+      this.eventTemplatesCache.sort((a, b) => a.label.localeCompare(b.label, 'cs'));
+      this.renderEventTemplatesAdmin();
+      this.renderEventFormTemplateOptions();
+    },
+
+    /** Odebere smazanou šablonu z cache a promítne to i do nabídky "Šablona", bez volání serveru. */
+    removeEventTemplateFromCache(id) {
+      this.eventTemplatesCache = this.eventTemplatesCache.filter((t) => t.id !== id);
+      this.renderEventTemplatesAdmin();
+      this.renderEventFormTemplateOptions();
+    },
+
+    renderEventTemplateRow(t) {
+      const type = this.eventTypes[t.type] || { label: t.type, icon: 'calendar-blank', color: '#5e6e8a', bgColor: '#eef0f3' };
+      const timeInfo = t.allDay ? 'Celý den' : (t.startTime + '–' + t.endTime);
+      return '<div class="settings-row">' +
+        '<span class="settings-row-icon" style="--type-color:' + Ui.escape(type.color) + '; --type-bg:' + Ui.escape(type.bgColor) + '">' +
+          '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i></span>' +
+        '<span class="settings-row-name">' + Ui.escape(t.label) + ' <span class="settings-row-tag">' + Ui.escape(timeInfo) + '</span></span>' +
+        '<span class="settings-row-actions">' +
+          '<button type="button" class="user-action-btn is-edit" data-action="edit" data-id="' + Ui.escape(t.id) + '" title="Upravit" aria-label="Upravit ' + Ui.escape(t.label) + '">' +
+            '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>' +
+          '<button type="button" class="user-action-btn is-danger" data-action="delete" data-id="' + Ui.escape(t.id) + '" title="Smazat" aria-label="Smazat ' + Ui.escape(t.label) + '">' +
+            '<i class="ph ph-trash" aria-hidden="true"></i></button>' +
+        '</span>' +
+      '</div>';
+    },
+
+    bindEventTemplateForm() {
+      const dialog = document.querySelector('#eventTemplateFormModal');
+      document.querySelector('#eventTemplateFormClose').addEventListener('click', () => Ui.closeModal(dialog));
+      document.querySelector('#eventTemplateFormCancel').addEventListener('click', () => Ui.closeModal(dialog));
+      dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) Ui.closeModal(dialog);
+      });
+      dialog.addEventListener('cancel', (e) => {
+        e.preventDefault();
+        Ui.closeModal(dialog);
+      });
+      document.querySelector('#eventTemplateForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.submitEventTemplateForm();
+      });
+      document.querySelector('#eventTemplateFormAllDay').addEventListener('change', () => this.updateEventTemplateFormTimeVisibility());
+    },
+
+    /** Skryje kartu Čas u celodenní šablony — čas pak nedává smysl vyplňovat. */
+    updateEventTemplateFormTimeVisibility() {
+      const allDay = document.querySelector('#eventTemplateFormAllDay').checked;
+      document.querySelector('#eventTemplateFormTimeGroup').classList.toggle('is-hidden', allDay);
+    },
+
+    /** Naplní <select> Typ ve formuláři šablony — obyčejné <option>, ne .type-picker (viz komentář u eventTemplateFormModal v HTML). */
+    fillEventTemplateTypeSelect() {
+      const select = document.querySelector('#eventTemplateFormType');
+      select.innerHTML = Object.keys(this.eventTypes)
+        .map((key) => '<option value="' + Ui.escape(key) + '">' + Ui.escape(this.eventTypes[key].label) + '</option>')
+        .join('');
+    },
+
+    /** Otevře formulář šablony — bez parametru template založí novou, s ním upraví existující. */
+    openEventTemplateFormModal(template, originEl) {
+      this.fillEventTemplateTypeSelect();
+      document.querySelector('#eventTemplateFormModalIcon').innerHTML =
+        '<i class="ph ' + (template ? 'ph-pencil-simple' : 'ph-copy') + '" aria-hidden="true"></i>';
+      document.querySelector('#eventTemplateFormKicker').textContent = template ? 'Upravit šablonu' : 'Nová šablona';
+      document.querySelector('#eventTemplateFormModalTitle').textContent = template ? template.label : 'Přidat šablonu';
+      document.querySelector('#eventTemplateFormLabel').value = template ? template.label : '';
+      document.querySelector('#eventTemplateFormType').value = template ? template.type : 'default';
+      document.querySelector('#eventTemplateFormAllDay').checked = template ? template.allDay : false;
+      document.querySelector('#eventTemplateFormStartTime').value = template ? (template.startTime || '09:00') : '09:00';
+      document.querySelector('#eventTemplateFormEndTime').value = template ? (template.endTime || '10:00') : '10:00';
+      document.querySelector('#eventTemplateFormDuration').value = template ? template.durationDays : 1;
+      document.querySelector('#eventTemplateFormDescription').value = template ? (template.description || '') : '';
+      document.querySelector('#eventTemplateForm').dataset.editId = template ? template.id : '';
+      this.updateEventTemplateFormTimeVisibility();
+      document.querySelector('#eventTemplateFormSubmit').innerHTML =
+        '<i class="ph ph-check" aria-hidden="true"></i> ' + (template ? 'Uložit' : 'Vytvořit');
+
+      const dialog = document.querySelector('#eventTemplateFormModal');
+      this.setModalOrigin(dialog, originEl);
+      Ui.openModal(dialog);
+      document.querySelector('#eventTemplateFormLabel').focus();
+    },
+
+    submitEventTemplateForm() {
+      const editId = document.querySelector('#eventTemplateForm').dataset.editId || '';
+      const label = document.querySelector('#eventTemplateFormLabel').value.trim();
+      if (!label) {
+        Ui.toast('Vyplňte název šablony.', 'error');
+        return;
+      }
+
+      const allDay = document.querySelector('#eventTemplateFormAllDay').checked;
+      const payload = {
+        label: label,
+        type: document.querySelector('#eventTemplateFormType').value,
+        allDay: allDay,
+        startTime: allDay ? '' : document.querySelector('#eventTemplateFormStartTime').value,
+        endTime: allDay ? '' : document.querySelector('#eventTemplateFormEndTime').value,
+        durationDays: Number(document.querySelector('#eventTemplateFormDuration').value) || 1,
+        description: document.querySelector('#eventTemplateFormDescription').value.trim(),
+      };
+      if (editId) payload.id = editId;
+
+      const submitButton = document.querySelector('#eventTemplateFormSubmit');
+      Ui.setButtonLoading(submitButton, true, 'Ukládám…');
+
+      Ui.call('apiSaveEventTemplate', payload, { silent: true })
+        .then((record) => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.closeModal(document.querySelector('#eventTemplateFormModal'));
+          Ui.toast(editId ? 'Šablona upravena.' : 'Šablona vytvořena.', 'success');
+          this.applyEventTemplateToCache(record, !editId);
+        })
+        .catch((error) => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    /** Smazání šablony nemá vazbu na existující události (appka jimi jen jednorázově předvyplní formulář) — přesto přes potvrzovací okno. */
+    confirmDeleteEventTemplate(template, originEl) {
+      this.confirmAction({
+        title: 'Smazat šablonu?',
+        body: '„' + template.label + '" zmizí z nabídky při zakládání nové události. Existující události zůstanou beze změny.',
+        okLabel: 'Smazat',
+        okIcon: 'ph-trash',
+        okClass: 'button-danger',
+        onConfirm: (okBtn, dialog) => {
+          Ui.setButtonLoading(okBtn, true, 'Mažu…');
+          Ui.call('apiDeleteEventTemplate', { id: template.id }, { silent: true })
+            .then(() => {
+              Ui.closeModal(dialog);
+              Ui.toast('Šablona smazána.', 'success');
+              this.removeEventTemplateFromCache(template.id);
+            })
+            .catch((error) => {
+              Ui.setButtonLoading(okBtn, false);
+              Ui.toast(error.message, 'error');
+            });
+        },
+      }, originEl);
+    },
+
     /* ── Import dat filiálek (Nastavení → Import dat) ────────────────────
        Etapa 1: ruční hledání souboru + sync, bez hlídání rozdílů a bez
        oznámení (přibude v dalších etapách, viz server/60_import.js). */
@@ -4113,6 +4655,7 @@
         this.loadDepartments();
         this.loadPositions();
         this.loadEventTypesAdmin();
+        this.loadEventTemplatesAdmin();
         this.loadImportSettings();
         this.loadImportTriggerStatus();
         this.loadImportLog();
@@ -4251,6 +4794,12 @@
     /** Rozdíl ve dnech mezi dvěma daty RRRR-MM-DD (b − a). */
     dateDiffDays(aIso, bIso) {
       return Math.round((new Date(bIso + 'T00:00') - new Date(aIso + 'T00:00')) / 86400000);
+    },
+
+    /** Přidá dny k datu RRRR-MM-DD — přes rok/měsíc/den konstruktor Date (ne ms aritmetika), ať to nezávisí na místním letním/zimním čase. */
+    addDaysToIsoDate(dateIso, deltaDays) {
+      const d = new Date(dateIso + 'T00:00');
+      return this.isoDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() + deltaDays));
     },
 
     /**
@@ -4442,6 +4991,13 @@
       // viz komentář výše. Na aktivní straně tělo ztrácí zaoblení (viz CSS
       // .is-continue-left/right), takže barevně splyne s aktivní hranou
       // beze švu, jako jeden souvislý pruh až k okraji buňky.
+      // Ikona opakování jen na prvním dni chipu (viz isFirstDay) — na
+      // dalších dnech vícedenní opakující se události by jen zbytečně
+      // zabírala místo vedle stejně tak zkráceného názvu.
+      const recurrenceIcon = event.recurrenceId && isFirstDay
+        ? '<i class="ph ph-repeat cal-chip-recurrence" title="Opakující se událost" aria-hidden="true"></i>'
+        : '';
+
       return '<div class="' + cls + '" data-event-id="' + Ui.escape(event.id) +
         '" style="--chip-color:' + Ui.escape(type.color) + '; --chip-bg:' + Ui.escape(type.bgColor) + '; grid-row:' + laneTrack +
         '; grid-column:' + colLine + '">' +
@@ -4449,6 +5005,7 @@
         '<span class="cal-chip-body">' +
           '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i>' +
           '<span class="cal-chip-title">' + Ui.escape(label) + '</span>' +
+          recurrenceIcon +
           actions +
         '</span>' +
         rightEdge +
@@ -4544,6 +5101,7 @@
           '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i></span>' +
         '<div class="day-event-text">' +
           '<div class="day-event-title-row"><strong>' + Ui.escape(event.title) + '</strong>' +
+            (event.recurrenceId ? '<i class="ph ph-repeat cal-chip-recurrence" title="Opakující se událost" aria-hidden="true"></i>' : '') +
             '<span class="day-event-time">' + Ui.escape(this.eventTimeLabel(event)) + '</span></div>' +
           (event.description ? '<p class="day-event-desc">' + Ui.escape(event.description) + '</p>' : '') +
           '<span class="day-event-owner">' + Ui.escape(event.ownerName) + '</span>' +
@@ -4578,6 +5136,7 @@
 
       Ui.setText('#eventModalKicker', type.label);
       Ui.setText('#eventModalTitle', event.title);
+      this.renderEventModalActions(event);
 
       const startDate = new Date(event.start.slice(0, 10) + 'T00:00');
       const dateLabel = this.DAY_NAMES_FULL[(startDate.getDay() + 6) % 7] + ' ' +
@@ -4585,7 +5144,9 @@
 
       document.querySelector('#eventModalInfo').innerHTML =
         '<div class="event-info-block">' +
-          '<p class="event-info-label">Kdy</p>' +
+          '<p class="event-info-label">Kdy' +
+            (event.recurrenceId ? ' <i class="ph ph-repeat event-info-recurrence-icon" title="Opakující se událost" aria-hidden="true"></i>' : '') +
+          '</p>' +
           '<p class="event-info-value">' + Ui.escape(this.eventTimeLabel(event)) + '</p>' +
           '<p class="event-info-sub">' + Ui.escape(dateLabel) + '</p>' +
         '</div>' +

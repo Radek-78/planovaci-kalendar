@@ -249,3 +249,16 @@ function cleanDateTime_(value, fieldName) {
   }
   return text;
 }
+
+/**
+ * Ověří, že hodnota je platný čas ve tvaru `HH:mm` (00:00–23:59) — jen čas
+ * dne, bez data (viz šablony událostí, _event_templates.start_time/end_time).
+ */
+function cleanTimeOnly_(value, fieldName) {
+  const text = String(value === null || value === undefined ? '' : value).trim();
+  const match = /^(\d{2}):(\d{2})$/.exec(text);
+  if (!match || Number(match[1]) > 23 || Number(match[2]) > 59) {
+    throw userError_('Pole „' + fieldName + '" musí být čas ve tvaru HH:mm.');
+  }
+  return text;
+}

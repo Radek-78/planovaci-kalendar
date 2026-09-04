@@ -2856,6 +2856,13 @@
     text-overflow: ellipsis;
   }
 
+  /* Ikonka opakování — v chipu mřížky i v seznamu dne (.day-event-title-row), stejná třída pro obojí. */
+  .cal-chip-recurrence {
+    flex-shrink: 0;
+    font-size: 10px;
+    opacity: 0.85;
+  }
+
   /* Vyhrazené místo pro trojúhelník "pokračuje vlevo/vpravo" (viz
      renderChip) — VŽDY stejně široké, i prázdné (event nemá continuesLeft/
      Right), ať mají všechny chipy stejnou šířku bez ohledu na to, jestli
@@ -3467,6 +3474,45 @@
     text-transform: uppercase;
   }
 
+  /* Ikonka opakování vedle popisku "Kdy" v detailu události. */
+  .event-info-recurrence-icon {
+    color: var(--lidl-blue);
+    font-size: 11px;
+    margin-left: 2px;
+    vertical-align: 1px;
+  }
+
+  /* ── Akce v hlavičce detailu události (Upravit/Duplikovat/Smazat) ──────
+     Sdílí třídu .user-action-btn (stejná ikona/rozměr jako všude jinde
+     v appce), ale na tmavém pozadí hlavičky (viz .modal-header) potřebuje
+     jiné barvy — průhledné/bílé odstíny jako .modal-close vedle nich,
+     ne plný světle šedý podklad, který by na tmavé hlavičce působil jako
+     cizí světlá skvrna. */
+  .event-modal-actions {
+    align-items: center;
+    display: flex;
+    flex-shrink: 0;
+    gap: 4px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .event-modal-actions .user-action-btn {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    height: 30px;
+    width: 30px;
+  }
+
+  .event-modal-actions .user-action-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--white);
+  }
+
+  .event-modal-actions .user-action-btn.is-danger:hover {
+    background: rgba(230, 10, 20, 0.35);
+  }
+
   .event-info-value {
     color: var(--text);
     font-size: 16px;
@@ -3812,6 +3858,53 @@
 
   .toggle-switch input:focus-visible ~ .toggle-switch-track {
     box-shadow: 0 0 0 3px rgba(0, 83, 179, 0.2);
+  }
+
+  /* ── Volba rozsahu u opakující se události ─────────────────────────────
+     Použito na dvou místech: v Termínu formuláře události (uvnitř karty
+     .field-group-accent — proto vlastní bílé pozadí, ať se odliší od
+     stránkově zbarveného podkladu karty) i v potvrzovacím okně smazání
+     (viz confirmDeleteEvent, opts.bodyHtml — tam sedí i bez okolní karty,
+     jako samostatný orámovaný box). */
+  .event-form-recurrence-scope {
+    background: var(--white);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 10px 12px;
+  }
+
+  .event-form-recurrence-scope-note {
+    align-items: center;
+    color: var(--lidl-blue);
+    display: flex;
+    font-size: 11px;
+    font-weight: 700;
+    gap: 5px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  /* Přepis globálního .label (malá verzálková šedá, display:grid) — tady
+     jde o obyčejný čitelný text vedle přepínače, ne popisek nad polem. */
+  .event-form-recurrence-scope-option {
+    align-items: center;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    font-size: 13px;
+    font-weight: 400;
+    gap: 8px;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .event-form-recurrence-scope-option input {
+    accent-color: var(--lidl-blue);
+    height: 15px;
+    width: 15px;
   }
 
   /* ── Výběr typu události (.type-picker) ────────────────────────────────

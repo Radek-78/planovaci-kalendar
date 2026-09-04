@@ -37,9 +37,15 @@ const DB_SCHEMA = {
   // UDÁLOSTI, ne komentáře) — proklik ze zvonečku s oznámeními vždy vede
   // na konkrétní událost, viz audit_() v 10_util.js a apiGetBootstrap.
   _audit_log: ['timestamp', 'user', 'action', 'detail', 'entity_id'],
+  // recurrence_id: prázdné u běžné (jednorázové) události, jinak sdílené
+  // UUID napříč všemi výskyty jedné opakující se série (viz apiSaveEvent/
+  // _saveRecurringEvent_ v 50_api.js) — každý výskyt je ale ÚPLNÝ,
+  // samostatný řádek (appka celou sérii vygeneruje najednou při založení,
+  // ne že by se dopočítávala za běhu), takže apiGetEvents/vykreslení
+  // mřížky se vůbec nemusí měnit, jen přibyl tenhle sloupec navíc.
   events: [
     'id', 'start', 'end', 'all_day', 'type', 'title', 'description',
-    'owner_email', 'created_at', 'created_by', 'updated_at', 'updated_by',
+    'owner_email', 'recurrence_id', 'created_at', 'created_by', 'updated_at', 'updated_by',
   ],
   event_comments: ['id', 'event_id', 'author_email', 'text', 'created_at'],
   // Pracovní pozice pro výběr ve formuláři uživatele (Nastavení) — jen
@@ -109,6 +115,16 @@ const DB_SCHEMA = {
   // (viz _ensureHolidaysSeededForYear_ v 50_api.js), od té chvíle jsou to
   // obyčejná data jako kterákoli jiná — needituje/nemaže se nic natvrdo.
   _holidays: ['id', 'date', 'name', 'created_at', 'created_by', 'updated_at', 'updated_by'],
+  // Šablony událostí (Nastavení → Šablony událostí) — jen výchozí obsah pro
+  // předvyplnění formuláře nové události (viz apiGetEventTemplates a
+  // App.applyEventTemplate na klientovi), appka je nikam neváže — použití
+  // šablony vytvoří normální nezávislou událost, ne odkaz na šablonu.
+  // start_time/end_time prázdné u celodenní šablony (all_day=true).
+  // duration_days = kolik dní má nová událost trvat (1 = jednodenní).
+  _event_templates: [
+    'id', 'label', 'type', 'all_day', 'start_time', 'end_time', 'duration_days', 'description',
+    'created_at', 'created_by', 'updated_at', 'updated_by',
+  ],
 };
 
 /**
@@ -151,6 +167,8 @@ const TEXT_COLUMNS = {
   _store_closures: ['id', 'od', 'do', 'updated_at'],
   _import_log: ['created_at'],
   _holidays: ['date', 'created_at', 'updated_at'],
+  // start_time/end_time (např. "9:00") by Sheets rádo převedlo na čas, stejný důvod jako u _stores otevírací doby výše.
+  _event_templates: ['start_time', 'end_time', 'created_at', 'updated_at'],
 };
 
 /**
@@ -439,6 +457,44 @@ function dbInsert_(table, record) {
 
     const sheet = dbSheet_(table);
     sheet.appendRow(dbRecordToRow_(table, complete));
+    dbInvalidate_(table);
+    return complete;
+  });
+}
+
+/**
+ * Vloží NĚKOLIK nových záznamů najednou — jedno zjištění posledního řádku,
+ * jeden zápis (setValues), místo N jednotlivých dbInsert_ volání. Stejný
+ * důvod jako u dbReplaceAll_ (viz komentář tam): cyklus desítek volání by
+ * kvůli dbInvalidate_ po každém byl zbytečně pomalý. Používá se pro
+ * opakující se událost (viz _saveRecurringEvent_ v 50_api.js) — všechny
+ * výskyty jedné série vznikají jedním zápisem.
+ *
+ * Doplní `id`/`created_at`/`created_by`/`updated_at` každému záznamu
+ * stejně jako dbInsert_.
+ *
+ * @param {string} table
+ * @param {Object[]} records
+ * @returns {Object[]} kompletní vložené záznamy (se všemi doplněnými poli), ve stejném pořadí
+ */
+function dbInsertMany_(table, records) {
+  return withLock_(() => {
+    const headers = DB_SCHEMA[table];
+    const now = nowIso_();
+    const email = currentEmail_() || 'system';
+
+    const complete = records.map((record) => Object.assign({}, record, {
+      id: record.id || uuid_(),
+      created_at: now,
+      created_by: email,
+      updated_at: now,
+    }));
+
+    const sheet = dbSheet_(table);
+    const startRow = sheet.getLastRow() + 1;
+    sheet.getRange(startRow, 1, complete.length, headers.length)
+      .setValues(complete.map((record) => dbRecordToRow_(table, record)));
+
     dbInvalidate_(table);
     return complete;
   });

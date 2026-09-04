@@ -5,6 +5,10 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.8.0 - 04.09.2026 19:24
+- v0.8.0: Opakující se událost, duplikování, šablony událostí — tři nové možnosti při zakládání a správě událostí. Opakování: formulář nové události nabízí Neopakovat/Denně/Týdně/Co 2 týdny/Měsíčně s koncem podle počtu opakování nebo data, appka rovnou založí celou sérii
+- úprava/smazání výskytu ze série nabídne volbu Jen tuto / Tuto a všechny následující. Duplikovat: v detailu události nová ikona vedle Upravit/Smazat otevře formulář nové události předvyplněný obsahem té existující, bez trvalé vazby na ni. Šablony událostí: nová záložka v Nastavení pro uložení opakovaně používaného obsahu (název/typ/čas/délka/popis), který jde při zakládání nové události načíst jedním výběrem.
+
 ## v0.7.5 - 04.09.2026 13:35
 - v0.7.5: Oprava (de)aktivace filiálky + přehlednější detail s malým kalendářem — (de)aktivace filiálky (např. 994) hlásila 'Filiálka nebyla nalezena', i když v databázi normálně byla: Sheets tiše převedl číslo filiálky na typ Number, appka ho ale hledala jako text a striktní porovnání se nikdy neshodlo (dbFindBy_ teď porovnává bezpečně jako text). V detailu filiálky se po přidání malého kalendáře zúžily zbylé tři sloupce natolik, že se text v nich lámal a nebyl přehledný — modal je teď ještě širší (nová třída .modal-2xwide) a popisek u kontaktu (jméno, telefon) stojí nad hodnotou, ne vedle ní v řádku, takže se dlouhý text neláme.
 
