@@ -94,7 +94,7 @@ server/
   40_setup.js       isSetupDone_, scriptFolder_, wizardInfo_, setupInitialize
   50_api.js         veřejné endpointy (vše přes guard_)
   60_import.js      import dat filiálek/LC ze sdíleného souboru na Disku
-  90_tools.js       ruční nástroje vlastníka (reset, diagnostika)
+  90_tools.js       ruční nástroje vlastníka (reset, diagnostika, trigger importu)
   99_main.js        doGet — routing wizard / app / bez přístupu
 ui/
   styles.html       design systém (Lidl barvy, komponenty) + blok kalendáře
@@ -644,9 +644,31 @@ firemní adresář):
   oznámení nevede na entity_id jako u událostí, vede rovnou na záložku
   Import dat (viz 9.4, `import.sync` je zdokumentovaná výjimka).
 
-**Plánovaná další etapa:** etapa 4 — noční trigger 6:00–7:00 založený
-jednorázově přes `TOOLS_` funkci, spouští stejnou sdílenou sync logiku
-jako ruční tlačítko.
+**Etapa 4 (implementováno)** — noční automatická synchronizace:
+
+- Časovaný trigger (6:00–7:00 — zdroj se sám aktualizuje 4-5h, hodina je
+  rezerva) se zakládá/ruší RUČNĚ z editoru Apps Scriptu spuštěním
+  `TOOLS_nastavDenniSynchronizaci`/`TOOLS_zrusDenniSynchronizaci`
+  (90_tools.js) — appka si ho sama nezakládá, stejný princip jako
+  ostatní jednorázové admin nástroje v projektu. `atHour(6)` neurčuje
+  přesnou minutu, jen hodinové okno — o to se stará Apps Script sám.
+- Trigger volá `_importRunScheduledSync_` (60_import.js), která běží
+  MIMO web request (žádná session uživatele, tedy žádný `guard_`) a
+  navazuje na naposledy odsouhlasenou konfiguraci (`_settings.
+  importFolderId`/`importSearchTerm`, ukládá je `apiSyncImportFile` při
+  úspěšném ručním syncu) — dokud SUPERADMIN v appce aspoň jednou ručně
+  nesynchronizuje, trigger nemá co spustit a jen se o tom zaloguje.
+  Soubor k synchronizaci vybírá vždycky automaticky ten nejnovější
+  (žádný člověk, kdo by mohl zvolit jiný, jako u ručního tlačítka).
+- Sdílená logika s ručním tlačítkem — `_importFindFiles_` (hledání
+  souborů) a `_importPerformSync_` (samotný import + zápis do
+  `_import_log` + oznámení zvonečkem) používá beze změny i
+  `apiSearchImportFiles`/`apiSyncImportFile`, ať existuje jen jednou.
+  Noční běh tak zapíše do Logu importu a pošle oznámení stejně, jako
+  by to udělal SUPERADMIN ručně.
+- Chyby nočního běhu (špatná složka, žádný soubor, chyba při čtení) se
+  zatím jen logují (Stackdriver/Spuštění v editoru) — appka o nich
+  uvnitř sebe sama nijak neinformuje, na rozdíl od úspěšné synchronizace.
 
 ---
 

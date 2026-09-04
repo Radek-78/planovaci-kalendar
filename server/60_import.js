@@ -14,14 +14,20 @@
  * ETAPA 2: čtení pro sekce Filiálky/LC v menu (čtení smí každý přihlášený
  * — appka slouží i jako firemní adresář) + ruční úprava čísla/zkratky LC
  * (jen SUPERADMIN).
- * ETAPA 3 (tahle verze): každá synchronizace teď počítá PODROBNÝ rozdíl
- * oproti minulému stavu (přidáno/změněno/smazáno, u filiálek i po
- * jednotlivých polích) a zapisuje ho do _import_log (Log importu
- * v Nastavení, viz apiGetImportLog) + posílá oznámení zvonečkem
- * (`import.sync` v NOTIFY_ACTIONS).
- *
- * Noční automatická synchronizace přibude v etapě 4 (viz SPECIFIKACE.md
- * kapitola 9.6).
+ * ETAPA 3: každá synchronizace teď počítá PODROBNÝ rozdíl oproti minulému
+ * stavu (přidáno/změněno/smazáno, u filiálek i po jednotlivých polích)
+ * a zapisuje ho do _import_log (Log importu v Nastavení, viz
+ * apiGetImportLog) + posílá oznámení zvonečkem (`import.sync`
+ * v NOTIFY_ACTIONS).
+ * ETAPA 4 (tahle verze): noční automatická synchronizace — časovaný
+ * trigger (6:00-7:00, zdroj se sám aktualizuje 4-5h) volá
+ * _importRunScheduledSync_, která navazuje na naposledy odsouhlasenou
+ * konfiguraci (`_settings.importFolderId`/`importSearchTerm`) a spouští
+ * STEJNOU sdílenou logiku jako ruční tlačítko (`_importPerformSync_`,
+ * `_importFindFiles_`) — jen bez uživatelské session (žádný guard_, běží
+ * mimo web request). Trigger se zakládá/ruší ručně z editoru Apps Scriptu
+ * přes `TOOLS_nastavDenniSynchronizaci`/`TOOLS_zrusDenniSynchronizaci`
+ * (viz 90_tools.js), appka ho sama nezakládá.
  *
  * Sloupce se hledají podle PŘESNÉHO textu hlavičky v řádku 1, ne podle
  * pozice — cizí systém sloupce časem může přeuspořádat, appka na tom nesmí
@@ -216,32 +222,41 @@ function apiGetImportSettings() {
 /**
  * Prohledá zadanou složku a vrátí Sheets soubory, jejichž název obsahuje
  * hledaný výraz (bez rozlišení velikosti písmen), seřazené od nejnovější
- * úpravy. Nastavení se tady ještě NEUKLÁDÁ — jen při úspěšné synchronizaci
- * (viz apiSyncImportFile), ať se do `_settings` nedostane neověřený pokus.
+ * úpravy — sdílené mezi ručním hledáním (apiSearchImportFiles) a nočním
+ * triggerem (_importRunScheduledSync_, ten prostě vezme první/nejnovější).
+ */
+function _importFindFiles_(folder, searchTerm) {
+  const term = searchTerm.toLowerCase();
+  const files = [];
+  const iterator = folder.getFilesByType(MimeType.GOOGLE_SHEETS);
+  while (iterator.hasNext()) {
+    const file = iterator.next();
+    if (file.getName().toLowerCase().indexOf(term) === -1) continue;
+    files.push({
+      id: file.getId(),
+      name: file.getName(),
+      modifiedAt: Utilities.formatDate(file.getLastUpdated(), TIMEZONE, "yyyy-MM-dd'T'HH:mm"),
+    });
+  }
+  // Řadit AŽ PO projití celé složky — jinak by případný limit počtu
+  // výsledků mohl vyřadit zrovna ten nejnovější soubor, který appka chce
+  // rovnou předvybrat (viz App.searchImportFiles na klientovi) / na který
+  // se má noční trigger sám spolehnout beze zbytku (žádný člověk k výběru).
+  files.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt));
+  return files;
+}
+
+/**
+ * Prohledá zadanou složku a vrátí nalezené soubory. Nastavení se tady
+ * ještě NEUKLÁDÁ — jen při úspěšné synchronizaci (viz apiSyncImportFile),
+ * ať se do `_settings` nedostane neověřený pokus.
  */
 function apiSearchImportFiles(payload) {
   return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
     const data = payload || {};
     const folder = _importResolveFolder_(data.folderInput);
-    const searchTerm = cleanText_(data.searchTerm, 'Hledaný výraz', LIMITS.IMPORT_SEARCH_MAX, true).toLowerCase();
-
-    const files = [];
-    const iterator = folder.getFilesByType(MimeType.GOOGLE_SHEETS);
-    while (iterator.hasNext()) {
-      const file = iterator.next();
-      if (file.getName().toLowerCase().indexOf(searchTerm) === -1) continue;
-      files.push({
-        id: file.getId(),
-        name: file.getName(),
-        modifiedAt: Utilities.formatDate(file.getLastUpdated(), TIMEZONE, "yyyy-MM-dd'T'HH:mm"),
-      });
-    }
-    // Řadit AŽ PO projití celé složky — jinak by případný limit počtu
-    // výsledků mohl vyřadit zrovna ten nejnovější soubor, který appka chce
-    // rovnou předvybrat (viz App.searchImportFiles na klientovi).
-    files.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt));
-
-    return { files: files.slice(0, 25) };
+    const searchTerm = cleanText_(data.searchTerm, 'Hledaný výraz', LIMITS.IMPORT_SEARCH_MAX, true);
+    return { files: _importFindFiles_(folder, searchTerm).slice(0, 25) };
   });
 }
 
@@ -250,49 +265,109 @@ function apiSearchImportFiles(payload) {
    ══════════════════════════════════════════════════════════════════════════ */
 
 /**
- * Provede synchronizaci: přečte vybraný soubor a nahradí obsah _stores,
- * _logistic_centers a _store_closures (viz dbReplaceAll_ v 20_db.js — proč
- * ne řádek po řádku). Použitá složka/výraz se uloží do _settings, ať noční
- * trigger (přibude v etapě 4) navazuje na tuhle odsouhlasenou konfiguraci.
+ * Provede samotnou synchronizaci pro daný soubor — přečte ho a nahradí
+ * obsah _stores, _logistic_centers a _store_closures (viz dbReplaceAll_
+ * v 20_db.js — proč ne řádek po řádku), zapíše rozdíl do _import_log
+ * (Log importu v Nastavení) a pošle oznámení zvonečkem (`import.sync`,
+ * viz NOTIFY_ACTIONS v 00_config.js).
  *
- * Rozdíl oproti minulému stavu se zapíše do _import_log (Log importu
- * v Nastavení) a pošle se jako oznámení zvonečkem (`import.sync`, viz
- * NOTIFY_ACTIONS v 00_config.js) — appka na to čekala od etapy 1, tohle
- * je etapa 3 (viz SPECIFIKACE.md 9.6).
+ * Sdílené mezi ručním tlačítkem (apiSyncImportFile) a nočním triggerem
+ * (_importRunScheduledSync_), ať tahle logika existuje jen jednou.
+ */
+function _importPerformSync_(fileId) {
+  let spreadsheet;
+  try {
+    spreadsheet = SpreadsheetApp.openById(fileId);
+  } catch (e) {
+    throw userError_('Zdrojový soubor se nepodařilo otevřít. Zkuste vyhledat znovu.');
+  }
+
+  const storeRows = _importReadStores_(spreadsheet);
+  const closureRows = _importReadClosures_(spreadsheet);
+
+  const storesResult = _importSyncStores_(storeRows);
+  const lcResult = _importSyncLogisticCenters_(storeRows);
+  const closuresResult = _importSyncClosures_(closureRows);
+
+  const diffData = { fileName: spreadsheet.getName(), stores: storesResult, logisticCenters: lcResult, closures: closuresResult };
+  const logEntry = _importWriteLog_(diffData);
+  audit_('import.sync', logEntry.summary, logEntry.id);
+
+  return {
+    fileName: spreadsheet.getName(),
+    stores: { total: storesResult.total, added: storesResult.added.length, changed: storesResult.changed.length, removed: storesResult.removed.length },
+    logisticCenters: { total: lcResult.total, added: lcResult.added.length, removed: lcResult.removed.length },
+    closures: { total: closuresResult.total, added: closuresResult.added.length, removed: closuresResult.removed.length },
+  };
+}
+
+/**
+ * Provede synchronizaci vybraného souboru a uloží použitou složku/výraz
+ * do _settings, ať noční trigger (`_importRunScheduledSync_` níže)
+ * navazuje na tuhle odsouhlasenou konfiguraci.
  */
 function apiSyncImportFile(payload) {
   return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
     const data = payload || {};
     const fileId = cleanText_(data.fileId, 'ID souboru', 200, true);
 
-    let spreadsheet;
-    try {
-      spreadsheet = SpreadsheetApp.openById(fileId);
-    } catch (e) {
-      throw userError_('Zdrojový soubor se nepodařilo otevřít. Zkuste vyhledat znovu.');
-    }
-
-    const storeRows = _importReadStores_(spreadsheet);
-    const closureRows = _importReadClosures_(spreadsheet);
-
-    const storesResult = _importSyncStores_(storeRows);
-    const lcResult = _importSyncLogisticCenters_(storeRows);
-    const closuresResult = _importSyncClosures_(closureRows);
+    const result = _importPerformSync_(fileId);
 
     if (data.folderInput) settingsSet_('importFolderId', String(data.folderInput).trim());
     if (data.searchTerm) settingsSet_('importSearchTerm', String(data.searchTerm).trim());
 
-    const diffData = { fileName: spreadsheet.getName(), stores: storesResult, logisticCenters: lcResult, closures: closuresResult };
-    const logEntry = _importWriteLog_(diffData);
-    audit_('import.sync', logEntry.summary, logEntry.id);
-
-    return {
-      fileName: spreadsheet.getName(),
-      stores: { total: storesResult.total, added: storesResult.added.length, changed: storesResult.changed.length, removed: storesResult.removed.length },
-      logisticCenters: { total: lcResult.total, added: lcResult.added.length, removed: lcResult.removed.length },
-      closures: { total: closuresResult.total, added: closuresResult.added.length, removed: closuresResult.removed.length },
-    };
+    return result;
   });
+}
+
+/**
+ * Noční automatická synchronizace — volá ji časovaný trigger založený
+ * ručně přes TOOLS_nastavDenniSynchronizaci (90_tools.js, 6:00-7:00).
+ * Navazuje na naposledy odsouhlasenou konfiguraci (`_settings.
+ * importFolderId`/`importSearchTerm`, viz apiSyncImportFile) — dokud
+ * SUPERADMIN aspoň jednou ručně nesynchronizuje v appce, trigger nemá
+ * co spustit a jen se o tom zaloguje.
+ *
+ * Běží MIMO web request (trigger, ne HTTP požadavek od přihlášeného
+ * uživatele) — proto žádný guard_, volá sdílenou logiku
+ * (_importFindFiles_/_importPerformSync_) přímo. Výběr souboru je vždy
+ * automaticky ten nejnovější — na rozdíl od ručního tlačítka tu není kdo
+ * by mohl zvolit jiný.
+ *
+ * Chyby se jen logují (Stackdriver/Spuštění v editoru Apps Scriptu) —
+ * appka o nich zatím nijak neinformuje uvnitř appky samotné (na rozdíl
+ * od úspěšné synchronizace, ta jde do Logu importu i zvonečku).
+ */
+function _importRunScheduledSync_() {
+  const settings = settingsAll_();
+  const folderInput = String(settings.importFolderId || '').trim();
+  const searchTerm = String(settings.importSearchTerm || '').trim();
+
+  if (!folderInput || !searchTerm) {
+    console.log('Noční synchronizace přeskočena — v Nastavení ještě neproběhla první ruční synchronizace (chybí složka nebo hledaný výraz).');
+    return;
+  }
+
+  let folder;
+  try {
+    folder = _importResolveFolder_(folderInput);
+  } catch (e) {
+    console.error('Noční synchronizace selhala — složku se nepodařilo otevřít: ' + e);
+    return;
+  }
+
+  const files = _importFindFiles_(folder, searchTerm);
+  if (!files.length) {
+    console.log('Noční synchronizace přeskočena — ve složce nebyl nalezen žádný soubor odpovídající výrazu „' + searchTerm + '".');
+    return;
+  }
+
+  try {
+    const result = _importPerformSync_(files[0].id);
+    console.log('Noční synchronizace dokončena: „' + result.fileName + '".');
+  } catch (e) {
+    console.error('Noční synchronizace selhala: ' + (e && e.stack ? e.stack : e));
+  }
 }
 
 /**
