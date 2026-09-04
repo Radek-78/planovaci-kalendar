@@ -309,25 +309,38 @@
           </div>
         </div>
 
-        <!-- Státní svátky ČR — čistě dopočítané (CZECH_FIXED_HOLIDAYS +
-             pohyblivé svátky), žádná databázová tabulka, jen přepínač roku
-             (viz apiGetHolidays, loadHolidaysForYear). Stejný seznam se
-             používá i pro červené pruhy v mřížce kalendáře. -->
+        <!-- Státní svátky ČR — plně editovatelná tabulka `_holidays` (viz
+             apiGetHolidays/apiSaveHoliday/apiDeleteHoliday), pro nový rok
+             appka sama jednou naseje výchozí zákonnou sadu (pevné datum +
+             dva pohyblivé, odvozené od Velikonoc), od té chvíle je to
+             obyčejný editovatelný seznam jako Oddělení/Pozice. Stejný
+             seznam se používá i pro červené pruhy v mřížce kalendáře. -->
         <div class="settings-panel" data-settings-panel="holidays">
           <div class="settings-panel-head">
-            <p class="settings-panel-desc">Přehled státních svátků ČR pro vybraný rok — pevné i pohyblivé (odvozené od Velikonoc).</p>
-            <div class="holidays-year-switch">
-              <button class="cal-nav-btn" type="button" id="holidaysPrevYear" aria-label="Předchozí rok">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-left"></use></svg>
-              </button>
-              <span class="holidays-year-label" id="holidaysYearLabel"></span>
-              <button class="cal-nav-btn" type="button" id="holidaysNextYear" aria-label="Další rok">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+            <p class="settings-panel-desc">Přehled státních svátků ČR pro vybraný rok — appka je předvyplní, dál je můžete upravovat.</p>
+            <div class="settings-panel-head-actions">
+              <div class="holidays-year-switch">
+                <button class="cal-nav-btn" type="button" id="holidaysPrevYear" aria-label="Předchozí rok">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-left"></use></svg>
+                </button>
+                <span class="holidays-year-label" id="holidaysYearLabel"></span>
+                <button class="cal-nav-btn" type="button" id="holidaysNextYear" aria-label="Další rok">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+                </button>
+              </div>
+              <button class="button button-primary" type="button" id="holidaysCreateBtn">
+                <i class="ph ph-plus" aria-hidden="true"></i> Přidat svátek
               </button>
             </div>
           </div>
-          <div class="settings-list-wrap">
-            <div class="settings-list" id="holidaysList"><!-- vykresleno JS --></div>
+          <div class="holidays-table-wrap">
+            <div class="holidays-table-head">
+              <span>Datum</span>
+              <span>Den</span>
+              <span>Název svátku</span>
+              <span>Akce</span>
+            </div>
+            <div class="holidays-table-body" id="holidaysList"><!-- vykresleno JS --></div>
           </div>
         </div>
       </div>
@@ -414,8 +427,16 @@
      u uživatele) — jméno/kicker/ikona/tlačítko se přepnou v JS podle režimu.
      Zobrazit ho smí jen ten, kdo má právo zápisu, u úpravy navíc jen
      vlastník nebo správce cizích událostí — viz podmínky u tlačítek/ikon,
-     která ho otevírají (canCreateOn/canManageEvent). -->
-<dialog class="modal modal-grow" id="eventFormModal">
+     která ho otevírají (canCreateOn/canManageEvent).
+
+     Pole rozdělená do .field-group sekcí s kickerem (stejný jazyk jako
+     formulář uživatele) — dřív to byly holé podepsané řádky, čistě
+     výchozí vzhled formuláře. Typ události je vlastní rozbalovací seznam
+     (.type-picker), ne nativní <select> — ten neumí vedle popisku
+     zobrazit ikonu typu (viz fillEventTypeSelect/bindTypePicker); skutečná
+     vybraná hodnota pořád žije ve skrytém #eventFormType, submitEventForm
+     se tak nemusí měnit. -->
+<dialog class="modal modal-wide modal-grow" id="eventFormModal">
   <div class="modal-header">
     <span class="modal-icon" id="eventFormModalIcon"><i class="ph ph-calendar-plus" aria-hidden="true"></i></span>
     <div class="modal-header-text">
@@ -428,51 +449,65 @@
   </div>
   <form id="eventForm">
     <div class="modal-body event-form-body">
-      <label>
-        <span>Název *</span>
-        <input type="text" id="eventFormTitle" maxlength="120" required>
-      </label>
-
-      <div class="event-form-row">
+      <div class="field-group">
+        <p class="kicker"><i class="ph ph-text-aa" aria-hidden="true"></i> Základní údaje</p>
         <label>
-          <span>Typ</span>
-          <select id="eventFormType"><!-- vykresleno JS --></select>
+          <span>Název *</span>
+          <input type="text" id="eventFormTitle" maxlength="120" required>
         </label>
-        <label class="event-form-allday">
-          <span>&nbsp;</span>
-          <span class="event-form-checkbox">
-            <input type="checkbox" id="eventFormAllDay">
-            <span>Celý den</span>
-          </span>
-        </label>
+        <div class="event-form-row">
+          <label>
+            <span>Typ</span>
+            <div class="type-picker" id="eventFormTypePicker">
+              <button type="button" class="type-picker-trigger" id="eventFormTypeTrigger" aria-haspopup="true">
+                <span class="type-picker-trigger-icon" id="eventFormTypeTriggerIcon"><i class="ph ph-chat-circle" aria-hidden="true"></i></span>
+                <span class="type-picker-trigger-label" id="eventFormTypeTriggerLabel">Běžné</span>
+                <i class="ph ph-caret-down type-picker-caret" aria-hidden="true"></i>
+              </button>
+              <div class="type-picker-menu is-hidden" id="eventFormTypeMenu"><!-- vykresleno JS --></div>
+            </div>
+            <input type="hidden" id="eventFormType" value="default">
+          </label>
+          <label class="event-form-allday">
+            <span>&nbsp;</span>
+            <span class="event-form-checkbox">
+              <input type="checkbox" id="eventFormAllDay">
+              <span>Celý den</span>
+            </span>
+          </label>
+        </div>
       </div>
 
-      <div class="event-form-row">
-        <label>
-          <span>Od *</span>
-          <input type="date" id="eventFormStartDate" required>
-        </label>
-        <label id="eventFormStartTimeField">
-          <span>Čas</span>
-          <input type="time" id="eventFormStartTime">
-        </label>
+      <div class="field-group">
+        <p class="kicker"><i class="ph ph-calendar-check" aria-hidden="true"></i> Termín</p>
+        <div class="event-form-row event-form-row--datetime">
+          <label>
+            <span>Od *</span>
+            <input type="date" id="eventFormStartDate" required>
+          </label>
+          <label id="eventFormStartTimeField">
+            <span>Čas</span>
+            <input type="time" id="eventFormStartTime">
+          </label>
+        </div>
+        <div class="event-form-row event-form-row--datetime">
+          <label>
+            <span>Do *</span>
+            <input type="date" id="eventFormEndDate" required>
+          </label>
+          <label id="eventFormEndTimeField">
+            <span>Čas</span>
+            <input type="time" id="eventFormEndTime">
+          </label>
+        </div>
       </div>
 
-      <div class="event-form-row">
-        <label>
-          <span>Do *</span>
-          <input type="date" id="eventFormEndDate" required>
-        </label>
-        <label id="eventFormEndTimeField">
-          <span>Čas</span>
-          <input type="time" id="eventFormEndTime">
+      <div class="field-group">
+        <p class="kicker"><i class="ph ph-note-pencil" aria-hidden="true"></i> Popis</p>
+        <label aria-label="Popis">
+          <textarea id="eventFormDescription" maxlength="2000" rows="4"></textarea>
         </label>
       </div>
-
-      <label>
-        <span>Popis</span>
-        <textarea id="eventFormDescription" maxlength="2000" rows="4"></textarea>
-      </label>
     </div>
     <div class="modal-actions">
       <button type="button" class="button button-secondary" id="eventFormCancel">
@@ -629,6 +664,43 @@
         <i class="ph ph-x" aria-hidden="true"></i> Zrušit
       </button>
       <button type="submit" class="button button-primary" id="departmentFormSubmit">
+        <i class="ph ph-check" aria-hidden="true"></i> Vytvořit
+      </button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ══ Modal: svátek (nový/upravovaný) — stejný vzor jako oddělení/pozice,
+     jen dvě pole vedle sebe (viz .form-row-2, stejná třída jako wizard). ══ -->
+<dialog class="modal modal-grow" id="holidayFormModal">
+  <div class="modal-header">
+    <span class="modal-icon" id="holidayFormModalIcon"><i class="ph ph-flag" aria-hidden="true"></i></span>
+    <div class="modal-header-text">
+      <p class="kicker" id="holidayFormKicker">Nový svátek</p>
+      <h2 id="holidayFormModalTitle">Přidat svátek</h2>
+    </div>
+    <button class="modal-close" type="button" id="holidayFormClose" aria-label="Zavřít">
+      <i class="ph ph-x" aria-hidden="true"></i>
+    </button>
+  </div>
+  <form id="holidayForm">
+    <div class="modal-body">
+      <div class="form-row-2">
+        <label>
+          <span>Datum *</span>
+          <input type="date" id="holidayFormDate" required>
+        </label>
+        <label>
+          <span>Název svátku *</span>
+          <input type="text" id="holidayFormName" maxlength="100" required>
+        </label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="button button-secondary" id="holidayFormCancel">
+        <i class="ph ph-x" aria-hidden="true"></i> Zrušit
+      </button>
+      <button type="submit" class="button button-primary" id="holidayFormSubmit">
         <i class="ph ph-check" aria-hidden="true"></i> Vytvořit
       </button>
     </div>
@@ -997,12 +1069,74 @@
       document.querySelector('#appShell').classList.remove('is-hidden');
     },
 
-    /** Naplní <select> ve formuláři nové události přímo z whitelistu typů ze serveru. */
+    /**
+     * Naplní rozbalovací seznam typu události (.type-picker) přímo z whitelistu
+     * typů ze serveru — vlastní komponenta, ne nativní <select>, protože ten
+     * neumí vedle popisku zobrazit i ikonu typu (viz bindTypePicker). Skutečná
+     * vybraná hodnota žije ve skrytém #eventFormType (setEventFormType).
+     */
     fillEventTypeSelect() {
-      const select = document.querySelector('#eventFormType');
-      select.innerHTML = Object.keys(this.eventTypes)
-        .map((key) => '<option value="' + Ui.escape(key) + '">' + Ui.escape(this.eventTypes[key].label) + '</option>')
-        .join('');
+      const menu = document.querySelector('#eventFormTypeMenu');
+      menu.innerHTML = Object.keys(this.eventTypes).map((key) => {
+        const t = this.eventTypes[key];
+        return '<button type="button" class="type-picker-option" data-type="' + Ui.escape(key) + '">' +
+          '<span class="type-picker-option-icon" style="--type-color:' + Ui.escape(t.color) + '; --type-bg:' + Ui.escape(t.bgColor) + '">' +
+            '<i class="ph ph-' + Ui.escape(t.icon) + '" aria-hidden="true"></i></span>' +
+          '<span class="type-picker-option-label">' + Ui.escape(t.label) + '</span>' +
+        '</button>';
+      }).join('');
+    },
+
+    /**
+     * Nastaví vybraný typ události — zapíše hodnotu do skrytého #eventFormType
+     * (to, co čte submitEventForm) a přepíše ikonu/popisek na tlačítku
+     * .type-picker-trigger i zvýraznění vybrané položky v menu.
+     */
+    setEventFormType(key) {
+      const type = this.eventTypes[key] || this.eventTypes.default;
+      document.querySelector('#eventFormType').value = key;
+
+      const icon = document.querySelector('#eventFormTypeTriggerIcon');
+      icon.innerHTML = '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i>';
+      icon.style.setProperty('--type-color', type.color);
+      icon.style.setProperty('--type-bg', type.bgColor);
+      Ui.setText('#eventFormTypeTriggerLabel', type.label);
+
+      document.querySelectorAll('#eventFormTypeMenu .type-picker-option').forEach((btn) => {
+        btn.classList.toggle('is-selected', btn.dataset.type === key);
+      });
+    },
+
+    /** Otevírání/zavírání menu typu události — stejný vzor jako bindMonthPicker (klik mimo panel ho zavře). */
+    bindTypePicker() {
+      const btn = document.querySelector('#eventFormTypeTrigger');
+      const menu = document.querySelector('#eventFormTypeMenu');
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.classList.contains('is-hidden') ? this.openTypePicker() : this.closeTypePicker();
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!menu.classList.contains('is-hidden') && !menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+          this.closeTypePicker();
+        }
+      });
+
+      menu.addEventListener('click', (e) => {
+        const opt = e.target.closest('.type-picker-option');
+        if (!opt) return;
+        this.setEventFormType(opt.dataset.type);
+        this.closeTypePicker();
+      });
+    },
+
+    openTypePicker() {
+      document.querySelector('#eventFormTypeMenu').classList.remove('is-hidden');
+    },
+
+    closeTypePicker() {
+      document.querySelector('#eventFormTypeMenu').classList.add('is-hidden');
     },
 
     /**
@@ -1490,6 +1624,8 @@
         e.preventDefault();
         this.submitEventForm();
       });
+
+      this.bindTypePicker();
     },
 
     /** Skryje pole s časem, když je zaškrtnuté „Celý den" — čas pak nedává smysl vyplňovat. */
@@ -1511,6 +1647,7 @@
      */
     openEventFormModal(event, dateIso, originEl) {
       this.hideChipTooltip();
+      this.closeTypePicker(); // ať menu typu nezůstane omylem otevřené z minulého otevření formuláře
 
       document.querySelector('#eventFormModalIcon').innerHTML =
         '<i class="ph ' + (event ? 'ph-pencil-simple' : 'ph-calendar-plus') + '" aria-hidden="true"></i>';
@@ -1520,7 +1657,7 @@
       if (event) {
         Ui.setText('#eventFormDateLabel', event.title);
         document.querySelector('#eventFormTitle').value = event.title;
-        document.querySelector('#eventFormType').value = event.type;
+        this.setEventFormType(event.type);
         document.querySelector('#eventFormAllDay').checked = event.allDay;
         document.querySelector('#eventFormStartDate').value = event.start.slice(0, 10);
         document.querySelector('#eventFormEndDate').value = event.end.slice(0, 10);
@@ -1531,7 +1668,7 @@
         const date = new Date(dateIso + 'T00:00');
         Ui.setText('#eventFormDateLabel', date.getDate() + '. ' + this.MONTH_NAMES[date.getMonth()] + ' ' + date.getFullYear());
         document.querySelector('#eventFormTitle').value = '';
-        document.querySelector('#eventFormType').value = 'default';
+        this.setEventFormType('default');
         document.querySelector('#eventFormAllDay').checked = false;
         document.querySelector('#eventFormStartDate').value = dateIso;
         document.querySelector('#eventFormEndDate').value = dateIso;
@@ -3646,6 +3783,21 @@
     bindHolidaysTab() {
       document.querySelector('#holidaysPrevYear').addEventListener('click', () => this.changeHolidaysYear(-1));
       document.querySelector('#holidaysNextYear').addEventListener('click', () => this.changeHolidaysYear(1));
+      document.querySelector('#holidaysCreateBtn').addEventListener('click', (e) => this.openHolidayFormModal(null, e.currentTarget));
+
+      // Delegovaný listener na seznamu — stejný vzor jako u ostatních
+      // seznamů v Nastavení (přežije opakované překreslení při přepnutí roku).
+      document.querySelector('#holidaysList').addEventListener('click', (e) => {
+        const btn = e.target.closest('.user-action-btn');
+        if (!btn || !btn.dataset.id) return;
+        const items = this.holidaysCache[this.holidaysYear] || [];
+        const item = items.find((h) => h.id === btn.dataset.id);
+        if (!item) return;
+        if (btn.dataset.action === 'edit') this.openHolidayFormModal(item, btn);
+        else if (btn.dataset.action === 'delete') this.confirmDeleteHoliday(item, btn);
+      });
+
+      this.bindHolidayForm();
     },
 
     /** Vstup do záložky Nastavení → Státní svátky ČR — načte aktuálně vybraný rok. */
@@ -3670,7 +3822,8 @@
 
     /**
      * Svátky pro daný rok — z cache (this.holidaysCache), jinak dotáhne ze
-     * serveru (apiGetHolidays). Sdílené i s mřížkou kalendáře
+     * serveru (apiGetHolidays, který daný rok při prvním zobrazení sám
+     * naseje výchozí sadou). Sdílené i s mřížkou kalendáře
      * (ensureHolidaysLoaded), ať appka nevolá server opakovaně pro stejný
      * rok při přepínání měsíců/roku.
      */
@@ -3688,6 +3841,17 @@
         });
     },
 
+    /**
+     * Zahodí cachovaná data svátků (settings i mřížka kalendáře) — volá se
+     * po každé úpravě/smazání/založení svátku, ať appka nikde neukazuje
+     * zastaralý stav (jednoduché "zahoď a načti znovu" místo ručního
+     * dopočítávání změny v cache, u pár desítek řádků za rok zbytečné).
+     */
+    invalidateHolidaysCache() {
+      this.holidaysCache = {};
+      this.holidaysByDate = {};
+    },
+
     renderHolidaysList() {
       const list = document.querySelector('#holidaysList');
       const holidays = this.holidaysCache[this.holidaysYear] || [];
@@ -3696,10 +3860,19 @@
         : this.settingsPlaceholder('Pro tento rok nejsou žádné svátky.');
     },
 
+    /** Sloupce: Datum, Den (v týdnu), Název svátku, Akce (viz .holidays-table-head v HTML — pořadí musí přesně sedět). */
     renderHolidayRow(h) {
-      return '<div class="settings-row">' +
+      const dayName = this.DAY_NAMES_FULL[(new Date(h.date + 'T00:00').getDay() + 6) % 7];
+      return '<div class="holiday-row" data-id="' + Ui.escape(h.id) + '">' +
         '<span class="holiday-row-date">' + Ui.escape(this.formatFullDate(h.date)) + '</span>' +
+        '<span class="user-cell-muted">' + Ui.escape(dayName) + '</span>' +
         '<span class="settings-row-name">' + Ui.escape(h.name) + '</span>' +
+        '<span class="settings-row-actions">' +
+          '<button type="button" class="user-action-btn is-edit" data-action="edit" data-id="' + Ui.escape(h.id) + '" title="Upravit" aria-label="Upravit ' + Ui.escape(h.name) + '">' +
+            '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>' +
+          '<button type="button" class="user-action-btn is-danger" data-action="delete" data-id="' + Ui.escape(h.id) + '" title="Smazat" aria-label="Smazat ' + Ui.escape(h.name) + '">' +
+            '<i class="ph ph-trash" aria-hidden="true"></i></button>' +
+        '</span>' +
       '</div>';
     },
 
@@ -3716,6 +3889,110 @@
       const missing = years.filter((y) => !this.holidaysCache[y]);
       if (!missing.length) return;
       Promise.all(missing.map((y) => this.loadHolidaysForYear(y))).then(() => this.renderCalendar());
+    },
+
+    bindHolidayForm() {
+      const dialog = document.querySelector('#holidayFormModal');
+      document.querySelector('#holidayFormClose').addEventListener('click', () => Ui.closeModal(dialog));
+      document.querySelector('#holidayFormCancel').addEventListener('click', () => Ui.closeModal(dialog));
+      dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) Ui.closeModal(dialog);
+      });
+      dialog.addEventListener('cancel', (e) => {
+        e.preventDefault();
+        Ui.closeModal(dialog);
+      });
+      document.querySelector('#holidayForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.submitHolidayForm();
+      });
+    },
+
+    /** Otevře formulář svátku — bez parametru holiday založí nový (datum předvyplněné 1.1. vybraného roku), s ním upraví existující. */
+    openHolidayFormModal(holiday, originEl) {
+      document.querySelector('#holidayFormModalIcon').innerHTML =
+        '<i class="ph ' + (holiday ? 'ph-pencil-simple' : 'ph-flag') + '" aria-hidden="true"></i>';
+      document.querySelector('#holidayFormKicker').textContent = holiday ? 'Upravit svátek' : 'Nový svátek';
+      document.querySelector('#holidayFormModalTitle').textContent = holiday ? holiday.name : 'Přidat svátek';
+      document.querySelector('#holidayFormDate').value = holiday ? holiday.date : (this.holidaysYear + '-01-01');
+      document.querySelector('#holidayFormName').value = holiday ? holiday.name : '';
+      document.querySelector('#holidayForm').dataset.editId = holiday ? holiday.id : '';
+      document.querySelector('#holidayFormSubmit').innerHTML =
+        '<i class="ph ph-check" aria-hidden="true"></i> ' + (holiday ? 'Uložit' : 'Vytvořit');
+
+      const dialog = document.querySelector('#holidayFormModal');
+      this.setModalOrigin(dialog, originEl);
+      Ui.openModal(dialog);
+      document.querySelector('#holidayFormName').focus();
+    },
+
+    submitHolidayForm() {
+      const editId = document.querySelector('#holidayForm').dataset.editId || '';
+      const date = document.querySelector('#holidayFormDate').value;
+      const name = document.querySelector('#holidayFormName').value.trim();
+      if (!date) {
+        Ui.toast('Vyplňte datum svátku.', 'error');
+        return;
+      }
+      if (!name) {
+        Ui.toast('Vyplňte název svátku.', 'error');
+        return;
+      }
+
+      const payload = { date: date, name: name };
+      if (editId) payload.id = editId;
+
+      const submitButton = document.querySelector('#holidayFormSubmit');
+      Ui.setButtonLoading(submitButton, true, 'Ukládám…');
+
+      Ui.call('apiSaveHoliday', payload, { silent: true })
+        .then((record) => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.closeModal(document.querySelector('#holidayFormModal'));
+          Ui.toast(editId ? 'Svátek upraven.' : 'Svátek vytvořen.', 'success');
+          this.invalidateHolidaysCache();
+          // Uložené datum může spadat do jiného roku, než právě zobrazujeme
+          // (nový svátek, nebo úprava data u stávajícího) — appka na něj
+          // zobrazení rovnou přepne, ať uživatel hned vidí výsledek.
+          this.holidaysYear = Number(record.date.slice(0, 4));
+          this.renderHolidaysYearLabel();
+          const list = document.querySelector('#holidaysList');
+          list.innerHTML = this.settingsPlaceholder('Načítám svátky…');
+          this.loadHolidaysForYear(this.holidaysYear).then(() => this.renderHolidaysList());
+          this.renderCalendar(); // mřížka kalendáře ať hned odráží změnu
+        })
+        .catch((error) => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    /** Smazání svátku nemá na nic vazbu (viz apiDeleteHoliday na serveru) — přesto přes potvrzovací okno, je to nevratné. */
+    confirmDeleteHoliday(holiday, originEl) {
+      this.confirmAction({
+        title: 'Smazat svátek?',
+        body: '„' + holiday.name + '" (' + this.formatFullDate(holiday.date) + ') zmizí ze seznamu i z mřížky kalendáře.',
+        okLabel: 'Smazat',
+        okIcon: 'ph-trash',
+        okClass: 'button-danger',
+        onConfirm: (okBtn, dialog) => {
+          Ui.setButtonLoading(okBtn, true, 'Mažu…');
+          Ui.call('apiDeleteHoliday', { id: holiday.id }, { silent: true })
+            .then(() => {
+              Ui.closeModal(dialog);
+              Ui.toast('Svátek smazán.', 'success');
+              this.invalidateHolidaysCache();
+              const list = document.querySelector('#holidaysList');
+              list.innerHTML = this.settingsPlaceholder('Načítám svátky…');
+              this.loadHolidaysForYear(this.holidaysYear).then(() => this.renderHolidaysList());
+              this.renderCalendar(); // mřížka kalendáře ať hned odráží změnu
+            })
+            .catch((error) => {
+              Ui.setButtonLoading(okBtn, false);
+              Ui.toast(error.message, 'error');
+            });
+        },
+      }, originEl);
     },
 
     showSection(name) {

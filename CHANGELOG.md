@@ -5,6 +5,10 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.6.0 - 04.09.2026 08:57
+- v0.6.0: Editovatelné svátky, ikony typu události, profesionálnější formulář — Státní svátky ČR jsou teď plně editovatelná tabulka (přidat/upravit/smazat), ne jen dopočítaný přehled: appka pro nový rok jednou naseje výchozí zákonnou sadu, dál se s ní zachází jako s běžným seznamem v Nastavení
+- přibyl sloupec Den (v týdnu) a hlavička tabulky (Datum, Den, Název svátku, Akce), sloupce v tomto pořadí. Formulář nové/upravené události má nově vlastní rozbalovací seznam typu s barevnou ikonou u každé položky (dřív jen text v obyčejném výběru), pole s časem od/do jsou užší (dřív zbytečně nafouklá na celou šířku poloviny řádku) a celý formulář je přehledně rozdělený do podepsaných sekcí (Základní údaje, Termín, Popis) — dřív úplně výchozí vzhled prohlížeče, teď stejný styl jako formulář uživatele.
+
 ## v0.5.1 - 04.09.2026 08:32
 - v0.5.1: Oprava komentáře — v 00_config.js u CZECH_FIXED_HOLIDAYS chybně odkazovaný soubor s _czechHolidaysForYear_ (napsáno 60_import.js, funkce je ve skutečnosti v 50_api.js), bez dopadu na chování appky.
 

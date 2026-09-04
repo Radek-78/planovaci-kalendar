@@ -890,11 +890,15 @@ function _publicDepartment_(row) {
 /**
  * Státní svátky ČR pro daný rok — záložka „Státní svátky ČR" v Nastavení
  * i barevné pruhy v mřížce kalendáře. Vidí je každý přihlášený uživatel
- * (CALENDAR_READ), ne jen SUPERADMIN, i když samotná záložka Nastavení
- * je jinak přístupná jen jemu — svátky jsou informace pro celý kalendář.
+ * (CALENDAR_READ), ne jen SUPERADMIN, i když samotnou záložku Nastavení
+ * (a tedy i editaci) má přístupnou jen on — čtení svátků se týká celého
+ * sdíleného kalendáře.
  *
- * Čistě dopočítané z CZECH_FIXED_HOLIDAYS + pohyblivých svátků, žádná
- * databázová tabulka (stejný princip jako DEFAULT_EVENT_TYPES apod.).
+ * Od plné editovatelnosti (viz apiSaveHoliday/apiDeleteHoliday) jde
+ * o obyčejnou databázovou tabulku `_holidays`, ne čisté dopočítávání —
+ * první zobrazení daného roku ji ale sama naseje výchozí sadou
+ * (_ensureHolidaysSeededForYear_), ať appka nepůsobí prázdně, dokud ji
+ * SUPERADMIN sám neručně naplní.
  *
  * @param {Object} payload  { year } — RRRR, výchozí aktuální rok
  */
@@ -903,8 +907,105 @@ function apiGetHolidays(payload) {
     const data = payload || {};
     let year = parseInt(data.year, 10);
     if (!year || year < 1900 || year > 2200) year = new Date().getFullYear();
-    return { year: year, holidays: _czechHolidaysForYear_(year) };
+
+    _ensureHolidaysSeededForYear_(year);
+
+    const holidays = dbGetAll_(SHEETS.HOLIDAYS)
+      .filter((row) => String(row.date).slice(0, 4) === String(year))
+      .map(_publicHoliday_)
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+    return { year: year, holidays: holidays };
   });
+}
+
+/**
+ * Vytvoří nový svátek, nebo upraví existující (payload.id = úprava) —
+ * stejný vzor jako apiSaveDepartment. Datum i po úpravě může spadnout
+ * do jiného roku, než ve kterém svátek původně byl (appka po uložení
+ * na klientovi přepne zobrazený rok podle vráceného záznamu, viz
+ * submitHolidayForm) — na serveru na tom nezáleží, `_holidays` netřídí
+ * podle roku, jen ho z data odvozuje při čtení (apiGetHolidays).
+ *
+ * @param {Object} payload  { id?, date, name }
+ */
+function apiSaveHoliday(payload) {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    const data = payload || {};
+    const id = data.id ? String(data.id) : null;
+    const existing = id ? dbFindById_(SHEETS.HOLIDAYS, id) : null;
+    if (id && !existing) {
+      throw userError_('Svátek nebyl nalezen — mohl ho mezitím upravit někdo jiný.');
+    }
+
+    const date = cleanDateOnly_(data.date, 'Datum');
+    const name = cleanText_(data.name, 'Název svátku', LIMITS.HOLIDAY_NAME_MAX, true);
+
+    let record;
+    if (existing) {
+      record = dbUpdate_(SHEETS.HOLIDAYS, id, { date: date, name: name });
+      audit_('holiday.update', 'Upraven svátek „' + name + '" (' + date + ')');
+    } else {
+      record = dbInsert_(SHEETS.HOLIDAYS, { date: date, name: name });
+      audit_('holiday.create', 'Vytvořen svátek „' + name + '" (' + date + ')');
+    }
+
+    return _publicHoliday_(record);
+  });
+}
+
+/**
+ * Smaže svátek. Bez dopadu na cokoli jiného (svátky se nikam jinam
+ * neváží, jen se zobrazují) — přesto přes potvrzovací okno na klientovi,
+ * je to nevratné.
+ *
+ * @param {Object} payload  { id }
+ */
+function apiDeleteHoliday(payload) {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    const data = payload || {};
+    const id = cleanText_(data.id, 'ID svátku', 100, true);
+
+    const holiday = dbFindById_(SHEETS.HOLIDAYS, id);
+    if (!holiday) {
+      throw userError_('Svátek nebyl nalezen — možná ho mezitím smazal někdo jiný.');
+    }
+
+    dbDelete_(SHEETS.HOLIDAYS, id);
+    audit_('holiday.delete', 'Smazán svátek „' + holiday.name + '" (' + holiday.date + ')');
+    return null;
+  });
+}
+
+/** Přemění řádek svátku na podobu pro klienta. */
+function _publicHoliday_(row) {
+  return {
+    id: String(row.id),
+    date: String(row.date),
+    name: String(row.name),
+  };
+}
+
+/**
+ * Naseje výchozí sadu svátků (CZECH_FIXED_HOLIDAYS + pohyblivé, viz
+ * _czechHolidaysForYear_) pro daný rok do `_holidays`, ale JEN JEDNOU —
+ * `_settings.holidaysSeededYears` (čárkou oddělený seznam let) drží
+ * evidenci, který rok už appka naplnila, ať se výchozí sada nevrátí
+ * zpátky, kdyby SUPERADMIN pro daný rok smazal úplně všechny záznamy
+ * (prázdná tabulka pro daný rok by jinak vypadala jako "ještě nikdy
+ * neseto" a naseje se znovu — tenhle příznak tomu brání).
+ */
+function _ensureHolidaysSeededForYear_(year) {
+  const settings = settingsAll_();
+  const seededYears = String(settings.holidaysSeededYears || '').split(',').filter(Boolean);
+  if (seededYears.indexOf(String(year)) !== -1) return;
+
+  _czechHolidaysForYear_(year).forEach((h) => {
+    dbInsert_(SHEETS.HOLIDAYS, { date: h.date, name: h.name });
+  });
+
+  seededYears.push(String(year));
+  settingsSet_('holidaysSeededYears', seededYears.join(','));
 }
 
 /**

@@ -152,6 +152,9 @@ const DB_SCHEMA = {
                    'stores_added','stores_changed','stores_removed',
                    'lc_added','lc_removed','closures_added','closures_removed',
                    'summary','detail','created_at','created_by'],
+  // Státní svátky ČR (viz kapitola 9.7) — plně editovatelný seznam, appka
+  // pro nový rok jen JEDNOU naseje výchozí zákonnou sadu.
+  '_holidays': ['id','date','name','created_at','created_by','updated_at','updated_by'],
 };
 ```
 
@@ -224,15 +227,12 @@ existující databáze — oprava tedy nevyžaduje zakládat databázi znovu.
 | `notifyEvents` | na co se posílá (`create,update,delete`) | prázdné |
 | `notifyRecipients` | `all` / `owner` | `all` |
 | `holidaysEnabled` | zvýrazňovat státní svátky | `true` |
+| `holidaysSeededYears` | interní evidence, které roky už appka naplnila výchozí sadou svátků (čárkou oddělené, viz 9.7) — žádná záložka Nastavení ji přímo nenabízí | prázdné |
 | `pastEditAdminOnly` | proběhlou událost smí měnit jen admin | `true` |
 
-> **Rozhodnutí (1. 9. 2026):** svátky NEBUDOU pevný seznam v kódu. Uživatel
-> chce vlastní editovatelný seznam v sekci Nastavení — přibude samostatná
-> tabulka (např. `holidays`: `id, date, name, movable, offset, active`) a
-> dvojice endpointů `apiGetHolidays` / `apiSaveHolidays`. Řeší se až ve
-> fázi 5 (Nastavení) spolu s `holidaysEnabled` — do té doby kalendář
-> zvýraznění svátků vůbec nezobrazuje (žádný hardcoded seznam jako dočasná
-> náhrada, aby nevznikla data, která se pak musí rušit).
+> Svátky jsou plně editovatelný seznam v Nastavení (tabulka `_holidays`,
+> viz 5.1 a 9.7), ne pevný seznam v kódu — `holidaysEnabled` jen řídí,
+> jestli appka svátky v kalendáři vůbec zvýrazňuje.
 
 ---
 
@@ -373,7 +373,9 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiSaveLogisticCenter(payload)` | `settings_manage` | `{ id, cislo, zkratka }` | uložené LC — edituje jen tato dvě pole, název je needitovatelný |
 | `apiSetLogisticCenterActive(payload)` | `settings_manage` | `{ id, active }` | uložené LC — deaktivace přežije i další synchronizaci, viz 9.6 |
 | `apiSetStoreActive(payload)` | `settings_manage` | `{ id, active }` | uložená filiálka — jediné ručně řízené pole u filiálky, přežije i další synchronizaci |
-| `apiGetHolidays(payload)` | `calendar_read` | `{ year }` (nepovinné, výchozí aktuální rok) | `{ year, holidays }` — pole `{ date, name }`, čistě dopočítané (viz 9.7), žádná databázová tabulka; čtení smí každý přihlášený, ne jen SUPERADMIN |
+| `apiGetHolidays(payload)` | `calendar_read` | `{ year }` (nepovinné, výchozí aktuální rok) | `{ year, holidays }` — pole `{ id, date, name }` z `_holidays`; pro dosud nenavštívený rok appka nejdřív sama naseje výchozí sadu (viz 9.7); čtení smí každý přihlášený, ne jen SUPERADMIN |
+| `apiSaveHoliday(payload)` | `settings_manage` | `{ id?, date, name }` | uložený svátek — s `id` úprava, bez založení nového |
+| `apiDeleteHoliday(payload)` | `settings_manage` | `{ id }` | — |
 
 **Rozsah v `apiGetEvents`** se vyhodnocuje jako **průnik**, ne jako „start
 uvnitř rozsahu" — jinak by vícedenní událost začínající minulý měsíc v aktuální
@@ -402,7 +404,9 @@ mřížce chyběla. Podmínka: `start <= to && end >= from`.
 | **Bez přístupu** | pro přihlášeného, který není v `_users` nebo je neaktivní |
 | **Kalendář** | měsíční mřížka + panel detailu dne |
 | **Uživatelé** | tabulka, přidání, změna role/oprávnění, deaktivace |
-| **Nastavení** | záložky: Pracovní pozice, Typy událostí (viz 9.5); později přibudou Oddělení, obecné nastavení appky, svátky, audit log |
+| **Filiálky** | čtecí přehled filiálek (import dat, viz 9.6), detail na klik na řádek |
+| **LC** | čtecí přehled logistických center (import dat, viz 9.6), editace čísla/zkratky |
+| **Nastavení** | záložky: Oddělení, Pracovní pozice, Typy událostí (viz 9.5), Import dat (viz 9.6), Státní svátky ČR (viz 9.7) |
 
 ### 9.2 Kalendář
 
@@ -413,6 +417,7 @@ v `PMS_Style.html`, s prefixem `cal-`:
 - sloupec s čísly kalendářních týdnů (ISO), zvýrazněný aktuální týden
 - stavy buňky: dnešek, minulost, víkend, jiný měsíc, státní svátek
 - státní svátky včetně pohyblivých — výpočet Velikonoc se přebírá hotový
+  (skutečná implementace a editovatelnost viz kapitola 9.7)
 - navigace: dnes, předchozí, další, výběr měsíce
 - delegovaný listener na mřížce, aby přežil překreslení `innerHTML`
 - klik na volné místo v buňce = nová událost, klik na chip = detail
@@ -720,12 +725,14 @@ firemní adresář):
 
 ### 9.7 Státní svátky ČR
 
-Svátky jsou **čistě dopočítané** (zákon č. 245/2000 Sb.), žádná databázová
-tabulka — stejný princip jako u `DEFAULT_EVENT_TYPES`/`ROLE_LABELS`: appka
-je jen zobrazuje, nejde je v appce editovat.
+Svátky jsou **plně editovatelná tabulka** `_holidays` (id/date/name +
+created/updated), spravovaná stejným vzorem jako Oddělení/Pozice/Typy
+událostí — appka je ale pro každý rok nejdřív sama jednou naseje výchozí
+zákonnou sadou, ať uživatel nezačíná od prázdného seznamu.
 
 - `CZECH_FIXED_HOLIDAYS` (00_config.js) — 11 svátků s pevným datem
-  (1.1., 1.5., 8.5., 5.7., 6.7., 28.9., 28.10., 17.11., 24.-26.12.).
+  (1.1., 1.5., 8.5., 5.7., 6.7., 28.9., 28.10., 17.11., 24.-26.12.), použité
+  jen jako VÝCHOZÍ sada pro sazení, ne jako zdroj pravdy za běhu.
 - Dva pohyblivé svátky (Velký pátek, Velikonoční pondělí) se dopočítávají
   z data velikonoční neděle — `_easterSunday_` (50_api.js) je anonymní
   gregoriánský algoritmus (Meeus/Jones/Butcher), čistě celočíselná
@@ -734,17 +741,33 @@ je jen zobrazuje, nejde je v appce editovat.
   jde jen o kalendářní aritmetiku (kolikátého je "o den dřív/později"),
   ne o okamžik v čase, takže by lokální TIMEZONE appky mohla výsledek
   posunout o den (stejná třída chyby jako opakovaně zdokumentovaný
-  UTC/lokální čas jinde v této specifikaci).
-- `_czechHolidaysForYear_(year)` spojí pevné i pohyblivé svátky, seřadí
-  podle data a vrátí `{date, name}` (`date` jako `RRRR-MM-DD`).
-  `apiGetHolidays({year})` je jen tenký obal s `guard_(CALENDAR_READ, …)` —
-  vidí je každý přihlášený uživatel, ne jen SUPERADMIN, i když samotná
-  záložka Nastavení je jinak přístupná jen jemu (svátky se totiž
-  zobrazují i v mřížce kalendáře, kterou vidí všichni).
+  UTC/lokální čas jinde v této specifikaci). `_czechHolidaysForYear_(year)`
+  spojí pevné i pohyblivé svátky, seřadí podle data a vrátí `{date, name}`
+  — použije se JEN při prvním nasetí daného roku.
+- **Nasetí (`_ensureHolidaysSeededForYear_`, 50_api.js)** — `apiGetHolidays`
+  ho zavolá při každém dotazu; pokud rok ještě není v
+  `_settings.holidaysSeededYears` (čárkou oddělený seznam let), appka do
+  `_holidays` vloží výchozí sadu a rok si poznamená. Tenhle příznak brání
+  tomu, aby se výchozí sada vrátila zpátky, kdyby SUPERADMIN pro daný rok
+  smazal úplně všechny záznamy — prázdný rok BEZ příznaku vypadá jako
+  „ještě nikdy nenaseto" a naseje se znovu, S příznakem zůstane prázdný.
+- `apiGetHolidays({year})` je guardovaný `CALENDAR_READ` — vidí je každý
+  přihlášený uživatel, ne jen SUPERADMIN, i když editace (`apiSaveHoliday`/
+  `apiDeleteHoliday`, `SETTINGS_MANAGE`) i samotná záložka Nastavení jsou
+  přístupné jen jemu — svátky se totiž zobrazují i v mřížce kalendáře,
+  kterou vidí všichni.
 - **Nastavení → záložka „Státní svátky ČR"** — přepínač roku (`◀ RRRR ▶`,
-  `holidaysYear` v klientovi) a prostý seznam datum/název pro vybraný rok
-  (`loadHolidaysForYear` cachuje podle roku, ať appka nevolá server
-  opakovaně pro stejný rok).
+  `holidaysYear` v klientovi) a tabulka se sloupci **Datum / Den (v týdnu,
+  dopočítaný na klientovi z data) / Název svátku / Akce** (tužka/koš,
+  stejné ikony jako u Oddělení/Pozic), plus tlačítko „Přidat svátek".
+  Hlavička (`.holidays-table-head`) stojí mimo scrollující tělo, stejný
+  princip jako u Uživatelé/Filiálky/LC. `loadHolidaysForYear` cachuje
+  podle roku (`App.holidaysCache`), ať appka nevolá server opakovaně pro
+  stejný rok; každá úprava/založení/smazání svátku celou cache zahodí
+  (`invalidateHolidaysCache`) a znovu načte aktuální rok i mřížku
+  kalendáře — u pár desítek řádků ročně jednodušší a bezpečnější než ruční
+  přepočet cache, řeší to i případ, kdy úprava data přesune svátek do
+  jiného roku (appka na něj zobrazení sama přepne).
 - **V mřížce kalendáře** — u dnů, které jsou svátkem, nahradí `.cal-daynum`
   (jen číslo dne) `.cal-holiday-bar`, červený pruh přes celou šířku buňky
   s číslem dne a názvem svátku (bílým textem, ořízne se třemi tečkami,
@@ -763,6 +786,26 @@ je jen zobrazuje, nejde je v appce editovat.
   potřebuje; chybějící dotáhne ze serveru a mřížku pak sama znovu
   vykreslí (druhé volání už nic nedotahuje, cache je plná — bez rizika
   nekonečné smyčky).
+
+### 9.8 Formulář nové/upravené události
+
+Původně holé podepsané řádky (čistě výchozí vzhled prohlížeče) — teď
+stejný vizuální jazyk jako formulář uživatele: pole seskupená do
+`.field-group` boxů s kickerem (Základní údaje / Termín / Popis), modal
+rozšířený na `.modal-wide` (720 px).
+
+- **Typ události** — vlastní rozbalovací seznam (`.type-picker`), ne
+  nativní `<select>` — ten neumí vedle popisku zobrazit i barevnou ikonu
+  typu. `fillEventTypeSelect` vykreslí položky menu (ikona + název,
+  stejný vizuální jazyk jako `.settings-row-icon` u Typů událostí
+  v Nastavení), `setEventFormType(key)` přepíše ikonu/popisek na tlačítku
+  a zapíše skutečnou hodnotu do skrytého `#eventFormType` — na to, co čte
+  `submitEventForm`, se tím nic nemění. Otevírání/zavírání stejný vzor
+  jako `.cal-month-picker` (`bindTypePicker`, klik mimo panel zavře).
+- **Pole s časem** — řádky Od/Do teď mají `grid-template-columns: 1fr 130px`
+  (`.event-form-row--datetime`), ne `1fr 1fr` jako dřív. Nativní
+  `input[type=time]` má malý přirozený obsah, plná šířka poloviny řádku
+  ho zbytečně nafukovala do velkého prázdného pole.
 
 ---
 

@@ -30,7 +30,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.5.1',
+  version: 'v0.6.0',
   releaseDate: '4.9.2026',
 
   /**
@@ -106,6 +106,7 @@ const SHEETS = {
   LOGISTIC_CENTERS: '_logistic_centers',
   STORE_CLOSURES: '_store_closures',
   IMPORT_LOG: '_import_log',
+  HOLIDAYS: '_holidays',
 };
 
 /**
@@ -237,6 +238,8 @@ const LIMITS = {
   LC_ZKRATKA_MAX: 10,
   /** Číslo LC (Filiálky/LC v menu) — zadává ručně SUPERADMIN. */
   LC_CISLO_MAX: 20,
+  /** Název svátku (Nastavení → Státní svátky ČR) — pár nejdelších zákonných názvů má přes 40 znaků, proto víc než u typu události. */
+  HOLIDAY_NAME_MAX: 100,
 };
 
 /**
@@ -265,6 +268,14 @@ const DEFAULT_SETTINGS = {
   // (ta by mohla zůstat neaktuální, kdyby trigger zrušil někdo jinudy).
   importTriggerEnabled: false,
   importTriggerHour: 6,
+  // Roky, pro které už appka jednou naplnila výchozí státní svátky (viz
+  // _ensureHolidaysSeededForYear_ v 50_api.js), čárkou oddělené (např.
+  // "2025,2026") — interní evidence, žádná záložka Nastavení ji přímo
+  // nenabízí k úpravě. Svátky jsou od téhle chvíle plně editovatelné
+  // (list _holidays), tenhle klíč jen brání tomu, aby appka výchozí
+  // sadu znovu podstrčila zpátky, kdyby uživatel pro daný rok smazal
+  // úplně všechny záznamy.
+  holidaysSeededYears: '',
 };
 
 /** Časová zóna aplikace. Musí odpovídat timeZone v appsscript.json. */

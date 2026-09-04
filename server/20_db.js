@@ -103,6 +103,12 @@ const DB_SCHEMA = {
     'summary', 'detail',
     'created_at', 'created_by',
   ],
+  // Státní svátky ČR (Nastavení → Státní svátky ČR) — na rozdíl od dřívější
+  // čistě dopočítané podoby teď plně editovatelná tabulka. Řádky pro nový
+  // rok appka jednou naseje z CZECH_FIXED_HOLIDAYS/_czechHolidaysForYear_
+  // (viz _ensureHolidaysSeededForYear_ v 50_api.js), od té chvíle jsou to
+  // obyčejná data jako kterákoli jiná — needituje/nemaže se nic natvrdo.
+  _holidays: ['id', 'date', 'name', 'created_at', 'created_by', 'updated_at', 'updated_by'],
 };
 
 /**
@@ -135,6 +141,7 @@ const TEXT_COLUMNS = {
   _logistic_centers: ['created_at', 'updated_at'],
   _store_closures: ['od', 'do', 'updated_at'],
   _import_log: ['created_at'],
+  _holidays: ['date', 'created_at', 'updated_at'],
 };
 
 /**
