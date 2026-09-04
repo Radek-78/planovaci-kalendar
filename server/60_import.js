@@ -260,6 +260,55 @@ function apiSearchImportFiles(payload) {
   });
 }
 
+/**
+ * Zkontroluje, že list `sheetName` v souboru existuje a obsahuje všechny
+ * očekávané sloupce ze `columns` (jen podle hlavičky, ne celý obsah — má
+ * to appku ujistit PŘED synchronizací, ne nahrazovat ji).
+ */
+function _importValidateSheet_(spreadsheet, sheetName, columns) {
+  const sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    return { name: sheetName, found: false, ok: false, missingColumns: [] };
+  }
+
+  const lastCol = sheet.getLastColumn();
+  const headerRow = lastCol > 0
+    ? sheet.getRange(1, 1, 1, lastCol).getValues()[0].map((h) => String(h).trim())
+    : [];
+  const missingColumns = columns
+    .filter((c) => headerRow.indexOf(c.header) === -1)
+    .map((c) => c.header);
+
+  return { name: sheetName, found: true, ok: missingColumns.length === 0, missingColumns: missingColumns };
+}
+
+/**
+ * Ověří vybraný soubor PŘED synchronizací — appka na to čekala od etapy 1
+ * (viz konverzace: "musí být vypsáno, jestli bylo nalezeno vše potřebné").
+ * Kontroluje jen existenci listů a jejich sloupců podle hlavičky, ne celý
+ * obsah — levná kontrola, appka ji proto může spustit hned po vyhledání,
+ * ne až při skutečném kliknutí na Synchronizovat.
+ */
+function apiValidateImportFile(payload) {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    const data = payload || {};
+    const fileId = cleanText_(data.fileId, 'ID souboru', 200, true);
+
+    let spreadsheet;
+    try {
+      spreadsheet = SpreadsheetApp.openById(fileId);
+    } catch (e) {
+      return { ok: false, sheets: [] };
+    }
+
+    const sheets = [
+      _importValidateSheet_(spreadsheet, IMPORT_SHEET_NAMES.STORES, IMPORT_STORE_COLUMNS),
+      _importValidateSheet_(spreadsheet, IMPORT_SHEET_NAMES.CLOSURES, IMPORT_CLOSURE_COLUMNS),
+    ];
+    return { ok: sheets.every((s) => s.ok), sheets: sheets };
+  });
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    SYNCHRONIZACE
    ══════════════════════════════════════════════════════════════════════════ */
@@ -368,6 +417,82 @@ function _importRunScheduledSync_() {
   } catch (e) {
     console.error('Noční synchronizace selhala: ' + (e && e.stack ? e.stack : e));
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TRIGGER — zapnutí/vypnutí a hodina nočního běhu
+
+   Zakládat/rušet trigger z appky jde bezpečně stejně jako z editoru — appka
+   běží jako "Execute as me" (viz appsscript.json), takže webový požadavek
+   od SUPERADMINa má STEJNÁ oprávnění ScriptApp jako ruční spuštění
+   TOOLS_ funkce vlastníkem (obojí ve skutečnosti běží pod účtem vlastníka
+   skriptu). `TOOLS_nastavDenniSynchronizaci`/`TOOLS_zrusDenniSynchronizaci`
+   v 90_tools.js zůstávají jako ruční záloha z editoru, volají STEJNOU
+   funkci níže, ať trigger logika existuje jen jednou.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Název handler funkce triggeru — na jednom místě, ať se nikdy nerozejde mezi appkou a TOOLS_ funkcemi. */
+const IMPORT_TRIGGER_HANDLER = '_importRunScheduledSync_';
+
+/**
+ * Zapne/vypne noční trigger a uloží zvolenou hodinu do _settings. Bez
+ * ohledu na předchozí stav nejdřív smaže VŠECHNY existující triggery
+ * stejné funkce (bezpečné spustit opakovaně, nikdy nevzniknou dva).
+ *
+ * @param {boolean} enabled
+ * @param {number} hour  0-23, trigger poběží někdy v tuto hodinu
+ */
+function _importSetTrigger_(enabled, hour) {
+  ScriptApp.getProjectTriggers()
+    .filter((t) => t.getHandlerFunction() === IMPORT_TRIGGER_HANDLER)
+    .forEach((t) => ScriptApp.deleteTrigger(t));
+
+  if (enabled) {
+    ScriptApp.newTrigger(IMPORT_TRIGGER_HANDLER).timeBased().atHour(hour).everyDays(1).create();
+  }
+
+  settingsSet_('importTriggerEnabled', enabled);
+  settingsSet_('importTriggerHour', hour);
+}
+
+/**
+ * Aktuální stav triggeru pro klienta. "enabled" se čte VŽDY živě ze
+ * ScriptApp (skutečná pravda), ne jen z uloženého nastavení — kdyby
+ * trigger zrušil někdo jinudy (např. ručně v editoru přes Spuštění →
+ * Triggery), appka by o tom jinak nevěděla a tvářila by se, že běží.
+ * "hour" naopak živě zjistit nejde (Trigger objekt to nevrací), proto se
+ * bere z posledního uloženého nastavení.
+ */
+function _importTriggerStatus_() {
+  const exists = ScriptApp.getProjectTriggers().some((t) => t.getHandlerFunction() === IMPORT_TRIGGER_HANDLER);
+  const settings = settingsAll_();
+  return { enabled: exists, hour: Number(settings.importTriggerHour) || 6 };
+}
+
+function apiGetImportTriggerStatus() {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => _importTriggerStatus_());
+}
+
+/**
+ * @param {Object} payload  { enabled, hour }
+ */
+function apiSetImportTrigger(payload) {
+  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+    const data = payload || {};
+    const enabled = data.enabled === true;
+    const hour = Math.round(Number(data.hour));
+    if (isNaN(hour) || hour < 0 || hour > 23) {
+      throw userError_('Hodina spuštění musí být číslo 0–23.');
+    }
+
+    _importSetTrigger_(enabled, hour);
+    audit_(enabled ? 'importTrigger.enable' : 'importTrigger.disable',
+      enabled
+        ? 'Zapnuta noční synchronizace dat filiálek (' + hour + ':00–' + ((hour + 1) % 24) + ':00)'
+        : 'Vypnuta noční synchronizace dat filiálek');
+
+    return _importTriggerStatus_();
+  });
 }
 
 /**

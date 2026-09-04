@@ -365,6 +365,9 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiSearchImportFiles(payload)` | `settings_manage` | `{ folderInput, searchTerm }` | nalezené Sheets soubory, od nejnovější úpravy |
 | `apiSyncImportFile(payload)` | `settings_manage` | `{ fileId, folderInput, searchTerm }` | souhrn synchronizace (počty přidáno/změněno/smazáno); zapíše i řádek do `_import_log` a pošle oznámení zvonečkem |
 | `apiGetImportLog()` | `settings_manage` | — | posledních 60 záznamů historie synchronizací, od nejnovějšího (Log importu) |
+| `apiValidateImportFile(payload)` | `settings_manage` | `{ fileId }` | `{ ok, sheets }` — existence a sloupce listů Organizace_Detail/Zavrene_Openings, BEZ importu dat |
+| `apiGetImportTriggerStatus()` | `settings_manage` | — | `{ enabled, hour }` — `enabled` čtené živě ze `ScriptApp`, `hour` z `_settings` |
+| `apiSetImportTrigger(payload)` | `settings_manage` | `{ enabled, hour }` | zapne/vypne noční trigger a nastaví hodinu, `{ enabled, hour }` |
 | `apiGetStores()` | `calendar_read` | — | seznam filiálek, řazený podle Čísla (numericky) — čtení smí každý přihlášený |
 | `apiGetLogisticCenters()` | `calendar_read` | — | seznam LC, řazený podle Čísla (bez čísla vždy na konec) — čtení smí každý přihlášený |
 | `apiSaveLogisticCenter(payload)` | `settings_manage` | `{ id, cislo, zkratka }` | uložené LC — edituje jen tato dvě pole, název je needitovatelný |
@@ -529,9 +532,18 @@ si z něj bere kopii do vlastních tabulek (`_stores`, `_logistic_centers`,
 
 1. Pole *Složka (URL nebo ID)* + *Hledaný výraz* → `apiSearchImportFiles`
    prohledá zadanou složku na Disku (`DriveApp`), vrátí Sheets soubory,
-   jejichž název obsahuje výraz, seřazené od nejnovější úpravy.
+   jejichž název obsahuje výraz, seřazené od nejnovější úpravy. Appka
+   hledání spustí SAMA hned při vstupu do záložky, pokud jsou obě pole
+   už vyplněná (`App.loadImportSettings`) — nečeká na ruční klik na Hledat.
 2. Appka nabídne nalezené soubory jako přepínatelný seznam, nejnovější
-   předvybraný — uživatel může zvolit jiný.
+   předvybraný — uživatel může zvolit jiný. Pro AKTUÁLNĚ vybraný soubor
+   rovnou (bez čekání na Synchronizovat) zavolá `apiValidateImportFile`,
+   která jen podle hlaviček (bez importu dat) ověří, že soubor obsahuje
+   oba očekávané listy a všechny jejich sloupce — výsledek (✓/✗ po
+   jednom řádku na list, u ✗ i jmenovitě které sloupce chybí) appka
+   zobrazí přímo pod seznamem a tlačítko Synchronizovat POVOLÍ, jen když
+   ověření vyšlo v pořádku (žádná synchronizace souboru, o kterém appka
+   předem ví, že v něm něco chybí).
 3. Po potvrzení `apiSyncImportFile` otevře vybraný soubor a přečte listy
    `Organizace_Detail` (→ `_stores`) a `Zavrene_Openings` (→ `_store_closures`).
    Sloupce se hledají podle PŘESNÉHO textu hlavičky v řádku 1
@@ -632,10 +644,12 @@ firemní adresář):
   Tlačítko „Nořadit podle tohoto sloupce" (jen když v řetězu je, žádné
   mrtvé tlačítko) ho odebere; `applyDataTableView` pak řadí postupně
   podle každé úrovně, další úroveň rozhodne, jen když jsou si dva řádky
-  v předchozí rovny. V hlavičce každý sloupec z řetězu nese malý modrý
-  kroužek s číslem = `index + 1` v poli — žádné samostatné počítadlo,
-  takže se při přidání/odebrání úrovně čísla sama přepočítají, nikdy jen
-  nerostou (přesně podle zadání v konverzaci).
+  v předchozí rovny. V hlavičce každý sloupec z řetězu nese malou modrou
+  pilulku s číslem ÚROVNĚ (`index + 1` v poli — žádné samostatné
+  počítadlo, takže se při přidání/odebrání úrovně čísla sama přepočítají,
+  nikdy jen nerostou) A SMĚREM řazení (malá šipka nahoru/dolů vedle
+  čísla) — jen číslo samo by neřeklo, jestli je sloupec seřazený
+  vzestupně, nebo sestupně.
 
   Ikony jsou VŽDY hned za názvem, zleva (`.col-header-label`, pak
   `.col-rank-slot`, pak `.col-filter-slot`) — ne u pravého okraje buňky,
@@ -670,12 +684,21 @@ firemní adresář):
 
 **Etapa 4 (implementováno)** — noční automatická synchronizace:
 
-- Časovaný trigger (6:00–7:00 — zdroj se sám aktualizuje 4-5h, hodina je
-  rezerva) se zakládá/ruší RUČNĚ z editoru Apps Scriptu spuštěním
-  `TOOLS_nastavDenniSynchronizaci`/`TOOLS_zrusDenniSynchronizaci`
-  (90_tools.js) — appka si ho sama nezakládá, stejný princip jako
-  ostatní jednorázové admin nástroje v projektu. `atHour(6)` neurčuje
-  přesnou minutu, jen hodinové okno — o to se stará Apps Script sám.
+- Časovaný trigger (výchozí 6:00–7:00 — zdroj se sám aktualizuje 4-5h,
+  hodina je rezerva, ale hodinu jde v appce změnit) se zapíná/vypíná
+  a jeho hodina se mění PŘÍMO v appce (Import dat → „Automatická noční
+  synchronizace", `apiSetImportTrigger`) — appka běží jako "Execute as
+  me" (viz appsscript.json), takže webový požadavek od SUPERADMINa má
+  stejná oprávnění `ScriptApp` jako ruční spuštění z editoru, obojí
+  totiž ve skutečnosti běží pod účtem vlastníka skriptu. Ruční záloha
+  z editoru (`TOOLS_nastavDenniSynchronizaci`/`TOOLS_zrusDenniSynchronizaci`,
+  90_tools.js) zůstává a volá STEJNOU funkci (`_importSetTrigger_`), ať
+  trigger logika existuje jen jednou. `atHour(N)` neurčuje přesnou
+  minutu, jen hodinové okno — o to se stará Apps Script sám. "Zapnuto"
+  appka čte VŽDY živě ze `ScriptApp.getProjectTriggers()` (skutečná
+  pravda, ne jen uložené nastavení, které by mohlo zůstat neaktuální,
+  kdyby trigger zrušil někdo jinudy), hodinu (tu Trigger objekt zpětně
+  nevrací) drží `_settings.importTriggerHour`.
 - Trigger volá `_importRunScheduledSync_` (60_import.js), která běží
   MIMO web request (žádná session uživatele, tedy žádný `guard_`) a
   navazuje na naposledy odsouhlasenou konfiguraci (`_settings.

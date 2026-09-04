@@ -30,7 +30,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.4.1',
+  version: 'v0.4.2',
   releaseDate: '4.9.2026',
 
   /**
@@ -233,6 +233,14 @@ const DEFAULT_SETTINGS = {
   // hledání, ať noční trigger vždycky navazuje na ověřenou volbu.
   importFolderId: '',
   importSearchTerm: '',
+  // Jestli má běžet noční automatická synchronizace a v kterou hodinu
+  // (0-23, spustí se někdy v tu hodinu, přesnou minutu si řídí Apps
+  // Script sám) — appka podle nich řídí skutečný trigger (viz
+  // _importSetTrigger_ v 60_import.js), zdroj pravdy pro "běží/neběží"
+  // je ale vždycky živý dotaz na ScriptApp, ne tahle uložená hodnota
+  // (ta by mohla zůstat neaktuální, kdyby trigger zrušil někdo jinudy).
+  importTriggerEnabled: false,
+  importTriggerHour: 6,
 };
 
 /** Časová zóna aplikace. Musí odpovídat timeZone v appsscript.json. */

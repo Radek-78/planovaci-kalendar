@@ -1345,7 +1345,7 @@
 
   .stores-table-head,
   .store-row {
-    grid-template-columns: 100px 1.3fr 0.8fr 1fr 0.8fr 0.8fr 200px 60px;
+    grid-template-columns: 108px 1.3fr 0.8fr 1fr 0.8fr 0.8fr 205px 60px;
   }
 
   /* Celý řádek filiálky je klikací (otevře detail, viz openStoreDetailModal)
@@ -1382,7 +1382,7 @@
 
   .lc-table-head,
   .lc-row {
-    grid-template-columns: 90px 100px 1.6fr 110px 60px;
+    grid-template-columns: 98px 108px 1.6fr 118px 60px;
   }
 
   /* Filtr filiálek (section-header, viz #storesFilterInput) — obecné
@@ -1449,39 +1449,54 @@
     display: inline-flex;
     flex-shrink: 0;
     justify-content: center;
-    width: 15px;
+    width: 22px;
   }
 
+  /* Pilulka s číslem ÚROVNĚ + malou šipkou SMĚRU řazení pohromadě —
+     jen číslo samo by neřeklo, jestli je sloupec seřazený vzestupně,
+     nebo sestupně (viz konverzace: "uživatel vůbec netuší, jakým
+     způsobem je řazení provedeno"). */
   .col-rank-badge {
     align-items: center;
     background: var(--lidl-blue);
-    border-radius: 50%;
+    border-radius: 999px;
     color: var(--white);
     display: inline-flex;
     font-size: 9px;
     font-weight: 700;
+    gap: 1px;
     height: 15px;
     justify-content: center;
-    width: 15px;
+    padding: 0 3px;
+  }
+
+  .col-rank-badge i {
+    font-size: 8px;
   }
 
   /* Vyhrazený prostor pro ikonu filtru — pevná šířka, vždycky obsazený
-     (na rozdíl od .col-rank-slot tahle ikona je tam vždycky, jen mění
-     barvu, viz .has-filter). */
+     (na rozdíl od .col-rank-slot tahle ikona je tam vždycky). Barva se
+     řídí VÝHRADNĚ .is-active na tomhle slotu (ne hoverem/barvou tlačítka
+     jako dřív) — ať je jasně a spolehlivě vidět, jen když je na sloupci
+     doopravdy aktivní filtr. */
   .col-filter-slot {
     align-items: center;
+    color: var(--muted);
     display: inline-flex;
     flex-shrink: 0;
     justify-content: center;
-    width: 12px;
+    width: 14px;
   }
 
   .col-filter-slot i {
     font-size: 11px;
   }
 
-  .data-col-header:hover,
-  .data-col-header.has-filter {
+  .col-filter-slot.is-active {
+    color: var(--lidl-blue);
+  }
+
+  .data-col-header:hover .col-header-label {
     color: var(--lidl-blue);
   }
 
@@ -1949,6 +1964,87 @@
 
   .import-result-box li {
     padding: 2px 0;
+  }
+
+  /* ── Ověření vybraného souboru (existence/sloupce listů, viz
+     apiValidateImportFile) — stejný jazyk jako .import-result-box. ── */
+
+  .import-validation-box {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+
+  .import-validation-line {
+    align-items: center;
+    display: flex;
+    font-size: 12.5px;
+    gap: 6px;
+    margin: 0;
+  }
+
+  .import-validation-line.is-ok {
+    color: var(--green);
+  }
+
+  .import-validation-line.is-error {
+    color: var(--lidl-red);
+  }
+
+  .import-validation-loading,
+  .import-validation-error {
+    align-items: center;
+    color: var(--muted);
+    display: flex;
+    font-size: 12.5px;
+    gap: 6px;
+    margin: 0 0 12px;
+  }
+
+  .import-validation-error {
+    color: var(--lidl-red);
+  }
+
+  /* ── Automatická noční synchronizace (zapnutí/vypnutí, hodina) ── */
+
+  .import-trigger {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+
+  .import-trigger-row {
+    align-items: end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .import-trigger-toggle {
+    align-items: center;
+    display: flex;
+    font-size: 13px;
+    font-weight: 700;
+    gap: 8px;
+    padding-bottom: 9px; /* zarovná zaškrtávátko s patou selectu vedle (label+select) */
+  }
+
+  .import-trigger-hour {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .import-trigger-hour select {
+    min-height: 38px;
+  }
+
+  .import-trigger-status {
+    color: var(--muted);
+    font-size: 12.5px;
+    margin: 10px 0 0;
   }
 
   /* ── Log importu (trvalá historie synchronizací, viz apiGetImportLog) ── */

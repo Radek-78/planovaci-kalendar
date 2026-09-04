@@ -5,6 +5,11 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.4.2 - 04.09.2026 08:17
+- Import dat a dynamické ikony hlaviček — záložka Import dat teď sama vyhledá soubory hned při otevření, pokud jsou pole už vyplněná, a u vybraného souboru rovnou ověří (bez importu dat), že obsahuje oba očekávané listy se všemi sloupci, tlačítko Synchronizovat se povolí až podle výsledku
+- přibylo ovládání noční automatické synchronizace přímo v appce (zapnout/vypnout, hodina spuštění), beze změny zůstává i ruční založení triggeru z editoru
+- ikona řazení v hlavičce sloupce teď ukazuje i směr (šipka nahoru/dolů vedle čísla úrovně, ne jen samotné číslo) a ikona filtru mění barvu podle toho, jestli je na sloupci opravdu aktivní filtr
+
 ## v0.4.1 - 04.09.2026 07:56
 - Hlavičky sloupců — přepracované ikony a vícenásobné řazení: ikony jsou nově vždy hned za názvem zleva, ne u pravého okraje buňky, s napevno vyhrazeným místem (nejdřív kolečko s číslem úrovně řazení, pak ikona filtru), název sloupce se už nikdy nezkracuje na tři tečky, šířky sloupců rozšířeny
 - appka teď umí řadit podle víc sloupců najednou (např. podle LC a v rámci LC podle jména RM), kolečko s číslem ukazuje pořadí úrovně řazení a při přidání či odebrání úrovně se čísla sama přepočítají, nikdy jen nerostou

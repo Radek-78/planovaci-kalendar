@@ -470,16 +470,13 @@ function TOOLS_dosaditBarvyTypuUdalosti() {
   console.log('Hotovo — upraveno typů: ' + count);
 }
 
-/** Název handler funkce triggeru — na jednom místě, ať se TOOLS_nastavDenniSynchronizaci a TOOLS_zrusDenniSynchronizaci nikdy nerozejdou. */
-const TRIGGER_IMPORT_HANDLER = '_importRunScheduledSync_';
-
 /**
  * Založí denní časovaný trigger pro automatickou synchronizaci dat
- * filiálek (server/60_import.js) — mezi 6:00 a 7:00, zdrojový soubor se
- * sám aktualizuje mezi 4-5h, hodina je rezerva. Bezpečné spustit
- * i opakovaně — nejdřív zruší případný starší trigger stejné funkce
- * (viz TOOLS_zrusDenniSynchronizaci), ať jich nevznikne víc a appka
- * nesynchronizovala víckrát za noc.
+ * filiálek — mezi 6:00 a 7:00, zdrojový soubor se sám aktualizuje mezi
+ * 4-5h, hodina je rezerva. Ruční záloha z editoru — appka od verze
+ * s ovládáním triggeru přímo v Nastavení (záložka Import dat) volá
+ * stejnou funkci (`_importSetTrigger_` v 60_import.js), takže obojí
+ * dělá přesně totéž.
  *
  * Trigger sám o sobě appku nijak nenastavuje — dokud SUPERADMIN v appce
  * aspoň jednou ručně nesynchronizuje (záložka Import dat v Nastavení),
@@ -487,18 +484,12 @@ const TRIGGER_IMPORT_HANDLER = '_importRunScheduledSync_';
  * o tom zaloguje (viz _importRunScheduledSync_).
  */
 function TOOLS_nastavDenniSynchronizaci() {
-  TOOLS_zrusDenniSynchronizaci();
-  ScriptApp.newTrigger(TRIGGER_IMPORT_HANDLER)
-    .timeBased()
-    .atHour(6)
-    .everyDays(1)
-    .create();
+  _importSetTrigger_(true, 6);
   console.log('Denní trigger založen — poběží jednou za den mezi 6:00 a 7:00 (přesnou minutu si řídí Apps Script sám).');
 }
 
-/** Zruší trigger založený přes TOOLS_nastavDenniSynchronizaci — bezpečné spustit i když žádný neexistuje. */
+/** Zruší trigger založený přes TOOLS_nastavDenniSynchronizaci (nebo v appce) — bezpečné spustit i když žádný neexistuje. */
 function TOOLS_zrusDenniSynchronizaci() {
-  const triggers = ScriptApp.getProjectTriggers().filter((t) => t.getHandlerFunction() === TRIGGER_IMPORT_HANDLER);
-  triggers.forEach((t) => ScriptApp.deleteTrigger(t));
-  console.log('Zrušeno triggerů: ' + triggers.length);
+  _importSetTrigger_(false, 6);
+  console.log('Denní trigger zrušen.');
 }

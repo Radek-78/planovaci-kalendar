@@ -234,8 +234,8 @@
 
         <!-- Import dat filiálek — zdroj je cizí soubor na Disku, appka ho
              jen ČTE a kopíruje si data do vlastních tabulek (viz
-             server/60_import.js). Etapa 1: ruční hledání + sync, bez
-             hlídání rozdílů a bez oznámení (přibude v dalších etapách). -->
+             server/60_import.js). Vyhledání proběhne samo při vstupu do
+             záložky, pokud jsou pole už vyplněná (viz loadImportSettings). -->
         <div class="settings-panel" data-settings-panel="import">
           <div class="settings-panel-head">
             <p class="settings-panel-desc">Synchronizace filiálek a LC ze sdíleného souboru na Disku (listy Organizace_Detail a Zavrene_Openings).</p>
@@ -260,6 +260,10 @@
             <div class="import-results is-hidden" id="importResultsWrap">
               <p class="import-results-label">Nalezené soubory — vybraný (nejnovější) se použije při synchronizaci:</p>
               <div class="import-file-list" id="importResultsList"><!-- vykresleno JS --></div>
+              <!-- Ověření vybraného souboru (existence a sloupce listů
+                   Organizace_Detail/Zavrene_Openings) — viz
+                   apiValidateImportFile, validateSelectedImportFile. -->
+              <div class="import-validation" id="importValidation"><!-- vykresleno JS --></div>
               <div class="import-actions">
                 <button class="button button-primary" type="button" id="importSyncBtn" disabled>
                   <i class="ph ph-arrows-clockwise" aria-hidden="true"></i> Synchronizovat
@@ -268,6 +272,29 @@
             </div>
 
             <div class="import-sync-result" id="importSyncResult"><!-- vykresleno JS --></div>
+
+            <!-- Automatická noční synchronizace — zapnutí/vypnutí a hodina
+                 spuštění (0-23), viz apiGetImportTriggerStatus/
+                 apiSetImportTrigger v 60_import.js. Skutečný trigger je
+                 stejný, ať appka spouští, nebo ho založí ručně
+                 TOOLS_nastavDenniSynchronizaci v editoru. -->
+            <div class="import-trigger">
+              <p class="import-log-heading"><i class="ph ph-alarm" aria-hidden="true"></i> Automatická noční synchronizace</p>
+              <div class="import-trigger-row">
+                <label class="import-trigger-toggle">
+                  <input type="checkbox" id="importTriggerEnabled">
+                  Spouštět automaticky každý den
+                </label>
+                <label class="import-trigger-hour">
+                  <span>Hodina spuštění</span>
+                  <select id="importTriggerHour"><!-- vykresleno JS --></select>
+                </label>
+                <button class="button button-primary" type="button" id="importTriggerSaveBtn">
+                  <i class="ph ph-check" aria-hidden="true"></i> Uložit
+                </button>
+              </div>
+              <p class="import-trigger-status" id="importTriggerStatus"></p>
+            </div>
 
             <!-- Log importu — trvalá historie synchronizací (viz
                  apiGetImportLog v server/60_import.js). Každá položka jde
@@ -2088,15 +2115,23 @@
         if (col.plain) {
           return '<span>' + Ui.escape(col.label) + '</span>';
         }
-        const rankIndex = state.sortOrder.findIndex((s) => s.key === col.key);
+        const sortEntry = state.sortOrder.find((s) => s.key === col.key);
+        const rankIndex = sortEntry ? state.sortOrder.indexOf(sortEntry) : -1;
         const hasFilter = !!state.filters[col.key];
-        const rankBadge = rankIndex !== -1 ? '<span class="col-rank-badge">' + (rankIndex + 1) + '</span>' : '';
 
-        return '<button type="button" class="data-col-header' + (hasFilter ? ' has-filter' : '') +
+        // Číslo ÚROVNĚ + malá šipka SMĚRU řazení pohromadě — jinak by
+        // z pouhého čísla nebylo poznat, jestli je sloupec seřazený
+        // vzestupně, nebo sestupně (viz konverzace).
+        const rankBadge = rankIndex !== -1
+          ? '<span class="col-rank-badge">' + (rankIndex + 1) +
+            '<i class="ph ph-caret-' + (sortEntry.dir === 'desc' ? 'down' : 'up') + '" aria-hidden="true"></i></span>'
+          : '';
+
+        return '<button type="button" class="data-col-header' +
           '" data-col="' + col.key + '" title="Řadit nebo filtrovat podle sloupce ' + Ui.escape(col.label) + '">' +
           '<span class="col-header-label">' + Ui.escape(col.label) + '</span>' +
           '<span class="col-rank-slot">' + rankBadge + '</span>' +
-          '<span class="col-filter-slot"><i class="ph ph-funnel-simple" aria-hidden="true"></i></span>' +
+          '<span class="col-filter-slot' + (hasFilter ? ' is-active' : '') + '"><i class="ph ph-funnel-simple" aria-hidden="true"></i></span>' +
         '</button>';
       }).join('');
     },
@@ -3305,14 +3340,28 @@
     bindImportForm() {
       document.querySelector('#importSearchBtn').addEventListener('click', () => this.searchImportFiles());
       document.querySelector('#importSyncBtn').addEventListener('click', () => this.runImportSync());
+      // Přepnutí vybraného souboru (rádiová volba) hned znovu ověří ten
+      // NOVĚ vybraný — appka nesmí nechat viset ověření předchozího,
+      // jinak by uživatel synchronizoval podle starého výsledku.
+      document.querySelector('#importResultsList').addEventListener('change', (e) => {
+        if (e.target.name === 'importFile') this.validateSelectedImportFile();
+      });
+
+      this.bindImportTriggerForm();
     },
 
-    /** Předvyplní pole Složka/Hledaný výraz naposledy odsouhlasenou konfigurací (viz apiGetImportSettings). */
+    /**
+     * Předvyplní pole Složka/Hledaný výraz naposledy odsouhlasenou
+     * konfigurací (viz apiGetImportSettings) a rovnou spustí vyhledání,
+     * pokud jsou obě pole vyplněná — uživatel tak výsledky vidí hned po
+     * vstupu do záložky, ne až po ručním kliknutí na Hledat.
+     */
     loadImportSettings() {
       Ui.call('apiGetImportSettings', null, { silent: true })
         .then((settings) => {
           document.querySelector('#importFolderInput').value = settings.folderInput;
           document.querySelector('#importSearchInput').value = settings.searchTerm;
+          if (settings.folderInput && settings.searchTerm) this.searchImportFiles();
         })
         .catch(() => {});
     },
@@ -3345,17 +3394,18 @@
     /**
      * Vykreslí nalezené soubory jako přepínatelný seznam (rádiová volba) —
      * první (nejnovější, appka je už poslala seřazené, viz apiSearchImportFiles)
-     * je předvybraný, uživatel může zvolit jiný. Tlačítko Synchronizovat se
-     * povolí, jen když je něco vybrané.
+     * je předvybraný, uživatel může zvolit jiný. Rovnou ověří ten
+     * předvybraný (viz validateSelectedImportFile) — appka chce vědět, jestli
+     * je v souboru vše potřebné, DŘÍV než se na Synchronizovat vůbec dá kliknout.
      */
     renderImportResults() {
       const wrap = document.querySelector('#importResultsWrap');
       const list = document.querySelector('#importResultsList');
-      const syncButton = document.querySelector('#importSyncBtn');
 
       if (!this.importFiles.length) {
         wrap.classList.add('is-hidden');
-        syncButton.disabled = true;
+        document.querySelector('#importSyncBtn').disabled = true;
+        document.querySelector('#importValidation').innerHTML = '';
         return;
       }
 
@@ -3367,7 +3417,56 @@
         '</label>'
       ).join('');
       wrap.classList.remove('is-hidden');
-      syncButton.disabled = false;
+      this.validateSelectedImportFile();
+    },
+
+    /**
+     * Ověří vybraný soubor (existence a sloupce listů Organizace_Detail/
+     * Zavrene_Openings, viz apiValidateImportFile) a podle výsledku
+     * povolí/zakáže tlačítko Synchronizovat — appka nesmí dovolit
+     * synchronizaci souboru, o kterém předem ví, že v něm něco chybí.
+     */
+    validateSelectedImportFile() {
+      const selected = document.querySelector('input[name="importFile"]:checked');
+      const validationBox = document.querySelector('#importValidation');
+      const syncButton = document.querySelector('#importSyncBtn');
+      if (!selected) {
+        validationBox.innerHTML = '';
+        syncButton.disabled = true;
+        return;
+      }
+
+      validationBox.innerHTML = '<p class="import-validation-loading"><i class="ph ph-circle-notch" aria-hidden="true"></i> Ověřuji obsah souboru…</p>';
+      syncButton.disabled = true;
+
+      Ui.call('apiValidateImportFile', { fileId: selected.value }, { silent: true })
+        .then((result) => {
+          // Mezitím mohl uživatel vybrat jiný soubor — zahodit zastaralý výsledek.
+          const stillSelected = document.querySelector('input[name="importFile"]:checked');
+          if (!stillSelected || stillSelected.value !== selected.value) return;
+
+          validationBox.innerHTML = this.renderImportValidation(result);
+          syncButton.disabled = !result.ok;
+        })
+        .catch((error) => {
+          validationBox.innerHTML = '<p class="import-validation-error"><i class="ph ph-warning" aria-hidden="true"></i> Ověření se nepodařilo: ' + Ui.escape(error.message) + '</p>';
+          syncButton.disabled = true;
+        });
+    },
+
+    /** Sestaví přehled ověření — po jednom řádku pro každý očekávaný list, ✓/✗ + chybějící sloupce. */
+    renderImportValidation(result) {
+      return '<div class="import-validation-box' + (result.ok ? ' is-ok' : ' is-error') + '">' +
+        result.sheets.map((s) => {
+          if (!s.found) {
+            return '<p class="import-validation-line is-error"><i class="ph ph-x-circle" aria-hidden="true"></i> List „' + Ui.escape(s.name) + '" v souboru chybí.</p>';
+          }
+          if (!s.ok) {
+            return '<p class="import-validation-line is-error"><i class="ph ph-x-circle" aria-hidden="true"></i> List „' + Ui.escape(s.name) + '" — chybí sloupce: ' + Ui.escape(s.missingColumns.join(', ')) + '</p>';
+          }
+          return '<p class="import-validation-line is-ok"><i class="ph ph-check-circle" aria-hidden="true"></i> List „' + Ui.escape(s.name) + '" obsahuje vše potřebné.</p>';
+        }).join('') +
+      '</div>';
     },
 
     runImportSync() {
@@ -3402,6 +3501,59 @@
           '<li>Uzavírky: ' + r.closures.total + ' aktuálně platných</li>' +
         '</ul>' +
       '</div>';
+    },
+
+    /* ── Automatická noční synchronizace (zapnutí/vypnutí, hodina) ───────
+       Ovládá stejný trigger jako TOOLS_nastavDenniSynchronizaci/
+       TOOLS_zrusDenniSynchronizaci v editoru (viz apiSetImportTrigger). */
+
+    bindImportTriggerForm() {
+      const hourSelect = document.querySelector('#importTriggerHour');
+      hourSelect.innerHTML = Array.from({ length: 24 }, (_, h) =>
+        '<option value="' + h + '">' + h + ':00–' + ((h + 1) % 24) + ':00</option>'
+      ).join('');
+
+      document.querySelector('#importTriggerSaveBtn').addEventListener('click', () => this.saveImportTrigger());
+    },
+
+    loadImportTriggerStatus() {
+      const status = document.querySelector('#importTriggerStatus');
+      status.textContent = 'Načítám stav…';
+
+      Ui.call('apiGetImportTriggerStatus', null, { silent: true })
+        .then((result) => this.renderImportTriggerStatus(result))
+        .catch((error) => {
+          status.textContent = 'Stav se nepodařilo načíst.';
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    renderImportTriggerStatus(result) {
+      document.querySelector('#importTriggerEnabled').checked = result.enabled;
+      document.querySelector('#importTriggerHour').value = String(result.hour);
+
+      const status = document.querySelector('#importTriggerStatus');
+      status.textContent = result.enabled
+        ? 'Automaticky spouštěno denně mezi ' + result.hour + ':00 a ' + ((result.hour + 1) % 24) + ':00.'
+        : 'Automatická synchronizace je teď vypnutá.';
+    },
+
+    saveImportTrigger() {
+      const enabled = document.querySelector('#importTriggerEnabled').checked;
+      const hour = Number(document.querySelector('#importTriggerHour').value);
+      const saveButton = document.querySelector('#importTriggerSaveBtn');
+      Ui.setButtonLoading(saveButton, true, 'Ukládám…');
+
+      Ui.call('apiSetImportTrigger', { enabled: enabled, hour: hour }, { silent: true })
+        .then((result) => {
+          Ui.setButtonLoading(saveButton, false);
+          Ui.toast('Nastavení uloženo.', 'success');
+          this.renderImportTriggerStatus(result);
+        })
+        .catch((error) => {
+          Ui.setButtonLoading(saveButton, false);
+          Ui.toast(error.message, 'error');
+        });
     },
 
     loadImportLog() {
@@ -3468,6 +3620,7 @@
         this.loadPositions();
         this.loadEventTypesAdmin();
         this.loadImportSettings();
+        this.loadImportTriggerStatus();
         this.loadImportLog();
       }
       if (name === 'stores') this.loadStores();
