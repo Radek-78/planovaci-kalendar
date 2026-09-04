@@ -604,9 +604,9 @@ firemní adresář):
   by `.section-header` i `.data-table-head`/`.users-table-head` (obě
   `position: sticky`) odjížděly pryč spolu s daty místo aby zůstávaly na
   místě. Týká se všech sekcí, ne jen Filiálky/LC.
-- **Hlavička sloupce = řazení + filtr (Excel-like).** Klik na hlavičku
-  (kromě Akce, u Uživatelů i mimo prázdný sloupec s avatarem) otevře
-  popover (`App.openColumnFilterPopover`) se dvěma tlačítky řazení
+- **Hlavička sloupce = VÍCENÁSOBNÉ řazení + filtr (Excel-like).** Klik na
+  hlavičku (kromě Akce, u Uživatelů i mimo prázdný sloupec s avatarem)
+  otevře popover (`App.openColumnFilterPopover`) se dvěma tlačítky řazení
   (popisek podle typu sloupce — text „A → Z"/„Z → A", číslo „Nejmenší →
   největší"/…, u kategorií jako Stav/Role/Oprávnění vlastní popisky) a
   zaškrtávacím seznamem DISTINCT hodnot pro filtr. Klikací plocha
@@ -623,6 +623,30 @@ firemní adresář):
   bez `this` (šipková funkce v objektovém literálu by si `this` stejně
   nevzala z `App`) — kde je potřeba mapa popisků, je zapsaná znovu na
   místě, ne přes `this.ROLE_LABELS` apod.
+
+  Řazení je VÍCENÁSOBNÉ — `dataTableState[table].sortOrder` je POLE
+  `{ key, dir }`, ne jeden sloupec (appka umí „podle LC, a v rámci LC
+  podle jména RM", viz konverzace). Klik na „Vzestupně"/„Sestupně" v
+  popoveru sloupec buď PŘIDÁ na konec řetězu (v něm ještě není), nebo mu
+  jen změní směr (v něm už je) — pořadí ostatních úrovní se nemění.
+  Tlačítko „Nořadit podle tohoto sloupce" (jen když v řetězu je, žádné
+  mrtvé tlačítko) ho odebere; `applyDataTableView` pak řadí postupně
+  podle každé úrovně, další úroveň rozhodne, jen když jsou si dva řádky
+  v předchozí rovny. V hlavičce každý sloupec z řetězu nese malý modrý
+  kroužek s číslem = `index + 1` v poli — žádné samostatné počítadlo,
+  takže se při přidání/odebrání úrovně čísla sama přepočítají, nikdy jen
+  nerostou (přesně podle zadání v konverzaci).
+
+  Ikony jsou VŽDY hned za názvem, zleva (`.col-header-label`, pak
+  `.col-rank-slot`, pak `.col-filter-slot`) — ne u pravého okraje buňky,
+  kde nebylo jasné, ke kterému názvu patří. Pro obě je vyhrazený prostor
+  pořád stejně široký, i prázdný (stejný princip jako trojúhelníky
+  pokračování u vícedenní události v kalendáři): číslo úrovně řazení se
+  ukáže, jen když je sloupec v řetězu; ikona filtru je vidět vždycky jako
+  JEDNA ikona (`ph-funnel-simple`), jen zmodrá při aktivním filtru — nikdy
+  dvě ikony vedle sebe. Název se NIKDY nezkracuje (`.col-header-label` bez
+  `flex`/ellipsis) — šířku sloupců (`grid-template-columns`) appka
+  nastavuje tak, aby se i s oběma sloty vešly celé.
 - **Detail filiálky ve třech sloupcích** (Adresa / Kontakty / Otevírací
   doba), každý vlastní oddíl — modal proto používá novou širší třídu
   `.modal-xwide` (960 px) místo `.modal-wide` (720 px).

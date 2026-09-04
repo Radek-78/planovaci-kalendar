@@ -2051,13 +2051,32 @@
     },
 
     /** Aktuální řazení/filtry obou tabulek — čistě na klientovi, nic se neukládá na server. */
+    /**
+     * `sortOrder` je POLE `{ key, dir }`, ne jeden sloupec — appka umí
+     * řadit vícenásobně (viz konverzace: "podle LC, a v rámci LC podle
+     * jména RM"). Pořadí v poli = pořadí úrovní řazení, index+1 = číslo,
+     * které appka ukáže v hlavičce (viz renderDataTableHead) — žádné
+     * samostatné počítadlo, takže se při přidání/odebrání úrovně čísla
+     * sama přepočítají, nikdy jen nerostou.
+     */
     dataTableState: {
-      users: { sortKey: null, sortDir: 'asc', filters: {} },
-      stores: { sortKey: null, sortDir: 'asc', filters: {} },
-      lc: { sortKey: null, sortDir: 'asc', filters: {} },
+      users: { sortOrder: [], filters: {} },
+      stores: { sortOrder: [], filters: {} },
+      lc: { sortOrder: [], filters: {} },
     },
 
-    /** Vykreslí hlavičku tabulky (#usersTableHead/#storesTableHead/#lcTableHead) z DATA_TABLE_COLUMNS — jediné místo, které hlavičku sestavuje. */
+    /**
+     * Vykreslí hlavičku tabulky (#usersTableHead/#storesTableHead/
+     * #lcTableHead) z DATA_TABLE_COLUMNS — jediné místo, které hlavičku
+     * sestavuje.
+     *
+     * Ikony jsou VŽDY hned za názvem (zleva), ne u pravého okraje buňky —
+     * jinak nebylo jasné, ke kterému názvu patří (viz konverzace). Pro obě
+     * je vyhrazený prostor pořád stejně široký, i prázdný: nejdřív číslo
+     * pořadí řazení (jen když je sloupec zrovna součástí aktivního
+     * vícenásobného řazení), pak ikona filtru (vždycky, jen změní barvu,
+     * když je na sloupci aktivní filtr — jedna ikona, ne dvě).
+     */
     renderDataTableHead(tableName) {
       const head = document.querySelector('#' + tableName + 'TableHead');
       const state = this.dataTableState[tableName];
@@ -2069,12 +2088,15 @@
         if (col.plain) {
           return '<span>' + Ui.escape(col.label) + '</span>';
         }
-        const isSorted = state.sortKey === col.key;
+        const rankIndex = state.sortOrder.findIndex((s) => s.key === col.key);
         const hasFilter = !!state.filters[col.key];
-        return '<button type="button" class="data-col-header' + (hasFilter ? ' has-filter' : '') + '" data-col="' + col.key + '">' +
-          '<span>' + Ui.escape(col.label) + '</span>' +
-          (isSorted ? '<i class="ph ph-' + (state.sortDir === 'desc' ? 'sort-descending' : 'sort-ascending') + '" aria-hidden="true"></i>' : '') +
-          '<i class="ph ph-funnel-simple" aria-hidden="true"></i>' +
+        const rankBadge = rankIndex !== -1 ? '<span class="col-rank-badge">' + (rankIndex + 1) + '</span>' : '';
+
+        return '<button type="button" class="data-col-header' + (hasFilter ? ' has-filter' : '') +
+          '" data-col="' + col.key + '" title="Řadit nebo filtrovat podle sloupce ' + Ui.escape(col.label) + '">' +
+          '<span class="col-header-label">' + Ui.escape(col.label) + '</span>' +
+          '<span class="col-rank-slot">' + rankBadge + '</span>' +
+          '<span class="col-filter-slot"><i class="ph ph-funnel-simple" aria-hidden="true"></i></span>' +
         '</button>';
       }).join('');
     },
@@ -2088,7 +2110,13 @@
       });
     },
 
-    /** Aplikuje aktivní filtry a řazení dané tabulky na pole řádků — volá se před vykreslením (viz renderStores/renderLc). */
+    /**
+     * Aplikuje aktivní filtry a VÍCENÁSOBNÉ řazení dané tabulky na pole
+     * řádků — volá se před vykreslením (viz renderStores/renderLc).
+     * Porovnává postupně podle každé úrovně v sortOrder, další úroveň
+     * rozhoduje, jen když jsou si dva řádky v té předchozí rovny (přesně
+     * jako řazení "podle LC, a v rámci LC podle jména RM").
+     */
     applyDataTableView(tableName, rows) {
       const cols = this.DATA_TABLE_COLUMNS[tableName];
       const state = this.dataTableState[tableName];
@@ -2100,18 +2128,23 @@
         result = result.filter((row) => allowed.has(String(col.filterValue(row))));
       });
 
-      if (state.sortKey) {
-        const col = cols.find((c) => c.key === state.sortKey);
-        const dir = state.sortDir === 'desc' ? -1 : 1;
+      if (state.sortOrder.length) {
+        const chain = state.sortOrder.map((s) => ({
+          col: cols.find((c) => c.key === s.key),
+          dir: s.dir === 'desc' ? -1 : 1,
+        }));
         result = result.slice().sort((a, b) => {
-          const va = col.sortValue(a);
-          const vb = col.sortValue(b);
-          if (va === vb) return 0;
-          // chybějící hodnota (např. LC bez čísla) jde vždycky na konec, bez ohledu na směr řazení
-          if (va === null || va === undefined || va === '') return 1;
-          if (vb === null || vb === undefined || vb === '') return -1;
-          if (typeof va === 'string') return va.localeCompare(vb, 'cs') * dir;
-          return (va > vb ? 1 : -1) * dir;
+          for (let i = 0; i < chain.length; i++) {
+            const va = chain[i].col.sortValue(a);
+            const vb = chain[i].col.sortValue(b);
+            if (va === vb) continue; // rovnost — rozhodne až další úroveň řazení
+            // chybějící hodnota (např. LC bez čísla) jde vždycky na konec, bez ohledu na směr řazení
+            if (va === null || va === undefined || va === '') return 1;
+            if (vb === null || vb === undefined || vb === '') return -1;
+            const cmp = typeof va === 'string' ? va.localeCompare(vb, 'cs') : (va > vb ? 1 : -1);
+            return cmp * chain[i].dir;
+          }
+          return 0;
         });
       }
 
@@ -2181,17 +2214,27 @@
 
       const activeFilter = state.filters[colKey]; // Set povolených hodnot, nebo undefined = vše
 
+      // Je sloupec zrovna součástí aktivního (možná vícenásobného) řazení?
+      // rankIndex/currentSort řídí zvýraznění tlačítek a popisek úrovně
+      // (viz konverzace — appka umí "podle LC, pak v rámci LC podle RM").
+      const rankIndex = state.sortOrder.findIndex((s) => s.key === colKey);
+      const currentSort = rankIndex !== -1 ? state.sortOrder[rankIndex] : null;
+      const levelLabel = currentSort ? ' (' + (rankIndex + 1) + '. úroveň řazení)' : '';
+
       const popover = document.createElement('div');
       popover.className = 'column-filter-popover';
       popover.dataset.table = tableName;
       popover.dataset.col = colKey;
       popover.innerHTML =
         '<div class="column-filter-section">' +
-          '<p class="column-filter-heading">Řadit</p>' +
-          '<button type="button" class="column-filter-sort-btn' + (state.sortKey === colKey && state.sortDir === 'asc' ? ' is-active' : '') + '" data-dir="asc">' +
+          '<p class="column-filter-heading">Řadit' + levelLabel + '</p>' +
+          '<button type="button" class="column-filter-sort-btn' + (currentSort && currentSort.dir === 'asc' ? ' is-active' : '') + '" data-dir="asc">' +
             '<i class="ph ph-sort-ascending" aria-hidden="true"></i> ' + Ui.escape(col.sortAsc) + '</button>' +
-          '<button type="button" class="column-filter-sort-btn' + (state.sortKey === colKey && state.sortDir === 'desc' ? ' is-active' : '') + '" data-dir="desc">' +
+          '<button type="button" class="column-filter-sort-btn' + (currentSort && currentSort.dir === 'desc' ? ' is-active' : '') + '" data-dir="desc">' +
             '<i class="ph ph-sort-descending" aria-hidden="true"></i> ' + Ui.escape(col.sortDesc) + '</button>' +
+          (currentSort
+            ? '<button type="button" class="column-filter-sort-remove" id="columnFilterClearSort"><i class="ph ph-x" aria-hidden="true"></i> Neřadit podle tohoto sloupce</button>'
+            : '') +
         '</div>' +
         '<div class="column-filter-section">' +
           '<p class="column-filter-heading">Filtrovat</p>' +
@@ -2230,15 +2273,32 @@
     },
 
     bindColumnFilterPopover(popover, tableName, colKey) {
+      // Klik na "Vzestupně"/"Sestupně" sloupec buď PŘIDÁ na konec aktivního
+      // vícenásobného řazení (ještě v něm není), nebo mu jen změní směr,
+      // pokud v něm už je — pořadí ostatních úrovní se tím nemění.
       popover.querySelectorAll('.column-filter-sort-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
           const state = this.dataTableState[tableName];
-          state.sortKey = colKey;
-          state.sortDir = btn.dataset.dir;
+          const idx = state.sortOrder.findIndex((s) => s.key === colKey);
+          if (idx !== -1) state.sortOrder[idx] = { key: colKey, dir: btn.dataset.dir };
+          else state.sortOrder.push({ key: colKey, dir: btn.dataset.dir });
           this.closeColumnFilterPopover();
           this.refreshDataTable(tableName);
         });
       });
+
+      // Odebere sloupec z řazení — zbylé úrovně se posunou, čísla se tak
+      // sama přepočítají (viz komentář u dataTableState), nikdy nevznikne
+      // díra ani se nic dál nezvyšuje.
+      const clearSortBtn = popover.querySelector('#columnFilterClearSort');
+      if (clearSortBtn) {
+        clearSortBtn.addEventListener('click', () => {
+          const state = this.dataTableState[tableName];
+          state.sortOrder = state.sortOrder.filter((s) => s.key !== colKey);
+          this.closeColumnFilterPopover();
+          this.refreshDataTable(tableName);
+        });
+      }
 
       const checkAll = popover.querySelector('#columnFilterCheckAll');
       const valueBoxes = Array.from(popover.querySelectorAll('.column-filter-value'));

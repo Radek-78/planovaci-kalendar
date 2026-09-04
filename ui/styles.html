@@ -1061,7 +1061,7 @@
     align-items: center;
     display: grid;
     gap: 12px;
-    grid-template-columns: 40px 1.3fr 1.6fr 0.9fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 76px;
+    grid-template-columns: 40px 1.3fr 1.5fr 0.9fr 0.95fr 0.95fr 0.9fr 1fr 0.8fr 76px;
     padding: 10px 16px;
   }
 
@@ -1345,7 +1345,7 @@
 
   .stores-table-head,
   .store-row {
-    grid-template-columns: 60px 1.4fr 0.7fr 0.8fr 0.7fr 0.7fr 190px 60px;
+    grid-template-columns: 100px 1.3fr 0.8fr 1fr 0.8fr 0.8fr 200px 60px;
   }
 
   /* Celý řádek filiálky je klikací (otevře detail, viz openStoreDetailModal)
@@ -1382,7 +1382,7 @@
 
   .lc-table-head,
   .lc-row {
-    grid-template-columns: 70px 90px 1.7fr 90px 60px;
+    grid-template-columns: 90px 100px 1.6fr 110px 60px;
   }
 
   /* Filtr filiálek (section-header, viz #storesFilterInput) — obecné
@@ -1394,10 +1394,18 @@
   }
 
   /* ── Hlavička sloupce s řazením/filtrem (Excel-like popover) ──────────
-     Celá hlavička je tlačítko (ne jen ikona) — snazší klikací plocha. Ikona
-     řazení se ukáže, jen když je sloupec zrovna aktivně seřazený; ikona
-     filtru je vidět vždycky, ale zmodrá, když je na sloupci aktivní filtr
-     (.has-filter), ať je hned vidět, který sloupec je zúžený. ── */
+     Celá hlavička je tlačítko (ne jen ikona) — snazší klikací plocha.
+
+     Ikony jsou VŽDY hned za názvem, zleva — ne u pravého okraje buňky,
+     kde předtím nebylo jasné, ke kterému názvu patří (viz konverzace).
+     Pro obě je vyhrazený prostor pořád stejně široký, i prázdný
+     (.col-rank-slot/.col-filter-slot): číslo úrovně řazení se ukáže,
+     jen když je sloupec zrovna součástí aktivního (možná vícenásobného)
+     řazení; ikona filtru je vidět vždycky jako JEDNA ikona, jen zmodrá,
+     když je na sloupci aktivní filtr (.has-filter) — nikdy dvě ikony
+     vedle sebe. Název se NIKDY nezkracuje (žádný flex/ellipsis) — sloupec
+     musí být dost široký, aby se i s oběma sloty vešel celý, o to se
+     stará grid-template-columns u .data-table-head/.users-table-head. ── */
 
   .data-col-header {
     align-items: center;
@@ -1412,7 +1420,8 @@
     cursor: pointer;
     display: flex;
     font: inherit;
-    gap: 4px;
+    gap: 5px;
+    justify-content: flex-start;
     letter-spacing: inherit;
     margin: 0;
     padding: 0;
@@ -1421,25 +1430,53 @@
     /* width: 100% — tlačítko je grid položka, ale (na rozdíl od výšky)
        samo o sobě se nenatáhne na celou šířku sloupce, jen na šířku
        vlastního obsahu. Bez tohohle byla klikací i jen šířka textu, ne
-       celá buňka hlavičky. */
+       celá buňka hlavičky. Zbylé volné místo napravo od ikon zůstává
+       prázdné, ale pořád klikací. */
     width: 100%;
   }
 
-  /* flex: 1 na popisku (ne na ikonách) — pohltí volné místo v natažené
-     hlavičce, ať ikony řazení/filtru zůstanou přitisknuté k pravému
-     okraji buňky, ne hned za (třeba krátkým) textem. min-width: 0 je
-     nutné, aby zkracování na tři tečky vůbec mohlo nastat (klasická
-     flexbox past, stejná jako jinde v appce). */
-  .data-col-header span {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  /* Bez flex/ellipsis — název se nezkracuje, viz komentář výše. */
+  .col-header-label {
+    flex-shrink: 0;
     white-space: nowrap;
   }
 
-  .data-col-header i {
+  /* Vyhrazený prostor pro číslo úrovně řazení — pevná šířka, i prázdný
+     (stejný princip jako trojúhelníky pokračování u vícedenní události
+     v kalendáři — vždycky rezervované místo, i když se zrovna nevyužije). */
+  .col-rank-slot {
+    align-items: center;
+    display: inline-flex;
     flex-shrink: 0;
+    justify-content: center;
+    width: 15px;
+  }
+
+  .col-rank-badge {
+    align-items: center;
+    background: var(--lidl-blue);
+    border-radius: 50%;
+    color: var(--white);
+    display: inline-flex;
+    font-size: 9px;
+    font-weight: 700;
+    height: 15px;
+    justify-content: center;
+    width: 15px;
+  }
+
+  /* Vyhrazený prostor pro ikonu filtru — pevná šířka, vždycky obsazený
+     (na rozdíl od .col-rank-slot tahle ikona je tam vždycky, jen mění
+     barvu, viz .has-filter). */
+  .col-filter-slot {
+    align-items: center;
+    display: inline-flex;
+    flex-shrink: 0;
+    justify-content: center;
+    width: 12px;
+  }
+
+  .col-filter-slot i {
     font-size: 11px;
   }
 
@@ -1511,6 +1548,29 @@
     background: var(--lidl-blue);
     border-color: var(--lidl-blue);
     color: var(--white);
+  }
+
+  /* Odebrání sloupce z (možná vícenásobného) řazení — jen text, ne
+     plnokrevné tlačítko jako řadit vzestupně/sestupně, ať je jasné, že
+     je to vedlejší/zrušující akce, ne další volba řazení. Zobrazí se,
+     jen když je sloupec zrovna součástí aktivního řazení (viz
+     openColumnFilterPopover) — žádné mrtvé tlačítko. */
+  .column-filter-sort-remove {
+    align-items: center;
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    font-size: 11.5px;
+    gap: 4px;
+    margin-top: 4px;
+    padding: 4px 2px;
+    width: 100%;
+  }
+
+  .column-filter-sort-remove:hover {
+    color: var(--lidl-red);
   }
 
   .column-filter-check-all {

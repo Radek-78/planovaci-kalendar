@@ -5,6 +5,11 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.4.1 - 04.09.2026 07:56
+- Hlavičky sloupců — přepracované ikony a vícenásobné řazení: ikony jsou nově vždy hned za názvem zleva, ne u pravého okraje buňky, s napevno vyhrazeným místem (nejdřív kolečko s číslem úrovně řazení, pak ikona filtru), název sloupce se už nikdy nezkracuje na tři tečky, šířky sloupců rozšířeny
+- appka teď umí řadit podle víc sloupců najednou (např. podle LC a v rámci LC podle jména RM), kolečko s číslem ukazuje pořadí úrovně řazení a při přidání či odebrání úrovně se čísla sama přepočítají, nikdy jen nerostou
+- v okně u sloupce, který je součástí řazení, přibylo tlačítko „Nořadit podle tohoto sloupce"
+
 ## v0.4.0 - 04.09.2026 07:47
 - Import dat filiálek — etapa 4 (poslední): noční automatická synchronizace přes časovaný trigger, spouští se ručně z editoru přes TOOLS_nastavDenniSynchronizaci (mezi 6:00 a 7:00, zdroj se sám aktualizuje 4-5h), zrušit jde přes TOOLS_zrusDenniSynchronizaci
 - trigger navazuje na naposledy odsouhlasenou složku a hledaný výraz z ručního syncu, sám vybere nejnovější soubor a spustí stejnou sdílenou logiku jako ruční tlačítko (zápis do Logu importu i oznámení zvonečkem)
