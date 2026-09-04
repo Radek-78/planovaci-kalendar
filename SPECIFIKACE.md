@@ -778,6 +778,10 @@ zákonnou sadou, ať uživatel nezačíná od prázdného seznamu.
   na jaký den svátek padne, bez nutnosti formulář nejdřív uložit. Modal
   `.modal-wide` (720 px) — i tak jednoduchý formulář (dvě pole) díky tomu
   nepůsobí prázdně/amatérsky jako předchozí těsný `.modal-grow` (480 px).
+  Mezera mezi hero polem a kartou (`.holiday-form-body{gap}`) je tu
+  záměrně větší (32px) než v hustším formuláři události (18px) — u tak
+  řídkého obsahu stejná hodnota vizuálně splývala s okolní bílou plochou
+  a působila jako žádná mezera (nahlášená zpětná vazba).
 - **V mřížce kalendáře** — u dnů, které jsou svátkem, nahradí `.cal-daynum`
   (jen číslo dne) `.cal-holiday-bar`, červený pruh přes celou šířku buňky
   s číslem dne a názvem svátku (bílým textem, ořízne se třemi tečkami,
@@ -843,6 +847,24 @@ modal (`.modal-xwide`, 960 px, stejná třída jako detail filiálky):
   klik mimo panel zavře).
 - Na displeji do 620 px (`@media (max-width: 620px)`) se `.event-form-columns`/
   `.event-form-row`/`.type-picker-menu` rozpadnou na jeden sloupec.
+
+**Sjednocení napříč appkou** — na žádost „aby všechna podobná modal okna
+v appce měla stejný design" dostaly `.form-hero-field`/`.form-hero-input`
+(hlavní pole zvýrazněné jako "hero") a `.field-group-accent` (modré
+orámování karty) i ostatní jednoduché formuláře v Nastavení, ne jen
+formulář události a svátku:
+
+- **Pracovní pozice/Oddělení** — jediné pole (Název) je teď hero pole,
+  bez dalšího boxu (žádný jiný obsah k seskupení).
+- **LC** (Číslo/Zkratka) — obě pole v jedné kartě s modrým orámováním
+  (žádné pole tu není přirozený "hero" kandidát, LC nemá needitovatelný
+  název ze zdroje).
+- **Typ události** — Popisek je hero pole, Barvy a Ikona zvlášť v kartách
+  s modrým orámováním (dřív `.field-group` bez zvýraznění).
+- **Uživatel** — existující trojice `.field-group` sekcí (Osobní údaje /
+  Role a oprávnění / Organizace) dostala `.field-group-accent`, samotné
+  rozvržení (dva sloupce, užší mezery — viz komentář u `.user-form-body`)
+  se nemění.
 
 ---
 

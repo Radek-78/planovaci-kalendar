@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.7.2 - 04.09.2026 12:50
+- v0.7.2: Sjednocený profesionální vzhled napříč všemi modal okny — hero pole (výrazné hlavní pole) a karty s modrým orámováním z formuláře události/svátku teď mají i Pracovní pozice, Oddělení, LC, Typ události a Uživatel, ne jen ty dva. Oprava: v modalu svátku chyběla viditelná mezera mezi polem Název svátku a kartou s Datem — u tak řídkého formuláře splývala se stejnou hodnotou jako v hustším formuláři události, teď má vlastní větší mezeru.
+
 ## v0.7.1 - 04.09.2026 12:35
 - v0.7.1: Modal svátku profesionálněji — formulář nového/upravovaného svátku měl pořád jen těsný výchozí vzhled (480 px, dvě pole vedle sebe), teď stejný vizuální jazyk jako formulář události: Název svátku jako výrazné hero pole nahoře, pod ním karta s modrým orámováním pro Datum, modal rozšířený na 720 px. Appka navíc vedle data živě dopočítá a zobrazí den v týdnu, ať je hned vidět, na jaký den svátek padne, bez nutnosti formulář nejdřív uložit. Hero pole a modré orámování karet jsou teď sdílené komponenty (form-hero-field/form-hero-input, field-group-accent) — používá je formulář události i svátku, dřív byly natvrdo pojmenované jen pro událost.
 

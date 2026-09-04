@@ -549,7 +549,7 @@
     <div class="modal-body user-form-body">
 
       <div class="user-form-col">
-        <div class="field-group">
+        <div class="field-group field-group-accent">
           <p class="kicker"><i class="ph ph-identification-badge" aria-hidden="true"></i> Osobní údaje</p>
           <label>
             <span>Jméno *</span>
@@ -568,7 +568,7 @@
       </div>
 
       <div class="user-form-col">
-        <div class="field-group">
+        <div class="field-group field-group-accent">
           <p class="kicker"><i class="ph ph-shield-star" aria-hidden="true"></i> Role a oprávnění</p>
           <div class="event-form-row">
             <label>
@@ -585,7 +585,7 @@
           </div>
         </div>
 
-        <div class="field-group">
+        <div class="field-group field-group-accent">
           <p class="kicker"><i class="ph ph-buildings" aria-hidden="true"></i> Organizace</p>
           <label>
             <span>Umístění</span>
@@ -630,9 +630,9 @@
   </div>
   <form id="positionForm">
     <div class="modal-body">
-      <label>
+      <label class="form-hero-field">
         <span>Název *</span>
-        <input type="text" id="positionFormName" maxlength="60" required>
+        <input type="text" id="positionFormName" maxlength="60" required class="form-hero-input">
       </label>
     </div>
     <div class="modal-actions">
@@ -660,9 +660,9 @@
   </div>
   <form id="departmentForm">
     <div class="modal-body">
-      <label>
+      <label class="form-hero-field">
         <span>Název *</span>
-        <input type="text" id="departmentFormName" maxlength="60" required>
+        <input type="text" id="departmentFormName" maxlength="60" required class="form-hero-input">
       </label>
     </div>
     <div class="modal-actions">
@@ -743,15 +743,18 @@
   </div>
   <form id="lcForm">
     <div class="modal-body">
-      <div class="event-form-row">
-        <label>
-          <span>Číslo</span>
-          <input type="text" id="lcFormCislo" maxlength="20">
-        </label>
-        <label>
-          <span>Zkratka</span>
-          <input type="text" id="lcFormZkratka" maxlength="10">
-        </label>
+      <div class="field-group field-group-accent">
+        <p class="kicker"><i class="ph ph-hash" aria-hidden="true"></i> Číslo a zkratka</p>
+        <div class="event-form-row">
+          <label>
+            <span>Číslo</span>
+            <input type="text" id="lcFormCislo" maxlength="20">
+          </label>
+          <label>
+            <span>Zkratka</span>
+            <input type="text" id="lcFormZkratka" maxlength="10">
+          </label>
+        </div>
       </div>
     </div>
     <div class="modal-actions">
@@ -782,14 +785,11 @@
   </div>
   <form id="eventTypeForm">
     <div class="modal-body event-type-form-body">
-      <div class="field-group">
-        <p class="kicker"><i class="ph ph-text-aa" aria-hidden="true"></i> Popisek</p>
-        <label>
-          <span>Popisek *</span>
-          <input type="text" id="eventTypeFormLabel" maxlength="40" required>
-        </label>
-      </div>
-      <div class="field-group">
+      <label class="form-hero-field">
+        <span>Popisek *</span>
+        <input type="text" id="eventTypeFormLabel" maxlength="40" required class="form-hero-input">
+      </label>
+      <div class="field-group field-group-accent">
         <p class="kicker"><i class="ph ph-palette" aria-hidden="true"></i> Barvy</p>
         <div class="event-form-row">
           <label>
@@ -802,7 +802,7 @@
           </label>
         </div>
       </div>
-      <div class="field-group">
+      <div class="field-group field-group-accent">
         <p class="kicker"><i class="ph ph-shapes" aria-hidden="true"></i> Ikona *</p>
         <div class="type-icon-picker" id="eventTypeFormIconPicker" data-selected=""><!-- vykresleno JS --></div>
       </div>

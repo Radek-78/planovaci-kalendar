@@ -3870,10 +3870,14 @@
   /* ── Formulář svátku — stejný vizuální jazyk jako formulář události výše
      (.form-hero-*/.field-group-accent), jen jediná karta (Datum), ať
      i tak jednoduchý formulář (dvě pole) nepůsobí prázdně/amatérsky
-     v širším .modal-wide okně. ── */
+     v širším .modal-wide okně. Mezera mezi hero polem a kartou je tu
+     záměrně větší než v hustším formuláři události (18px) — u tak
+     řídkého obsahu (jen dvě pole, kolem nich hodně prázdného místa) by
+     stejná hodnota vizuálně splynula s okolní bílou plochou a působila
+     jako žádná mezera (nahlášená zpětná vazba). ── */
   .holiday-form-body {
     display: grid;
-    gap: 18px;
+    gap: 32px;
     padding: 20px 24px;
   }
 
