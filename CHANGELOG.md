@@ -5,6 +5,10 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.7.4 - 04.09.2026 13:24
+- v0.7.4: Detail filiálky — telefony, LC, malý kalendář — telefonní čísla ve sloupci Kontakty appka teď formátuje jako +420 xxx xxx xxx. Sloupec Adresa už se nenatahuje na výšku nejdelšího sloupce (Otevírací doba) a nepůsobí zbytečně velký. Číslo filiálky a LC mají vlastní výraznější (modrý) odznak, ať je hned jasné, o kterou filiálku a pod které LC jde
+- kód filiálky se v detailu vůbec nezobrazuje. Přibyl čtvrtý, malý sloupec s kalendářem aktuálního měsíce — dny spadající do nahlášeného zavření jsou v něm zvýrazněné červeně, dnešek žlutým rámečkem.
+
 ## v0.7.3 - 04.09.2026 13:13
 - v0.7.3: Detail filiálky ve stejném profesionálním designu — tři sloupce (Adresa/Kontakty/Otevírací doba) v modalu detailu filiálky jsou teď karty s modrým orámováním, stejný vizuální jazyk jako formuláře, dřív jen holé sloupce bez boxu. Skutečná oprava mezery v modalu svátku — i po předchozím zvětšení na 32px pořád nedostatečné, teď 44px a navíc nezávislý doplňkový odstup (margin) na kartě samotné, ať mezera zůstane jistě vidět bez ohledu na jediný mechanismus.
 

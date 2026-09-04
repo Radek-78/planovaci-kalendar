@@ -1672,14 +1672,30 @@
     gap: 4px;
   }
 
-  /* Tři sloupce vedle sebe, každý vlastní karta s modrým orámováním
+  /* Číslo filiálky a LC — "identita" filiálky, výraznější (modré) než
+     ostatní odznaky (stav/deaktivace), ať jsou na první pohled jasně
+     vidět (nahlášená zpětná vazba). */
+  .store-detail-badge.is-primary {
+    background: #e6eef8;
+    color: var(--lidl-dark-blue);
+    font-size: 13px;
+  }
+
+  /* Čtyři sloupce vedle sebe, každý vlastní karta s modrým orámováním
      (.field-group/.field-group-accent — stejný jazyk jako formuláře, viz
      9.8 v SPECIFIKACE.md) — modal je proto dost široký (.modal-xwide).
-     Dřív jen holé sloupce bez boxu/orámování, jen s kickerem nahoře. */
+     Dřív jen holé sloupce bez boxu/orámování, jen s kickerem nahoře.
+     Poslední sloupec (malý kalendář, viz .store-detail-calendar) má
+     pevnou užší šířku — je to skutečně "malý" kalendář, ne čtvrtý
+     rovnocenný sloupec stejně široký jako ostatní.
+     align-items: start — bez toho by grid natáhl každou kartu na výšku
+     nejdelší (Otevírací doba), a řídká Adresa by tak vypadala zbytečně
+     velká (nahlášená zpětná vazba). */
   .store-detail-columns {
+    align-items: start;
     display: grid;
     gap: 20px;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr 1fr 1fr 220px;
   }
 
   .store-detail-col {
@@ -1722,6 +1738,59 @@
   .store-detail-hours td:first-child {
     color: var(--muted);
     width: 100px;
+  }
+
+  /* Malý kalendář aktuálního měsíce ve 4. sloupci detailu filiálky —
+     dny spadající do store.closure zvýrazní červeně, stejná informace
+     jako closedBadge nad sloupci, jen ještě jednou vizuálně. */
+  .store-detail-calendar {
+    padding-bottom: 10px;
+  }
+
+  .store-mini-cal-weekdays,
+  .store-mini-cal-grid {
+    display: grid;
+    gap: 3px;
+    grid-template-columns: repeat(7, 1fr);
+  }
+
+  .store-mini-cal-weekdays {
+    margin-bottom: 4px;
+  }
+
+  .store-mini-cal-weekdays span {
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  .store-mini-cal-cell {
+    align-items: center;
+    border-radius: 5px;
+    color: var(--text);
+    display: flex;
+    font-size: 11px;
+    font-weight: 600;
+    height: 22px;
+    justify-content: center;
+  }
+
+  .store-mini-cal-cell.is-empty {
+    visibility: hidden;
+  }
+
+  /* Žlutý vnitřní rámeček (box-shadow, ne background) — jde kombinovat
+     i se zavřeným dnem (is-closed níže), stejný princip jako u dnešního
+     dne + svátku v hlavní mřížce kalendáře (.cal-cell.is-today.is-holiday). */
+  .store-mini-cal-cell.is-today {
+    box-shadow: inset 0 0 0 2px var(--lidl-yellow);
+  }
+
+  .store-mini-cal-cell.is-closed {
+    background: var(--lidl-red);
+    color: var(--white);
   }
 
   /* ── Nastavení — záložky (Pracovní pozice, Typy událostí…) ────────────

@@ -2730,16 +2730,21 @@
 
     /**
      * Sestaví obsah modalu detailu filiálky — jen ke čtení (data needituje
-     * appka, jen (de)aktivace v seznamu, viz renderStoreRow). Tři sloupce
-     * vedle sebe (Adresa / Kontakty / Otevírací doba), každý vlastní karta
-     * s modrým orámováním (.field-group/.field-group-accent — stejný
-     * vizuální jazyk jako formuláře, viz SPECIFIKACE.md 9.8) — modal je
-     * proto dost široký (.modal-xwide, viz styles.html).
+     * appka, jen (de)aktivace v seznamu, viz renderStoreRow). Čtyři sloupce
+     * vedle sebe (Adresa / Kontakty / Otevírací doba / malý kalendář
+     * měsíce), každý vlastní karta s modrým orámováním (.field-group/
+     * .field-group-accent — stejný vizuální jazyk jako formuláře, viz
+     * SPECIFIKACE.md 9.8) — modal je proto dost široký (.modal-xwide, viz
+     * styles.html). align-items: start na .store-detail-columns (viz CSS)
+     * nechává každou kartu vysokou jen podle vlastního obsahu — bez toho
+     * by se řídká Adresa natahovala na výšku nejdelší karty (Otevírací
+     * doba), a působila zbytečně velká (nahlášená zpětná vazba).
      */
     renderStoreDetail(store) {
       const contactRow = (label, name, phone) => {
-        if (!name && !phone) return '';
-        const value = name && phone ? name + ' · ' + phone : (name || phone);
+        const phoneFormatted = this.formatPhoneCz(phone);
+        if (!name && !phoneFormatted) return '';
+        const value = name && phoneFormatted ? name + ' · ' + phoneFormatted : (name || phoneFormatted);
         return '<div class="store-detail-row"><span class="store-detail-label">' + Ui.escape(label) + '</span><span>' + Ui.escape(value) + '</span></div>';
       };
 
@@ -2765,9 +2770,14 @@
         contactRow('Zástupce RM', store.zastupceRm, store.telefonZastupce);
 
       return '<div class="store-detail">' +
+        // Číslo a LC jsou "primary" badge — výraznější (modré) než ostatní
+        // (stav/deaktivace), ať je na první pohled jasné, o kterou filiálku
+        // a pod které LC jde. Kód filiálky appka záměrně nezobrazuje vůbec
+        // (nahlášená zpětná vazba — appka ho tiše ignoruje, i kdyby ho
+        // import dál posílal).
         '<div class="store-detail-badges">' +
-          '<span class="store-detail-badge">Číslo ' + Ui.escape(store.id) + '</span>' +
-          (store.kod ? '<span class="store-detail-badge">' + Ui.escape(store.kod) + '</span>' : '') +
+          '<span class="store-detail-badge is-primary">Číslo ' + Ui.escape(store.id) + '</span>' +
+          (store.lc ? '<span class="store-detail-badge is-primary">LC ' + Ui.escape(store.lc) + '</span>' : '') +
           closedBadge + inactiveBadge +
         '</div>' +
         '<div class="store-detail-columns">' +
@@ -2783,8 +2793,62 @@
             '<p class="kicker"><i class="ph ph-clock" aria-hidden="true"></i> Otevírací doba</p>' +
             '<table class="store-detail-hours"><tbody>' + hoursRows + '</tbody></table>' +
           '</div>' +
+          this.renderStoreMiniCalendar(store) +
         '</div>' +
       '</div>';
+    },
+
+    /**
+     * Malý kalendář aktuálního (dnešního, ne prohlíženého v hlavní mřížce)
+     * měsíce v detailu filiálky — dny spadající do store.closure (pokud
+     * existuje) jsou zvýrazněné červeně, stejná informace jako closedBadge
+     * výše, jen ještě jednou vizuálně na kalendáři. Dnešek dostane žlutý
+     * vnitřní rámeček (box-shadow, ne background — aby šel kombinovat
+     * i se zavřeným dnem, stejný princip jako .cal-cell.is-today/
+     * is-holiday v hlavní mřížce).
+     */
+    renderStoreMiniCalendar(store) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const year = today.getFullYear();
+      const month = today.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const startOffset = (new Date(year, month, 1).getDay() + 6) % 7; // pondělí = 0
+      const todayIso = this.isoDate(today);
+      const closure = store.closure;
+
+      let cells = '';
+      for (let i = 0; i < startOffset; i++) cells += '<span class="store-mini-cal-cell is-empty"></span>';
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateIso = this.isoDate(new Date(year, month, d));
+        const isClosed = !!(closure && dateIso >= closure.from && dateIso <= closure.to);
+        const isToday = dateIso === todayIso;
+        cells += '<span class="store-mini-cal-cell' + (isClosed ? ' is-closed' : '') + (isToday ? ' is-today' : '') + '">' + d + '</span>';
+      }
+
+      return '<div class="field-group field-group-accent store-detail-col store-detail-calendar">' +
+        '<p class="kicker"><i class="ph ph-calendar-blank" aria-hidden="true"></i> ' + Ui.escape(this.MONTH_NAMES[month]) + ' ' + year + '</p>' +
+        '<div class="store-mini-cal-weekdays">' + this.DAY_NAMES.map((d) => '<span>' + Ui.escape(d) + '</span>').join('') + '</div>' +
+        '<div class="store-mini-cal-grid">' + cells + '</div>' +
+      '</div>';
+    },
+
+    /**
+     * Naformátuje české telefonní číslo do podoby "+420 xxx xxx xxx".
+     * Vstup ze zdroje importu nemá jednotný formát (viz IMPORT_STORE_COLUMNS
+     * v 60_import.js) — appka z něj vytáhne jen číslice. U přesně 9 číslic
+     * (běžné číslo bez předvolby) doplní +420 a rozdělí po třech, u 12
+     * číslic začínajících 420 jen totéž zopakuje bez zdvojení předvolby.
+     * Cokoli jiného (jiná délka, prázdné, zjevně jiná země…) appka nechá
+     * beze změny, ať nezobrazí zjevně poškozený výsledek.
+     */
+    formatPhoneCz(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+      let digits = raw.replace(/\D/g, '');
+      if (digits.length === 12 && digits.startsWith('420')) digits = digits.slice(3);
+      if (digits.length !== 9) return raw;
+      return '+420 ' + digits.slice(0, 3) + ' ' + digits.slice(3, 6) + ' ' + digits.slice(6, 9);
     },
 
     loadLogisticCenters() {

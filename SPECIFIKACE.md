@@ -667,14 +667,38 @@ firemní adresář):
   dvě ikony vedle sebe. Název se NIKDY nezkracuje (`.col-header-label` bez
   `flex`/ellipsis) — šířku sloupců (`grid-template-columns`) appka
   nastavuje tak, aby se i s oběma sloty vešly celé.
-- **Detail filiálky ve třech sloupcích** (Adresa / Kontakty / Otevírací
-  doba) — modal proto používá novou širší třídu `.modal-xwide` (960 px)
-  místo `.modal-wide` (720 px). Každý sloupec je od v0.7.3 vlastní karta
-  s modrým orámováním (`.field-group`/`.field-group-accent`, viz 9.8) —
-  dřív jen holý sloupec bez boxu, jen s kickerem nahoře, teď stejný
-  vizuální jazyk jako formuláře. `.store-detail-label` (šířka popisku
-  kontaktu, např. „Zástupce RM") kvůli tomu zúžena na 100px (dřív 130px)
-  — karta ubírá místo navíc oproti holému sloupci.
+- **Detail filiálky ve čtyřech sloupcích** (Adresa / Kontakty / Otevírací
+  doba / malý kalendář měsíce) — modal proto používá novou širší třídu
+  `.modal-xwide` (960 px) místo `.modal-wide` (720 px). Každý sloupec je
+  od v0.7.3 vlastní karta s modrým orámováním (`.field-group`/
+  `.field-group-accent`, viz 9.8) — dřív jen holý sloupec bez boxu, jen
+  s kickerem nahoře, teď stejný vizuální jazyk jako formuláře.
+  `.store-detail-label` (šířka popisku kontaktu, např. „Zástupce RM")
+  kvůli tomu zúžena na 100px (dřív 130px) — karta ubírá místo navíc
+  oproti holému sloupci. `.store-detail-columns{align-items: start}` —
+  bez toho grid natahoval každou kartu na výšku nejdelší (Otevírací
+  doba), a řídká Adresa (jen jeden řádek textu) tak vypadala zbytečně
+  velká (nahlášená zpětná vazba).
+  - **Odznaky (badges)** nad sloupci — Číslo a LC dostaly vlastní
+    zvýrazněnou variantu `.store-detail-badge.is-primary` (modrý podklad),
+    ať jsou jasně vidět jako "identita" filiálky, ne stejně nenápadné
+    jako odznaky stavu (zavřeno/deaktivovaná). Kód filiálky se od v0.7.4
+    v detailu vůbec nezobrazuje (appka hodnotu `store.kod` tiše ignoruje,
+    i kdyby ji import dál posílal) — nebyl k ničemu.
+  - **Telefonní čísla** ve sloupci Kontakty appka formátuje do podoby
+    „+420 xxx xxx xxx" (`App.formatPhoneCz`) — vstup ze zdroje importu
+    nemá jednotný formát, appka z něj vytáhne jen číslice; cokoli, co
+    nevychází na přesně 9 (nebo 12 s předvolbou 420) číslic, nechá beze
+    změny, ať nezobrazí zjevně poškozený výsledek.
+  - **Malý kalendář aktuálního měsíce** (`renderStoreMiniCalendar`,
+    4. sloupec, pevná užší šířka 220px na rozdíl od ostatních tří `1fr`)
+    — dny spadající do `store.closure` (pokud existuje) zvýrazní červeně,
+    stejná informace jako badge nad sloupci, jen ještě jednou vizuálně.
+    Dnešek dostane žlutý VNITŘNÍ rámeček (`box-shadow: inset`, ne
+    `background`) — jde kombinovat i se zavřeným dnem, stejný princip
+    jako `.cal-cell.is-today`/`is-holiday` v hlavní mřížce kalendáře.
+    Měsíc je vždy ten dnešní (aktuální systémové datum), ne měsíc
+    případně prohlížený jinde v hlavní mřížce kalendáře.
 
 **Etapa 3 (implementováno)** — podrobný rozdíl a trvalá historie:
 
