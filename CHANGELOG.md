@@ -5,6 +5,10 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.3.3 - 04.09.2026 07:43
+- Oprava a vzhled — výběr Umístění ve formuláři uživatele teď řadí zkratky LC podle jejich nastaveného Čísla (dřív abecedně podle zkratky)
+- vzhled tabulky Uživatelé: avatar je nově barevný podle role (žlutá jen u správce aplikace, modrá u administrátora), sloupec Stav má malou barevnou tečku před textem, Oprávnění je teď obrysový odznak stejného jazyka jako odznak Role, řádky mají trochu víc vzduchu
+
 ## v0.3.2 - 04.09.2026 07:35
 - Doladění tabulek a formuláře uživatele — oprava chyby, kvůli které se v okně filtru u záložky Uživatelé nenabízely žádné hodnoty (popover četl vždy data LC místo správné tabulky)
 - klikací plocha hlavičky sloupce teď sahá přes celou šířku buňky, ne jen přes text popisku

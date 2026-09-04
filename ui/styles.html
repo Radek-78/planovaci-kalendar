@@ -1084,8 +1084,11 @@
     flex-direction: column;
   }
 
+  /* Trochu vzdušnější řádky než hlavička (10px) — jen kosmetika, sloupce
+     pořád lícují díky sdílenému grid-template-columns výše. */
   .user-row {
     border-bottom: 1px solid var(--line);
+    padding: 13px 16px;
   }
 
   .user-row:last-child {
@@ -1110,10 +1113,27 @@
     opacity: 0.55;
   }
 
+  /* Barva podle role, ne pořád žlutá jako obecné .avatar (ta se sdílí
+     s avatarem v sidebaru, kde žlutá dává smysl vždycky — "to jsi ty").
+     Tady stejný jazyk barev jako odznak Role vedle — žlutá jinak
+     u KAŽDÉHO uživatele plete, protože ta samá žlutá jinde v appce
+     znamená konkrétně "správce aplikace". */
   .user-avatar {
+    background: var(--line-soft);
+    color: var(--lidl-dark-blue);
     font-size: 13px;
     height: 34px;
     width: 34px;
+  }
+
+  .user-avatar.is-admin {
+    background: var(--lidl-blue);
+    color: var(--white);
+  }
+
+  .user-avatar.is-superadmin {
+    background: var(--lidl-yellow);
+    color: var(--lidl-dark-blue);
   }
 
   .user-cell-name {
@@ -1166,13 +1186,52 @@
     color: var(--white);
   }
 
+  /* Malá barevná tečka před textem — rychlejší vizuální skenování sloupce
+     (běžný vzor u "stavových" hodnot, podobně jako online/offline jinde). */
   .user-status {
+    align-items: center;
     color: var(--muted);
+    display: inline-flex;
     font-size: 12.5px;
     font-weight: 700;
+    gap: 6px;
+  }
+
+  .user-status::before {
+    background: var(--muted);
+    border-radius: 50%;
+    content: '';
+    flex-shrink: 0;
+    height: 7px;
+    width: 7px;
   }
 
   .user-status.is-active {
+    color: var(--green);
+  }
+
+  .user-status.is-active::before {
+    background: var(--green);
+  }
+
+  /* Odznak Oprávnění — stejný jazyk jako odznak Role, ale obrysový (ne
+     plný) — sekundární informace, nemá stejnou vizuální váhu jako Role. */
+  .user-permission-badge {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    justify-self: start;
+    letter-spacing: 0.04em;
+    padding: 3px 10px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .user-permission-badge.is-editor {
+    border-color: var(--green);
     color: var(--green);
   }
 

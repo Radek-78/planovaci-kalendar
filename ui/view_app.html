@@ -1031,6 +1031,10 @@
     loadLcForSelect() {
       Ui.call('apiGetLogisticCenters', null, { silent: true })
         .then((items) => {
+          // apiGetLogisticCenters už vrací LC seřazené podle Čísla (viz
+          // server) — jen se přefiltrují aktivní se zkratkou, pořadí se
+          // NEPŘEPOČÍTÁVÁ (žádné vlastní řazení tady), ať zůstane podle
+          // čísel LC, ne abecedně podle zkratky.
           this.lcForSelect = items.filter((lc) => lc.active && lc.zkratka).map((lc) => lc.zkratka);
           this.fillLocationSelect(document.querySelector('#userFormLocation').value);
         })
@@ -1038,13 +1042,14 @@
     },
 
     /**
-     * Naplní <select> Umístění z this.lcForSelect (zkratky LC) + pevná
-     * hodnota "DL" (centrála, není v _logistic_centers) — stejný vzor jako
-     * fillDepartmentSelect/fillPositionSelect.
+     * Naplní <select> Umístění z this.lcForSelect (zkratky LC, v pořadí
+     * podle Čísla LC) + pevná hodnota "DL" (centrála, není v
+     * _logistic_centers) — stejný vzor jako fillDepartmentSelect/
+     * fillPositionSelect.
      */
     fillLocationSelect(currentValue) {
       const select = document.querySelector('#userFormLocation');
-      const names = ['DL'].concat(this.lcForSelect.slice().sort((a, b) => a.localeCompare(b, 'cs')));
+      const names = ['DL'].concat(this.lcForSelect);
 
       let options = '<option value="">— nevybráno —</option>' +
         names.map((n) => '<option value="' + Ui.escape(n) + '">' + Ui.escape(n) + '</option>').join('');
@@ -1940,15 +1945,17 @@
         }
       }
 
+      const permissionClass = u.permission === 'EDITOR' ? ' is-editor' : '';
+
       return '<div class="user-row' + (u.active ? '' : ' is-inactive') + '">' +
-        '<span class="avatar user-avatar">' + Ui.escape(this.initials(u.fullName)) + '</span>' +
+        '<span class="avatar user-avatar' + roleClass + '">' + Ui.escape(this.initials(u.fullName)) + '</span>' +
         '<span class="user-cell-name">' + Ui.escape(u.fullName) + '</span>' +
         '<span class="user-cell-email">' + Ui.escape(u.email) + '</span>' +
         '<span class="user-role-badge' + roleClass + '">' + Ui.escape(roleLabel) + '</span>' +
         '<span class="user-cell-muted">' + Ui.escape(u.location || '—') + '</span>' +
         '<span class="user-cell-muted">' + Ui.escape(u.department || '—') + '</span>' +
         '<span class="user-cell-muted">' + Ui.escape(u.position || '—') + '</span>' +
-        '<span class="user-cell-muted">' + Ui.escape(permissionText) + '</span>' +
+        '<span class="user-permission-badge' + permissionClass + '">' + Ui.escape(permissionText) + '</span>' +
         '<span class="user-status' + (u.active ? ' is-active' : '') + '">' + (u.active ? 'Aktivní' : 'Neaktivní') + '</span>' +
         '<span class="user-actions">' + actions + '</span>' +
       '</div>';
