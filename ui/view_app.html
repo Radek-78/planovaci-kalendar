@@ -454,13 +454,13 @@
   </div>
   <form id="eventForm">
     <div class="modal-body event-form-body">
-      <label class="event-form-title-field">
+      <label class="form-hero-field">
         <span>Název *</span>
-        <input type="text" id="eventFormTitle" maxlength="120" required class="event-form-title-input">
+        <input type="text" id="eventFormTitle" maxlength="120" required class="form-hero-input">
       </label>
 
       <div class="event-form-columns">
-        <div class="field-group">
+        <div class="field-group field-group-accent">
           <p class="kicker"><i class="ph ph-tag" aria-hidden="true"></i> Typ události</p>
           <label>
             <span>Typ</span>
@@ -483,7 +483,7 @@
           </label>
         </div>
 
-        <div class="field-group">
+        <div class="field-group field-group-accent">
           <p class="kicker"><i class="ph ph-calendar-check" aria-hidden="true"></i> Termín</p>
           <div class="event-form-row">
             <label>
@@ -508,7 +508,7 @@
         </div>
       </div>
 
-      <div class="field-group">
+      <div class="field-group field-group-accent">
         <p class="kicker"><i class="ph ph-note-pencil" aria-hidden="true"></i> Popis</p>
         <label aria-label="Popis">
           <textarea id="eventFormDescription" maxlength="2000" rows="4"></textarea>
@@ -676,9 +676,14 @@
   </form>
 </dialog>
 
-<!-- ══ Modal: svátek (nový/upravovaný) — stejný vzor jako oddělení/pozice,
-     jen dvě pole vedle sebe (viz .form-row-2, stejná třída jako wizard). ══ -->
-<dialog class="modal modal-grow" id="holidayFormModal">
+<!-- ══ Modal: svátek (nový/upravovaný) — stejný vizuální jazyk jako formulář
+     události: Název svátku jako "hero" pole nahoře (.form-hero-field/
+     .form-hero-input), pod ním karta s modrým orámováním (.field-group-
+     accent) pro Datum. Den v týdnu (.holiday-form-weekday) appka dopočítá
+     a živě zobrazí hned vedle data (updateHolidayFormWeekday, reaguje na
+     change), ať uživatel hned vidí, na jaký den svátek padne, bez nutnosti
+     formulář nejdřív uložit. ══ -->
+<dialog class="modal modal-wide modal-grow" id="holidayFormModal">
   <div class="modal-header">
     <span class="modal-icon" id="holidayFormModalIcon"><i class="ph ph-flag" aria-hidden="true"></i></span>
     <div class="modal-header-text">
@@ -690,16 +695,24 @@
     </button>
   </div>
   <form id="holidayForm">
-    <div class="modal-body">
-      <div class="form-row-2">
-        <label>
-          <span>Datum *</span>
-          <input type="date" id="holidayFormDate" required>
-        </label>
-        <label>
-          <span>Název svátku *</span>
-          <input type="text" id="holidayFormName" maxlength="100" required>
-        </label>
+    <div class="modal-body holiday-form-body">
+      <label class="form-hero-field">
+        <span>Název svátku *</span>
+        <input type="text" id="holidayFormName" maxlength="100" required class="form-hero-input">
+      </label>
+
+      <div class="field-group field-group-accent">
+        <p class="kicker"><i class="ph ph-calendar-check" aria-hidden="true"></i> Datum</p>
+        <div class="holiday-form-date-row">
+          <label>
+            <span>Datum *</span>
+            <input type="date" id="holidayFormDate" required>
+          </label>
+          <div class="holiday-form-weekday">
+            <span class="holiday-form-weekday-label">Den v týdnu</span>
+            <span class="holiday-form-weekday-value" id="holidayFormWeekday">—</span>
+          </div>
+        </div>
       </div>
     </div>
     <div class="modal-actions">
@@ -3911,6 +3924,7 @@
         e.preventDefault();
         this.submitHolidayForm();
       });
+      document.querySelector('#holidayFormDate').addEventListener('change', () => this.updateHolidayFormWeekday());
     },
 
     /** Otevře formulář svátku — bez parametru holiday založí nový (datum předvyplněné 1.1. vybraného roku), s ním upraví existující. */
@@ -3924,11 +3938,19 @@
       document.querySelector('#holidayForm').dataset.editId = holiday ? holiday.id : '';
       document.querySelector('#holidayFormSubmit').innerHTML =
         '<i class="ph ph-check" aria-hidden="true"></i> ' + (holiday ? 'Uložit' : 'Vytvořit');
+      this.updateHolidayFormWeekday();
 
       const dialog = document.querySelector('#holidayFormModal');
       this.setModalOrigin(dialog, originEl);
       Ui.openModal(dialog);
       document.querySelector('#holidayFormName').focus();
+    },
+
+    /** Živě dopočítá a zobrazí den v týdnu vedle pole Datum (viz .holiday-form-weekday) — reaguje na change i na otevření formuláře. */
+    updateHolidayFormWeekday() {
+      const dateValue = document.querySelector('#holidayFormDate').value;
+      const el = document.querySelector('#holidayFormWeekday');
+      el.textContent = dateValue ? this.DAY_NAMES_FULL[(new Date(dateValue + 'T00:00').getDay() + 6) % 7] : '—';
     },
 
     submitHolidayForm() {

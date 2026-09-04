@@ -3579,13 +3579,12 @@
   /* ── Formulář nové události ───────────────────────────────────────────
      Popisky polí ("Od", "Typ"...) používají globální pravidlo pro label
      (viz začátek souboru) — malá verzálková šedá, žádná zvláštní třída
-     navíc potřeba. Název stojí sám nahoře jako "hero" pole (větší písmo,
-     bez boxu — je to jediné, co v kalendáři uvidí ostatní na první pohled,
-     zaslouží si víc váhy než ostatní pole), pod ním dva sloupce
-     (.event-form-columns) a Popis přes celou šířku dole. Šířka celého
-     modalu je .modal-xwide (viz eventFormModal), stejná jako detail
-     filiálky — dvousloupcový obsah ji vyplní, ne holé prázdné okolo úzkého
-     jednosloupcového formuláře jako dřív. ── */
+     navíc potřeba. Název stojí sám nahoře jako "hero" pole (.form-hero-*
+     níže — sdílená komponenta, používá i formulář svátku), pod ním dva
+     sloupce (.event-form-columns) a Popis přes celou šířku dole. Šířka
+     celého modalu je .modal-xwide (viz eventFormModal), stejná jako
+     detail filiálky — dvousloupcový obsah ji vyplní, ne holé prázdné
+     okolo úzkého jednosloupcového formuláře jako dřív. ── */
 
   /* Bez pevné výšky — přizpůsobí se skutečnému obsahu, jediný skutečný
      limit je .modal{max-height}. align-content: start drží skupiny nahoře,
@@ -3599,14 +3598,16 @@
     padding: 20px 24px;
   }
 
-  /* Hero pole Název — bez boxu, jen větší a tučnější input, ať vizuálně
+  /* ── "Hero" pole — bez boxu, jen větší a tučnější input, ať vizuálně
      vede formulář (stejný princip jako název události v Google Kalendáři
-     apod.), ne jen další řádek stejné váhy jako všechny ostatní. */
-  .event-form-title-field {
+     apod.), ne jen další řádek stejné váhy jako všechny ostatní. Sdílená
+     komponenta — formulář události (Název) i formulář svátku (Název
+     svátku), ne vázaná jen na "event". ── */
+  .form-hero-field {
     gap: 8px;
   }
 
-  .event-form-title-input {
+  .form-hero-input {
     font-size: 17px;
     font-weight: 700;
     min-height: 50px;
@@ -3622,11 +3623,11 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  /* Modré orámování nahoře — jen v tomhle formuláři (sdílené .field-group
-     jinde v appce, např. formulář uživatele/wizard, se NEMĚNÍ), ať každá
-     sekce (Typ události/Termín/Popis) působí jako samostatná vizuální
-     karta, ne jeden splývající šedý blok jako dřív. */
-  .event-form-body .field-group {
+  /* Modré orámování nahoře — modifikátor k .field-group (sdílené jinde
+     v appce, např. formulář uživatele/wizard, se samo NEMĚNÍ), ať každá
+     sekce (Typ události/Termín/Popis, i Datum svátku) působí jako
+     samostatná vizuální karta, ne jeden splývající šedý blok jako dřív. */
+  .field-group-accent {
     border-top: 3px solid var(--lidl-blue);
     padding-top: 16px;
   }
@@ -3864,6 +3865,50 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* ── Formulář svátku — stejný vizuální jazyk jako formulář události výše
+     (.form-hero-*/.field-group-accent), jen jediná karta (Datum), ať
+     i tak jednoduchý formulář (dvě pole) nepůsobí prázdně/amatérsky
+     v širším .modal-wide okně. ── */
+  .holiday-form-body {
+    display: grid;
+    gap: 18px;
+    padding: 20px 24px;
+  }
+
+  /* Datum + živě dopočítaný den v týdnu vedle sebe — ne na celou šířku
+     karty (nativní input[type=date] má malý přirozený obsah), zbylé
+     místo v kartě zůstává prázdné, to je v pořádku, karta i tak nese
+     titulek a orámování. */
+  .holiday-form-date-row {
+    align-items: start;
+    display: flex;
+    gap: 24px;
+  }
+
+  .holiday-form-weekday {
+    display: grid;
+    gap: 6px;
+  }
+
+  .holiday-form-weekday-label {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* Zvýrazněná modrou — je to dopočítaná informace, ne pole k vyplnění,
+     odlišení od běžného textu pomáhá napovědět, že se mění samo podle data. */
+  .holiday-form-weekday-value {
+    align-items: center;
+    color: var(--lidl-blue);
+    display: flex;
+    font-size: 14px;
+    font-weight: 700;
+    min-height: 38px;
   }
 
   /* ── Formulář uživatele — dvousloupcový, pole seskupená do .field-group

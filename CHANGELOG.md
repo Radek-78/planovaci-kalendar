@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.7.1 - 04.09.2026 12:35
+- v0.7.1: Modal svátku profesionálněji — formulář nového/upravovaného svátku měl pořád jen těsný výchozí vzhled (480 px, dvě pole vedle sebe), teď stejný vizuální jazyk jako formulář události: Název svátku jako výrazné hero pole nahoře, pod ním karta s modrým orámováním pro Datum, modal rozšířený na 720 px. Appka navíc vedle data živě dopočítá a zobrazí den v týdnu, ať je hned vidět, na jaký den svátek padne, bez nutnosti formulář nejdřív uložit. Hero pole a modré orámování karet jsou teď sdílené komponenty (form-hero-field/form-hero-input, field-group-accent) — používá je formulář události i svátku, dřív byly natvrdo pojmenované jen pro událost.
+
 ## v0.7.0 - 04.09.2026 09:16
 - v0.7.0: Formulář události — druhé kolo podle zpětné vazby — modal je teď doopravdy velký (960 px, dva sloupce, stejná šířka jako detail filiálky), ne jen o trochu širší úzký proužek. Název stojí sám nahoře jako výrazné hero pole, pod ním vedle sebe Typ události (s přepínačem Celý den) a Termín, Popis přes celou šířku dole — každá sekce s modrým orámováním nahoře, ať vypadá jako samostatná karta, ne splývající šedý blok. Datumy Od a Do jsou konečně vedle sebe v jednom řádku, čas od-do zvlášť v dalším (dřív bylo párováno datum+čas k sobě, což nebylo ono). Rozbalovací seznam typu události teď zobrazí všechny položky ve dvou sloupcích najednou, bez nutnosti scrollovat. Zaškrtávátko Celý den nahrazeno přepínačem (toggle switch).
 

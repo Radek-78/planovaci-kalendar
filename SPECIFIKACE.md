@@ -768,6 +768,16 @@ zákonnou sadou, ať uživatel nezačíná od prázdného seznamu.
   kalendáře — u pár desítek řádků ročně jednodušší a bezpečnější než ruční
   přepočet cache, řeší to i případ, kdy úprava data přesune svátek do
   jiného roku (appka na něj zobrazení sama přepne).
+- **Modal nového/upravovaného svátku** — stejný vizuální jazyk jako
+  formulář události (9.8): Název svátku jako "hero" pole nahoře
+  (`.form-hero-field`/`.form-hero-input` — sdílené se jménem události, ne
+  vázané jen na "event"), pod ním karta s modrým orámováním
+  (`.field-group`/`.field-group-accent`) pro Datum. Appka vedle data živě
+  dopočítá a zobrazí den v týdnu (`.holiday-form-weekday`,
+  `updateHolidayFormWeekday`, reaguje na `change`), ať uživatel hned vidí,
+  na jaký den svátek padne, bez nutnosti formulář nejdřív uložit. Modal
+  `.modal-wide` (720 px) — i tak jednoduchý formulář (dvě pole) díky tomu
+  nepůsobí prázdně/amatérsky jako předchozí těsný `.modal-grow` (480 px).
 - **V mřížce kalendáře** — u dnů, které jsou svátkem, nahradí `.cal-daynum`
   (jen číslo dne) `.cal-holiday-bar`, červený pruh přes celou šířku buňky
   s číslem dne a názvem svátku (bílým textem, ořízne se třemi tečkami,
@@ -795,17 +805,18 @@ mezikrok s `.field-group` boxy v úzkém jednosloupcém `.modal-wide`
 stejné, vzhled moc klasický") — dnešní podoba je široký dvousloupcový
 modal (`.modal-xwide`, 960 px, stejná třída jako detail filiálky):
 
-- **Název** stojí sám nahoře jako "hero" pole (`.event-form-title-field`/
-  `.event-form-title-input`) — větší a tučnější písmo, BEZ boxu, ať vede
-  formulář vizuálně jako to nejdůležitější pole, ne jen další řádek
-  stejné váhy jako všechny ostatní.
+- **Název** stojí sám nahoře jako "hero" pole (`.form-hero-field`/
+  `.form-hero-input` — sdílená komponenta, používá i modal svátku, viz
+  9.7) — větší a tučnější písmo, BEZ boxu, ať vede formulář vizuálně jako
+  to nejdůležitější pole, ne jen další řádek stejné váhy jako všechny
+  ostatní.
 - Pod ním dva sloupce (`.event-form-columns`) — **Typ události** (typ +
   přepínač Celý den) a **Termín** — a **Popis** přes celou šířku dole.
-  Každá `.field-group` sekce má nahoře 3px modré orámování
-  (`.event-form-body .field-group`, lokální přepis jen pro tenhle
-  formulář — sdílené `.field-group` jinde v appce, např. formulář
-  uživatele/wizard, se nemění), ať každá sekce působí jako samostatná
-  karta, ne jeden splývající šedý blok.
+  Každá `.field-group` sekce má navíc třídu `.field-group-accent` — 3px
+  modré orámování nahoře (sdílený modifikátor, i tenhle používá i modal
+  svátku; sdílené `.field-group` samo o sobě, např. formulář uživatele/
+  wizard, se nemění), ať každá sekce působí jako samostatná karta, ne
+  jeden splývající šedý blok.
 - **Termín** — datumy Od/Do vedle sebe v jednom `.event-form-row`, časy
   Čas od/Čas do vedle sebe v dalším (ne datum+čas k sobě jako v prvním
   pokusu — appka zvlášť ukazuje „kdy" a zvlášť „od kolika do kolika",
