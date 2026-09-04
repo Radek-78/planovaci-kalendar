@@ -30,7 +30,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.6.0',
+  version: 'v0.6.1',
   releaseDate: '4.9.2026',
 
   /**
@@ -179,11 +179,15 @@ const EVENT_TYPE_ICONS = [
  * Státní svátky ČR s pevným datem (den v měsíci se rok od roku nemění) —
  * viz zákon č. 245/2000 Sb. Pohyblivé svátky (Velký pátek, Velikonoční
  * pondělí, odvozené od data Velikonoc) se dopočítávají zvlášť, viz
- * _czechHolidaysForYear_ v 50_api.js. Použito v apiGetHolidays
- * (server) i v záložce „Státní svátky ČR" v Nastavení a v mřížce
- * kalendáře (client), kde appka svátky jen ZOBRAZUJE — nejde o žádnou
- * editovatelnou databázovou tabulku, seznam je daný zákonem, stejný
- * princip jako u ostatních zákonem/whitelistem daných konstant výše.
+ * _czechHolidaysForYear_ v 50_api.js.
+ *
+ * POZOR: na rozdíl od ostatních konstant v tomto souboru tohle NENÍ zdroj
+ * pravdy za běhu appky — je to jen VÝCHOZÍ sada, kterou appka pro nový
+ * rok jednou naseje do editovatelné databázové tabulky `_holidays`
+ * (viz _ensureHolidaysSeededForYear_/apiGetHolidays v 50_api.js).
+ * Od nasetí dál je seznam svátků plně editovatelný v Nastavení
+ * (SPECIFIKACE.md kapitola 9.7) — změna zde tedy neovlivní roky, které
+ * appka už jednou naplnila, jen nově zaseté roky v budoucnu.
  */
 const CZECH_FIXED_HOLIDAYS = [
   { month: 1, day: 1, name: 'Den obnovy samostatného českého státu' },
