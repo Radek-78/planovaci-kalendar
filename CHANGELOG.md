@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.7.0 - 04.09.2026 09:16
+- v0.7.0: Formulář události — druhé kolo podle zpětné vazby — modal je teď doopravdy velký (960 px, dva sloupce, stejná šířka jako detail filiálky), ne jen o trochu širší úzký proužek. Název stojí sám nahoře jako výrazné hero pole, pod ním vedle sebe Typ události (s přepínačem Celý den) a Termín, Popis přes celou šířku dole — každá sekce s modrým orámováním nahoře, ať vypadá jako samostatná karta, ne splývající šedý blok. Datumy Od a Do jsou konečně vedle sebe v jednom řádku, čas od-do zvlášť v dalším (dřív bylo párováno datum+čas k sobě, což nebylo ono). Rozbalovací seznam typu události teď zobrazí všechny položky ve dvou sloupcích najednou, bez nutnosti scrollovat. Zaškrtávátko Celý den nahrazeno přepínačem (toggle switch).
+
 ## v0.6.1 - 04.09.2026 08:57
 - v0.6.1: Oprava komentáře — u CZECH_FIXED_HOLIDAYS v 00_config.js komentář ještě popisoval starou čistě dopočítanou podobu svátků (žádná editace)
 - od v0.6.0 je to jen výchozí sada pro jednorázové nasetí do editovatelné tabulky _holidays, komentář teď odpovídá skutečnosti. Bez dopadu na chování appky.

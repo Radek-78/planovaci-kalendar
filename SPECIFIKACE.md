@@ -789,23 +789,49 @@ zákonnou sadou, ať uživatel nezačíná od prázdného seznamu.
 
 ### 9.8 Formulář nové/upravené události
 
-Původně holé podepsané řádky (čistě výchozí vzhled prohlížeče) — teď
-stejný vizuální jazyk jako formulář uživatele: pole seskupená do
-`.field-group` boxů s kickerem (Základní údaje / Termín / Popis), modal
-rozšířený na `.modal-wide` (720 px).
+Původně holé podepsané řádky (čistě výchozí vzhled prohlížeče), pak
+mezikrok s `.field-group` boxy v úzkém jednosloupcém `.modal-wide`
+(zpětná vazba: „modal je moc malý, vypadá to amatérsky", „vše příliš
+stejné, vzhled moc klasický") — dnešní podoba je široký dvousloupcový
+modal (`.modal-xwide`, 960 px, stejná třída jako detail filiálky):
 
+- **Název** stojí sám nahoře jako "hero" pole (`.event-form-title-field`/
+  `.event-form-title-input`) — větší a tučnější písmo, BEZ boxu, ať vede
+  formulář vizuálně jako to nejdůležitější pole, ne jen další řádek
+  stejné váhy jako všechny ostatní.
+- Pod ním dva sloupce (`.event-form-columns`) — **Typ události** (typ +
+  přepínač Celý den) a **Termín** — a **Popis** přes celou šířku dole.
+  Každá `.field-group` sekce má nahoře 3px modré orámování
+  (`.event-form-body .field-group`, lokální přepis jen pro tenhle
+  formulář — sdílené `.field-group` jinde v appce, např. formulář
+  uživatele/wizard, se nemění), ať každá sekce působí jako samostatná
+  karta, ne jeden splývající šedý blok.
+- **Termín** — datumy Od/Do vedle sebe v jednom `.event-form-row`, časy
+  Čas od/Čas do vedle sebe v dalším (ne datum+čas k sobě jako v prvním
+  pokusu — appka zvlášť ukazuje „kdy" a zvlášť „od kolika do kolika",
+  přesně podle zpětné vazby). Celý časový řádek (`#eventFormTimeRow`) se
+  schová najednou při zaškrtnutí „Celý den" (`updateEventFormTimeVisibility`,
+  `visibility:hidden`, ne `display:none` — prostor zůstává rezervovaný).
+- **„Celý den"** je přepínač (`.toggle-switch` — obecná komponenta, skrytý
+  checkbox + `:checked ~` na sourozenní track/knob), ne obyčejné
+  zaškrtávátko — text vlevo, přepínač vpravo na jednom řádku
+  (`.event-form-toggle-field`), jediné pole formuláře s vodorovným
+  layoutem (popisek vedle pole, ne nad ním) — binární přepínač je
+  přirozenější jako řádek nastavení než jako "pole k vyplnění".
 - **Typ události** — vlastní rozbalovací seznam (`.type-picker`), ne
   nativní `<select>` — ten neumí vedle popisku zobrazit i barevnou ikonu
   typu. `fillEventTypeSelect` vykreslí položky menu (ikona + název,
   stejný vizuální jazyk jako `.settings-row-icon` u Typů událostí
-  v Nastavení), `setEventFormType(key)` přepíše ikonu/popisek na tlačítku
-  a zapíše skutečnou hodnotu do skrytého `#eventFormType` — na to, co čte
-  `submitEventForm`, se tím nic nemění. Otevírání/zavírání stejný vzor
-  jako `.cal-month-picker` (`bindTypePicker`, klik mimo panel zavře).
-- **Pole s časem** — řádky Od/Do teď mají `grid-template-columns: 1fr 130px`
-  (`.event-form-row--datetime`), ne `1fr 1fr` jako dřív. Nativní
-  `input[type=time]` má malý přirozený obsah, plná šířka poloviny řádku
-  ho zbytečně nafukovala do velkého prázdného pole.
+  v Nastavení) do DVOU sloupců (`.type-picker-menu{grid-template-columns:
+  1fr 1fr}`) — i běžný počet typů (7 výchozích + pár vlastních) se tak
+  vejde na výšku bez scrollování, `max-height` je jen pojistka pro krajní
+  případ hodně vlastních typů. `setEventFormType(key)` přepíše ikonu/
+  popisek na tlačítku a zapíše skutečnou hodnotu do skrytého
+  `#eventFormType` — na to, co čte `submitEventForm`, se tím nic nemění.
+  Otevírání/zavírání stejný vzor jako `.cal-month-picker` (`bindTypePicker`,
+  klik mimo panel zavře).
+- Na displeji do 620 px (`@media (max-width: 620px)`) se `.event-form-columns`/
+  `.event-form-row`/`.type-picker-menu` rozpadnou na jeden sloupec.
 
 ---
 

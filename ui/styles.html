@@ -227,7 +227,7 @@
   /* :not([type=checkbox]):not([type=radio]) — jinak by zaškrtávátka/přepínače
      zdědily bílé pozadí, rámeček a min-height:38px určené pro textová pole
      a vypadala by rozbitě. Jejich vlastní vzhled řeší specifičtější
-     pravidlo (např. .event-form-checkbox input). */
+     pravidlo (např. .toggle-switch input u „Celý den" ve formuláři události). */
   input:not([type="checkbox"]):not([type="radio"]),
   textarea {
     background: var(--white);
@@ -3577,22 +3577,58 @@
   }
 
   /* ── Formulář nové události ───────────────────────────────────────────
-     Popisky polí ("Název", "Typ"...) používají globální pravidlo pro
-     label (viz začátek souboru) — malá verzálková šedá, žádná zvláštní
-     třída navíc potřeba. Pole jsou seskupená do .field-group sekcí se
-     stejným kickerem jako formulář uživatele (viz .user-form-body níže),
-     ne holé podepsané řádky jako dřív. ── */
+     Popisky polí ("Od", "Typ"...) používají globální pravidlo pro label
+     (viz začátek souboru) — malá verzálková šedá, žádná zvláštní třída
+     navíc potřeba. Název stojí sám nahoře jako "hero" pole (větší písmo,
+     bez boxu — je to jediné, co v kalendáři uvidí ostatní na první pohled,
+     zaslouží si víc váhy než ostatní pole), pod ním dva sloupce
+     (.event-form-columns) a Popis přes celou šířku dole. Šířka celého
+     modalu je .modal-xwide (viz eventFormModal), stejná jako detail
+     filiálky — dvousloupcový obsah ji vyplní, ne holé prázdné okolo úzkého
+     jednosloupcového formuláře jako dřív. ── */
 
   /* Bez pevné výšky — přizpůsobí se skutečnému obsahu, jediný skutečný
      limit je .modal{max-height}. align-content: start drží skupiny nahoře,
-     ať případné skrytí pole s časem (viz .event-form-field--hidden níže)
+     ať případné skrytí řádku s časem (viz .event-form-field--hidden níže)
      nezůstane s dírou uprostřed. */
   .event-form-body {
     align-content: start;
     display: grid;
-    gap: 14px;
+    gap: 18px;
     overflow-y: auto;
-    padding: 16px 20px;
+    padding: 20px 24px;
+  }
+
+  /* Hero pole Název — bez boxu, jen větší a tučnější input, ať vizuálně
+     vede formulář (stejný princip jako název události v Google Kalendáři
+     apod.), ne jen další řádek stejné váhy jako všechny ostatní. */
+  .event-form-title-field {
+    gap: 8px;
+  }
+
+  .event-form-title-input {
+    font-size: 17px;
+    font-weight: 700;
+    min-height: 50px;
+    padding: 12px 16px;
+  }
+
+  /* Dva sloupce vedle sebe (Typ+Celý den / Termín) — vyplní šířku
+     .modal-xwide, aby formulář vypadal jako promyšlený celek, ne úzký
+     proužek uprostřed širokého okna. */
+  .event-form-columns {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Modré orámování nahoře — jen v tomhle formuláři (sdílené .field-group
+     jinde v appce, např. formulář uživatele/wizard, se NEMĚNÍ), ať každá
+     sekce (Typ události/Termín/Popis) působí jako samostatná vizuální
+     karta, ne jeden splývající šedý blok jako dřív. */
+  .event-form-body .field-group {
+    border-top: 3px solid var(--lidl-blue);
+    padding-top: 16px;
   }
 
   .event-form-row {
@@ -3601,50 +3637,90 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  /* Řádek datum+čas — čas nepotřebuje širokou buňku jako datum (nativní
-     input[type=time] má malý přirozený obsah), plná šířka poloviny řádku
-     ho dřív zbytečně nafukovala do velkého prázdného pole. */
-  .event-form-row--datetime {
-    grid-template-columns: 1fr 130px;
-  }
-
-  /* Skrytí pole s časem při "Celý den" — visibility, ne display:none.
-     Prostor v layoutu zůstává rezervovaný, takže se sousední řádky ani
-     o pixel neposunou (display:none by řádku přepočítalo výšku podle
-     zbylého viditelného pole). */
+  /* Skrytí celého řádku s časem při "Celý den" — visibility, ne display:none.
+     Prostor v layoutu zůstává rezervovaný, takže se prostor pod ním ani
+     o pixel neposune (display:none by přepočítalo výšku a vše by se mírně
+     posunulo — přesně to, co dřív vadilo). */
   .event-form-field--hidden {
     visibility: hidden;
   }
 
-  /* Zaškrtávátko "Celý den" ve stejném řádku jako "Typ" — prázdný <span>
-     v HTML (viz eventFormModal) drží stejnou výšku popisku jako sourozenní
-     pole, aby zaškrtávátko vizuálně sedělo na úrovni selectu vedle sebe. */
-  .event-form-allday {
-    align-content: end;
+  .event-form-body textarea {
+    resize: vertical;
   }
 
-  .event-form-checkbox {
+  /* "Celý den" jako přepínač (viz .toggle-switch níže), ne obyčejné
+     zaškrtávátko — text vlevo, přepínač vpravo na stejném řádku (na
+     rozdíl od ostatních polí formuláře, kde popisek stojí NAD polem —
+     u binárního přepínače je to přirozenější, běžný vzor nastavení). */
+  .event-form-toggle-field {
     align-items: center;
     display: flex;
-    gap: 8px;
+    justify-content: space-between;
+    padding-top: 6px;
+  }
+
+  .event-form-toggle-field > span:first-child {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
     text-transform: none;
   }
 
-  .event-form-checkbox input {
-    accent-color: var(--lidl-blue);
-    height: 16px;
-    width: 16px;
+  /* ── Přepínač (toggle switch) — obecná komponenta, použitá zatím jen
+     u "Celý den" ve formuláři události, ale bez vazby na tenhle formulář
+     konkrétně, jde použít i jinde. Skrytý checkbox + :checked ~ selektor
+     na sourozenní track/knob, klávesnice i myš fungují jako u obyčejného
+     zaškrtávátka. ── */
+  .toggle-switch {
+    display: inline-flex;
+    flex-shrink: 0;
+    position: relative;
   }
 
-  .event-form-checkbox span {
-    color: var(--text);
-    font-size: 13px;
-    font-weight: 400;
-    letter-spacing: 0;
+  .toggle-switch input {
+    cursor: pointer;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    position: absolute;
+    width: 100%;
+    z-index: 1;
   }
 
-  .event-form-body textarea {
-    resize: vertical;
+  .toggle-switch-track {
+    background: var(--line);
+    border-radius: 999px;
+    display: inline-block;
+    height: 24px;
+    position: relative;
+    transition: background 0.15s;
+    width: 42px;
+  }
+
+  .toggle-switch-knob {
+    background: var(--white);
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 20, 80, 0.3);
+    height: 18px;
+    left: 3px;
+    position: absolute;
+    top: 3px;
+    transition: transform 0.15s;
+    width: 18px;
+  }
+
+  .toggle-switch input:checked ~ .toggle-switch-track {
+    background: var(--lidl-blue);
+  }
+
+  .toggle-switch input:checked ~ .toggle-switch-track .toggle-switch-knob {
+    transform: translateX(18px);
+  }
+
+  .toggle-switch input:focus-visible ~ .toggle-switch-track {
+    box-shadow: 0 0 0 3px rgba(0, 83, 179, 0.2);
   }
 
   /* ── Výběr typu události (.type-picker) ────────────────────────────────
@@ -3720,17 +3796,22 @@
   }
 
   /* Rozbalovací panel — stejný vizuální jazyk jako .cal-month-picker/
-     .column-filter-popover (bílá karta, stín, zaoblení). max-height +
-     scroll, ať appka unese i víc typů, než se vejde na obrazovku. */
+     .column-filter-popover (bílá karta, stín, zaoblení). Dva sloupce
+     (viz .type-picker-option), ať se i běžný počet typů (7 výchozích +
+     pár vlastních) vešel na výšku bez scrollování — max-height je jen
+     pojistka pro krajní případ hodně vlastních typů, ne běžný stav. */
   .type-picker-menu {
     background: var(--white);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     box-shadow: 0 16px 40px rgba(0, 36, 102, 0.18);
+    display: grid;
+    gap: 4px;
+    grid-template-columns: 1fr 1fr;
     left: 0;
-    max-height: 260px;
+    max-height: 340px;
     overflow-y: auto;
-    padding: 6px;
+    padding: 8px;
     position: absolute;
     right: 0;
     top: calc(100% + 6px);
@@ -3745,10 +3826,10 @@
     cursor: pointer;
     display: flex;
     font: inherit;
-    gap: 10px;
-    padding: 8px;
+    gap: 8px;
+    min-width: 0;
+    padding: 7px 8px;
     text-align: left;
-    width: 100%;
   }
 
   .type-picker-option:hover {
@@ -3766,19 +3847,23 @@
     color: var(--type-color, var(--muted));
     display: flex;
     flex-shrink: 0;
-    height: 28px;
+    height: 26px;
     justify-content: center;
-    width: 28px;
+    width: 26px;
   }
 
   .type-picker-option-icon i {
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .type-picker-option-label {
     color: var(--text);
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 600;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* ── Formulář uživatele — dvousloupcový, pole seskupená do .field-group
@@ -4040,6 +4125,15 @@
 
   @media (max-width: 620px) {
     .form-row-2 {
+      grid-template-columns: 1fr;
+    }
+
+    /* Formulář události — na úzkém displeji se dva sloupce (Typ+Celý den /
+       Termín) i dvojice polí v řádku (Od/Do, Čas od/Čas do) rozpadnou pod
+       sebe, ať se nemačkají na málo místa; totéž menu výběru typu. */
+    .event-form-columns,
+    .event-form-row,
+    .type-picker-menu {
       grid-template-columns: 1fr;
     }
 

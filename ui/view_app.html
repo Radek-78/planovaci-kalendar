@@ -429,14 +429,19 @@
      vlastník nebo správce cizích událostí — viz podmínky u tlačítek/ikon,
      která ho otevírají (canCreateOn/canManageEvent).
 
-     Pole rozdělená do .field-group sekcí s kickerem (stejný jazyk jako
-     formulář uživatele) — dřív to byly holé podepsané řádky, čistě
-     výchozí vzhled formuláře. Typ události je vlastní rozbalovací seznam
-     (.type-picker), ne nativní <select> — ten neumí vedle popisku
-     zobrazit ikonu typu (viz fillEventTypeSelect/bindTypePicker); skutečná
-     vybraná hodnota pořád žije ve skrytém #eventFormType, submitEventForm
-     se tak nemusí měnit. -->
-<dialog class="modal modal-wide modal-grow" id="eventFormModal">
+     Široký dvousloupcový modal (.modal-xwide, stejná třída jako detail
+     filiálky) — Název stojí sám nahoře jako "hero" pole (větší písmo, bez
+     boxu), pod ním dva sloupce (Typ+Celý den / Termín) a Popis přes celou
+     šířku dole. Termín: datumy Od+Do vedle sebe v jednom řádku, časy Od+Do
+     vedle sebe v dalším (ne datum+čas k sobě jako dřív — appka tak zvlášť
+     zobrazí "kdy" a zvlášť "od kolika do kolika"), celý časový řádek
+     (#eventFormTimeRow) se schová najednou při zaškrtnutí "Celý den" (viz
+     updateEventFormTimeVisibility). Typ události je vlastní rozbalovací
+     seznam (.type-picker) ve dvou sloupcích ikon, ne nativní <select> —
+     ten neumí vedle popisku zobrazit ikonu typu (viz fillEventTypeSelect/
+     bindTypePicker); skutečná vybraná hodnota pořád žije ve skrytém
+     #eventFormType, submitEventForm se tak nemusí měnit. -->
+<dialog class="modal modal-xwide modal-grow" id="eventFormModal">
   <div class="modal-header">
     <span class="modal-icon" id="eventFormModalIcon"><i class="ph ph-calendar-plus" aria-hidden="true"></i></span>
     <div class="modal-header-text">
@@ -449,13 +454,14 @@
   </div>
   <form id="eventForm">
     <div class="modal-body event-form-body">
-      <div class="field-group">
-        <p class="kicker"><i class="ph ph-text-aa" aria-hidden="true"></i> Základní údaje</p>
-        <label>
-          <span>Název *</span>
-          <input type="text" id="eventFormTitle" maxlength="120" required>
-        </label>
-        <div class="event-form-row">
+      <label class="event-form-title-field">
+        <span>Název *</span>
+        <input type="text" id="eventFormTitle" maxlength="120" required class="event-form-title-input">
+      </label>
+
+      <div class="event-form-columns">
+        <div class="field-group">
+          <p class="kicker"><i class="ph ph-tag" aria-hidden="true"></i> Typ události</p>
           <label>
             <span>Typ</span>
             <div class="type-picker" id="eventFormTypePicker">
@@ -468,37 +474,37 @@
             </div>
             <input type="hidden" id="eventFormType" value="default">
           </label>
-          <label class="event-form-allday">
-            <span>&nbsp;</span>
-            <span class="event-form-checkbox">
+          <label class="event-form-toggle-field">
+            <span>Celý den</span>
+            <span class="toggle-switch">
               <input type="checkbox" id="eventFormAllDay">
-              <span>Celý den</span>
+              <span class="toggle-switch-track"><span class="toggle-switch-knob"></span></span>
             </span>
           </label>
         </div>
-      </div>
 
-      <div class="field-group">
-        <p class="kicker"><i class="ph ph-calendar-check" aria-hidden="true"></i> Termín</p>
-        <div class="event-form-row event-form-row--datetime">
-          <label>
-            <span>Od *</span>
-            <input type="date" id="eventFormStartDate" required>
-          </label>
-          <label id="eventFormStartTimeField">
-            <span>Čas</span>
-            <input type="time" id="eventFormStartTime">
-          </label>
-        </div>
-        <div class="event-form-row event-form-row--datetime">
-          <label>
-            <span>Do *</span>
-            <input type="date" id="eventFormEndDate" required>
-          </label>
-          <label id="eventFormEndTimeField">
-            <span>Čas</span>
-            <input type="time" id="eventFormEndTime">
-          </label>
+        <div class="field-group">
+          <p class="kicker"><i class="ph ph-calendar-check" aria-hidden="true"></i> Termín</p>
+          <div class="event-form-row">
+            <label>
+              <span>Od *</span>
+              <input type="date" id="eventFormStartDate" required>
+            </label>
+            <label>
+              <span>Do *</span>
+              <input type="date" id="eventFormEndDate" required>
+            </label>
+          </div>
+          <div class="event-form-row" id="eventFormTimeRow">
+            <label>
+              <span>Čas od</span>
+              <input type="time" id="eventFormStartTime">
+            </label>
+            <label>
+              <span>Čas do</span>
+              <input type="time" id="eventFormEndTime">
+            </label>
+          </div>
         </div>
       </div>
 
@@ -1628,15 +1634,14 @@
       this.bindTypePicker();
     },
 
-    /** Skryje pole s časem, když je zaškrtnuté „Celý den" — čas pak nedává smysl vyplňovat. */
+    /** Skryje celý řádek s časem, když je zaškrtnuté „Celý den" — čas pak nedává smysl vyplňovat. */
     updateEventFormTimeVisibility() {
       const allDay = document.querySelector('#eventFormAllDay').checked;
-      // visibility, ne display:none — pole zůstává v layoutu (jen neviditelné
-      // a mimo tab pořadí), takže se řádek/mezery při přepnutí ani o pixel
-      // nepohnou. .is-hidden (display:none) by tu naopak přepočítalo výšku
-      // řádku a vše by se mírně posunulo — přesně to, co dřív vadilo.
-      document.querySelector('#eventFormStartTimeField').classList.toggle('event-form-field--hidden', allDay);
-      document.querySelector('#eventFormEndTimeField').classList.toggle('event-form-field--hidden', allDay);
+      // visibility, ne display:none — řádek zůstává v layoutu (jen neviditelný
+      // a mimo tab pořadí), takže se prostor pod ním ani o pixel nepohne.
+      // .is-hidden (display:none) by tu naopak přepočítalo výšku a vše by
+      // se mírně posunulo — přesně to, co dřív vadilo.
+      document.querySelector('#eventFormTimeRow').classList.toggle('event-form-field--hidden', allDay);
     },
 
     /**
