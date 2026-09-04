@@ -1359,9 +1359,21 @@
     padding: 0;
     text-align: left;
     text-transform: inherit;
+    /* width: 100% — tlačítko je grid položka, ale (na rozdíl od výšky)
+       samo o sobě se nenatáhne na celou šířku sloupce, jen na šířku
+       vlastního obsahu. Bez tohohle byla klikací i jen šířka textu, ne
+       celá buňka hlavičky. */
+    width: 100%;
   }
 
+  /* flex: 1 na popisku (ne na ikonách) — pohltí volné místo v natažené
+     hlavičce, ať ikony řazení/filtru zůstanou přitisknuté k pravému
+     okraji buňky, ne hned za (třeba krátkým) textem. min-width: 0 je
+     nutné, aby zkracování na tři tečky vůbec mohlo nastat (klasická
+     flexbox past, stejná jako jinde v appce). */
   .data-col-header span {
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

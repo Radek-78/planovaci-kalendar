@@ -499,8 +499,15 @@ naplnit při vytváření/úpravě uživatele (viz `apiGetDepartments`/
 která mezitím ze seznamu zmizela, zůstane ve formuláři vidět jako volba
 navíc („mimo seznam"), needituje se tiše na prázdno. Žádná vazba na
 uživatele: přejmenování/smazání položky seznamu se nepromítne zpětně do
-těch, kdo ji už mají vyplněnou (Umístění zůstává zatím pořád volný text,
-bez seznamu v Nastavení).
+těch, kdo ji už mají vyplněnou.
+
+**Umístění** — stejný vzor „mimo seznam" jako výše, ale zdroj seznamu je
+jiný: zkratky AKTIVNÍCH LC (`App.loadLcForSelect`, `apiGetLogisticCenters`
+— LC bez zkratky se do výběru nenabízí, s ní nemá smysl) plus pevná
+hodnota „DL" (centrála, není řádek v `_logistic_centers`). Stejně jako
+u Oddělení/Pozice jde o obyčejný text bez cizí klíč vazby — přejmenování
+zkratky LC nebo jeho smazání/deaktivace se do už vyplněných uživatelů
+zpětně nepromítne.
 
 **Typy událostí** (`_event_types`, viz 7.1) — plná správa (přidat/upravit/
 smazat): popisek, ikona (výběr z mřížky dlaždic, jen z whitelistu

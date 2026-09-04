@@ -5,6 +5,11 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.3.2 - 04.09.2026 07:35
+- Doladění tabulek a formuláře uživatele — oprava chyby, kvůli které se v okně filtru u záložky Uživatelé nenabízely žádné hodnoty (popover četl vždy data LC místo správné tabulky)
+- klikací plocha hlavičky sloupce teď sahá přes celou šířku buňky, ne jen přes text popisku
+- pole Umístění ve formuláři uživatele je nově výběr ze seznamu aktivních LC (podle zkratky) plus pevná hodnota DL pro centrálu, místo volného textu
+
 ## v0.3.1 - 03.09.2026 18:59
 - Oprava scrollování a doladění tabulek — skutečná příčina scrollování celé stránky místo jen pole dat: chybělo min-height 0 na .main (grid položka), appka i po předchozí opravě .app rostla nad výšku okna
 - hlavička sloupce je teď klikací přes celou výšku řádku, ne jen na výšku textu

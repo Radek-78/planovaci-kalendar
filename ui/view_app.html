@@ -496,7 +496,7 @@
           <p class="kicker"><i class="ph ph-buildings" aria-hidden="true"></i> Organizace</p>
           <label>
             <span>Umístění</span>
-            <input type="text" id="userFormLocation" maxlength="60" placeholder="DL nebo kód LC">
+            <select id="userFormLocation"><!-- vykresleno JS, viz fillLocationSelect --></select>
           </label>
           <div class="event-form-row">
             <label>
@@ -808,6 +808,9 @@
     /** Smí uživatel spravovat Nastavení (pracovní pozice, typy událostí…)? Ze serveru, stejný princip jako canManageUsers. */
     canManageSettings: false,
 
+    /** Zkratky aktivních LC pro <select> Umístění ve formuláři uživatele (viz loadLcForSelect/fillLocationSelect). */
+    lcForSelect: [],
+
     /** Poslední načtený seznam oddělení — pro dohledání dat při otevření editace. */
     departments: [],
 
@@ -1006,6 +1009,42 @@
     fillDepartmentSelect(currentValue) {
       const select = document.querySelector('#userFormDepartment');
       const names = this.departments.map((d) => d.name);
+
+      let options = '<option value="">— nevybráno —</option>' +
+        names.map((n) => '<option value="' + Ui.escape(n) + '">' + Ui.escape(n) + '</option>').join('');
+
+      if (currentValue && names.indexOf(currentValue) === -1) {
+        options += '<option value="' + Ui.escape(currentValue) + '">' + Ui.escape(currentValue) + ' (mimo seznam)</option>';
+      }
+
+      select.innerHTML = options;
+      select.value = currentValue || '';
+    },
+
+    /**
+     * Znovu načte LC (jen zkratky aktivních, viz fillLocationSelect) a hned
+     * naplní <select> Umístění ve formuláři uživatele — stejný vzor jako
+     * loadDepartmentsForSelect/loadPositionsForSelect, volá se při každém
+     * vstupu do sekce Uživatelé. Čtení smí i ADMIN (apiGetLogisticCenters
+     * je calendar_read), takže se to nerozbije ani bez práva Nastavení.
+     */
+    loadLcForSelect() {
+      Ui.call('apiGetLogisticCenters', null, { silent: true })
+        .then((items) => {
+          this.lcForSelect = items.filter((lc) => lc.active && lc.zkratka).map((lc) => lc.zkratka);
+          this.fillLocationSelect(document.querySelector('#userFormLocation').value);
+        })
+        .catch(() => {});
+    },
+
+    /**
+     * Naplní <select> Umístění z this.lcForSelect (zkratky LC) + pevná
+     * hodnota "DL" (centrála, není v _logistic_centers) — stejný vzor jako
+     * fillDepartmentSelect/fillPositionSelect.
+     */
+    fillLocationSelect(currentValue) {
+      const select = document.querySelector('#userFormLocation');
+      const names = ['DL'].concat(this.lcForSelect.slice().sort((a, b) => a.localeCompare(b, 'cs')));
 
       let options = '<option value="">— nevybráno —</option>' +
         names.map((n) => '<option value="' + Ui.escape(n) + '">' + Ui.escape(n) + '</option>').join('');
@@ -1654,7 +1693,7 @@
 
       document.querySelector('#userFormRole').value = user ? user.role : 'USER';
       document.querySelector('#userFormPermission').value = user ? user.permission : 'EDITOR';
-      document.querySelector('#userFormLocation').value = user ? user.location : '';
+      this.fillLocationSelect(user ? user.location : '');
       this.fillDepartmentSelect(user ? user.department : '');
       this.fillPositionSelect(user ? user.position : '');
       document.querySelector('#userForm').dataset.editId = user ? user.id : '';
@@ -2100,6 +2139,13 @@
       }
     },
 
+    /** Zdrojová (nefiltrovaná) data dané tabulky — pro popover, který z nich čte DISTINCT hodnoty (viz openColumnFilterPopover). */
+    dataTableSource(tableName) {
+      if (tableName === 'users') return this.usersCache;
+      if (tableName === 'stores') return this.storesCache;
+      return this.lcCache;
+    },
+
     /**
      * Otevře popover se řazením a filtrem pro jeden sloupec — vzhled/chování
      * podobné Excelu (viz konverzace): nahoře řadit vzestupně/sestupně
@@ -2109,7 +2155,7 @@
      */
     openColumnFilterPopover(tableName, colKey, headerEl) {
       const col = this.DATA_TABLE_COLUMNS[tableName].find((c) => c.key === colKey);
-      const rows = tableName === 'stores' ? this.storesCache : this.lcCache;
+      const rows = this.dataTableSource(tableName);
       const state = this.dataTableState[tableName];
 
       const seen = {};
@@ -3346,6 +3392,7 @@
       // kliknutí levné a zaručí to čerstvá data i po vytvoření nového.
       if (name === 'users' && this.canManageUsers) {
         this.loadUsers();
+        this.loadLcForSelect();
         this.loadDepartmentsForSelect();
         this.loadPositionsForSelect();
       }
