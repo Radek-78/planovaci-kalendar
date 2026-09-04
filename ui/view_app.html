@@ -188,6 +188,9 @@
           <button class="settings-tab" type="button" data-settings-tab="import">
             <i class="ph ph-cloud-arrow-down" aria-hidden="true"></i> Import dat
           </button>
+          <button class="settings-tab" type="button" data-settings-tab="holidays">
+            <i class="ph ph-flag" aria-hidden="true"></i> Státní svátky ČR
+          </button>
         </div>
 
         <!-- Oddělení — prostý seznam, žádná vazba na uživatele (viz
@@ -303,6 +306,28 @@
               <p class="import-log-heading"><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> Historie synchronizací</p>
               <div class="import-log-list" id="importLogList"><!-- vykresleno JS --></div>
             </div>
+          </div>
+        </div>
+
+        <!-- Státní svátky ČR — čistě dopočítané (CZECH_FIXED_HOLIDAYS +
+             pohyblivé svátky), žádná databázová tabulka, jen přepínač roku
+             (viz apiGetHolidays, loadHolidaysForYear). Stejný seznam se
+             používá i pro červené pruhy v mřížce kalendáře. -->
+        <div class="settings-panel" data-settings-panel="holidays">
+          <div class="settings-panel-head">
+            <p class="settings-panel-desc">Přehled státních svátků ČR pro vybraný rok — pevné i pohyblivé (odvozené od Velikonoc).</p>
+            <div class="holidays-year-switch">
+              <button class="cal-nav-btn" type="button" id="holidaysPrevYear" aria-label="Předchozí rok">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-left"></use></svg>
+              </button>
+              <span class="holidays-year-label" id="holidaysYearLabel"></span>
+              <button class="cal-nav-btn" type="button" id="holidaysNextYear" aria-label="Další rok">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+              </button>
+            </div>
+          </div>
+          <div class="settings-list-wrap">
+            <div class="settings-list" id="holidaysList"><!-- vykresleno JS --></div>
           </div>
         </div>
       </div>
@@ -862,6 +887,24 @@
     /** Poslední načtený seznam LC — pro dohledání dat při kliku na tužku (openLcFormModal). */
     lcCache: [],
 
+    /** Jestli appka má v kalendáři zobrazovat státní svátky (červený pruh) — ze serveru, nastavení holidaysEnabled. */
+    holidaysEnabled: true,
+
+    /** Rok aktuálně zobrazený v záložce Státní svátky ČR (Nastavení). */
+    holidaysYear: new Date().getFullYear(),
+
+    /**
+     * Svátky podle roku — { rok: [{date, name}] } — cache pro záložku
+     * Nastavení i pro mřížku kalendáře (viz loadHolidaysForYear,
+     * ensureHolidaysLoaded), ať appka nevolá server opakovaně pro stejný
+     * rok. Svátky jsou čistě dopočítané (viz apiGetHolidays), nikdy se
+     * neinvaliduje.
+     */
+    holidaysCache: {},
+
+    /** Rychlé dohledání "je tenhle den svátek" v mřížce kalendáře — { 'RRRR-MM-DD': 'název' }, doplňuje se spolu s holidaysCache. */
+    holidaysByDate: {},
+
     /**
      * Oznámení „co je nového od poslední návštěvy" — ze serveru
      * (apiGetBootstrap, viz _computeNotifications_), naplní se jednou při
@@ -905,6 +948,7 @@
       Ui.setText('#sidebarUserName', data.user.fullName);
 
       this.currentUserEmail = data.user.email;
+      this.holidaysEnabled = data.settings.holidaysEnabled !== false;
 
       const roleLabel = this.ROLE_LABELS[data.user.role] || data.user.role;
       const permissionLabel = data.user.role === 'USER'
@@ -2801,6 +2845,7 @@
       this.bindPositionForm();
       this.bindEventTypeForm();
       this.bindImportForm();
+      this.bindHolidaysTab();
     },
 
     showSettingsTab(tabName) {
@@ -3598,6 +3643,81 @@
       '</details>';
     },
 
+    bindHolidaysTab() {
+      document.querySelector('#holidaysPrevYear').addEventListener('click', () => this.changeHolidaysYear(-1));
+      document.querySelector('#holidaysNextYear').addEventListener('click', () => this.changeHolidaysYear(1));
+    },
+
+    /** Vstup do záložky Nastavení → Státní svátky ČR — načte aktuálně vybraný rok. */
+    loadHolidaysSettings() {
+      this.renderHolidaysYearLabel();
+      const list = document.querySelector('#holidaysList');
+      list.innerHTML = this.settingsPlaceholder('Načítám svátky…');
+      this.loadHolidaysForYear(this.holidaysYear).then(() => this.renderHolidaysList());
+    },
+
+    changeHolidaysYear(delta) {
+      this.holidaysYear += delta;
+      this.renderHolidaysYearLabel();
+      const list = document.querySelector('#holidaysList');
+      list.innerHTML = this.settingsPlaceholder('Načítám svátky…');
+      this.loadHolidaysForYear(this.holidaysYear).then(() => this.renderHolidaysList());
+    },
+
+    renderHolidaysYearLabel() {
+      Ui.setText('#holidaysYearLabel', String(this.holidaysYear));
+    },
+
+    /**
+     * Svátky pro daný rok — z cache (this.holidaysCache), jinak dotáhne ze
+     * serveru (apiGetHolidays). Sdílené i s mřížkou kalendáře
+     * (ensureHolidaysLoaded), ať appka nevolá server opakovaně pro stejný
+     * rok při přepínání měsíců/roku.
+     */
+    loadHolidaysForYear(year) {
+      if (this.holidaysCache[year]) return Promise.resolve(this.holidaysCache[year]);
+      return Ui.call('apiGetHolidays', { year: year }, { silent: true })
+        .then((result) => {
+          this.holidaysCache[year] = result.holidays;
+          result.holidays.forEach((h) => { this.holidaysByDate[h.date] = h.name; });
+          return result.holidays;
+        })
+        .catch((error) => {
+          Ui.toast(error.message, 'error');
+          return [];
+        });
+    },
+
+    renderHolidaysList() {
+      const list = document.querySelector('#holidaysList');
+      const holidays = this.holidaysCache[this.holidaysYear] || [];
+      list.innerHTML = holidays.length
+        ? holidays.map((h) => this.renderHolidayRow(h)).join('')
+        : this.settingsPlaceholder('Pro tento rok nejsou žádné svátky.');
+    },
+
+    renderHolidayRow(h) {
+      return '<div class="settings-row">' +
+        '<span class="holiday-row-date">' + Ui.escape(this.formatFullDate(h.date)) + '</span>' +
+        '<span class="settings-row-name">' + Ui.escape(h.name) + '</span>' +
+      '</div>';
+    },
+
+    /**
+     * Zajistí, že jsou v cache svátky pro všechny roky, které mřížka
+     * kalendáře aktuálně potřebuje (může jich být víc, mřížka běžně
+     * přesahuje do sousedního měsíce, na přelomu roku i do sousedního
+     * roku). Chybějící dotáhne a pak mřížku znovu vykreslí — druhé volání
+     * renderCalendar tady žádné další dotažení nespustí (cache už bude
+     * plná), takže bez rizika nekonečné smyčky.
+     */
+    ensureHolidaysLoaded(years) {
+      if (!this.holidaysEnabled) return;
+      const missing = years.filter((y) => !this.holidaysCache[y]);
+      if (!missing.length) return;
+      Promise.all(missing.map((y) => this.loadHolidaysForYear(y))).then(() => this.renderCalendar());
+    },
+
     showSection(name) {
       document.querySelectorAll('.nav-link').forEach((item) => {
         item.classList.toggle('is-active', item.dataset.section === name);
@@ -3622,6 +3742,7 @@
         this.loadImportSettings();
         this.loadImportTriggerStatus();
         this.loadImportLog();
+        this.loadHolidaysSettings();
       }
       if (name === 'stores') this.loadStores();
       if (name === 'lc') this.loadLogisticCenters();
@@ -3704,22 +3825,43 @@
           const isWeekend = col >= 5;
           const isToday = cellDate.getTime() === today.getTime();
           const isPast = cellDate.getTime() < today.getTime();
+          // Svátek se pozná čistě podle data — funguje stejně pro dny mimo
+          // aktuální měsíc (zobrazené jako výplň mřížky), viz holidaysByDate.
+          const holidayName = this.holidaysEnabled ? this.holidaysByDate[dateIso] : null;
 
           const cls = 'cal-cell' +
             (isOtherMonth ? ' is-other-month' : '') +
             (isWeekend ? ' is-weekend' : '') +
             (isToday ? ' is-today' : '') +
-            (isPast ? ' is-past' : '');
+            (isPast ? ' is-past' : '') +
+            (holidayName ? ' is-holiday' : '');
+
+          // U svátku nahradí číslo dne pruh se svátkem (číslo + název) —
+          // stejný prostor (CAL_HEAD_ROW), jen barevně odlišený (viz
+          // .cal-holiday-bar ve styles.html). Bez svátku zůstává jen
+          // obyčejné číslo dne jako dřív.
+          const dayContent = holidayName
+            ? '<div class="cal-holiday-bar" title="' + Ui.escape(holidayName) + '">' +
+                '<span class="cal-holiday-num">' + cellDate.getDate() + '</span>' +
+                '<span class="cal-holiday-name">' + Ui.escape(holidayName) + '</span>' +
+              '</div>'
+            : '<span class="cal-daynum">' + cellDate.getDate() + '</span>';
 
           html += '<div class="' + cls + '" data-date="' + dateIso +
             '" style="grid-row:' + headTrack + ' / span ' + rowSpan + '; grid-column:' + (col + 2) + '">' +
-            '<span class="cal-daynum">' + cellDate.getDate() + '</span>' +
+            dayContent +
             '</div>';
         }
       }
 
       grid.innerHTML = html;
       this.loadEvents(this.isoDate(gridStart), this.isoDate(gridEnd), first, last);
+
+      // Mřížka může přesahovat do sousedního roku (přelom prosinec/leden) —
+      // dotáhne chybějící roky a pak se sama znovu vykreslí (viz
+      // ensureHolidaysLoaded), ať jsou svátky vidět bez nutnosti dalšího
+      // kliku uživatele.
+      this.ensureHolidaysLoaded(Array.from(new Set([gridStart.getFullYear(), gridEnd.getFullYear()])));
     },
 
     /**

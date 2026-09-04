@@ -30,7 +30,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.4.2',
+  version: 'v0.5.0',
   releaseDate: '4.9.2026',
 
   /**
@@ -172,6 +172,30 @@ const EVENT_TYPE_ICONS = [
   'coffee', 'graduation-cap', 'heart', 'star', 'flag', 'bell', 'gear',
   'wrench', 'book-open', 'medal', 'target', 'umbrella', 'gift', 'first-aid-kit',
   'car', 'clock-user', 'chart-line-up',
+];
+
+/**
+ * Státní svátky ČR s pevným datem (den v měsíci se rok od roku nemění) —
+ * viz zákon č. 245/2000 Sb. Pohyblivé svátky (Velký pátek, Velikonoční
+ * pondělí, odvozené od data Velikonoc) se dopočítávají zvlášť, viz
+ * _czechHolidaysForYear_ v 60_import.js. Použito v apiGetHolidays
+ * (server) i v záložce „Státní svátky ČR" v Nastavení a v mřížce
+ * kalendáře (client), kde appka svátky jen ZOBRAZUJE — nejde o žádnou
+ * editovatelnou databázovou tabulku, seznam je daný zákonem, stejný
+ * princip jako u ostatních zákonem/whitelistem daných konstant výše.
+ */
+const CZECH_FIXED_HOLIDAYS = [
+  { month: 1, day: 1, name: 'Den obnovy samostatného českého státu' },
+  { month: 5, day: 1, name: 'Svátek práce' },
+  { month: 5, day: 8, name: 'Den vítězství' },
+  { month: 7, day: 5, name: 'Den slovanských věrozvěstů Cyrila a Metoděje' },
+  { month: 7, day: 6, name: 'Den upálení mistra Jana Husa' },
+  { month: 9, day: 28, name: 'Den české státnosti' },
+  { month: 10, day: 28, name: 'Den vzniku samostatného československého státu' },
+  { month: 11, day: 17, name: 'Den boje za svobodu a demokracii' },
+  { month: 12, day: 24, name: 'Štědrý den' },
+  { month: 12, day: 25, name: '1. svátek vánoční' },
+  { month: 12, day: 26, name: '2. svátek vánoční' },
 ];
 
 /**

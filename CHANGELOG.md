@@ -5,6 +5,10 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.5.0 - 04.09.2026 08:31
+- v0.5.0: Systém státních svátků ČR — v Nastavení přibyla záložka Státní svátky ČR s přepínačem roku a dynamicky dopočítaným seznamem všech svátků daného roku (11 s pevným datem + dva pohyblivé, Velký pátek a Velikonoční pondělí, odvozené od data Velikonoc)
+- appka je nikde needituje, jde o zákonem daný seznam, jen ho zobrazuje. V mřížce kalendáře se u dnů se svátkem místo pouhého čísla zobrazí červený pruh s číslem dne a názvem svátku a celá buňka dostane červené orámování — u dnešního dne s výjimkou, orámování zůstává žluté (svátek), pruh se svátkem se ale zobrazí vždy. Zobrazení řídí už dřív existující, ale doposud nepoužité nastavení pro zobrazování svátků. Mřížka občas přesahuje do sousedního roku (přelom prosinec/leden) — appka si podle potřeby dotáhne svátky i pro něj, bez nutnosti dalšího kliku.
+
 ## v0.4.2 - 04.09.2026 08:17
 - Import dat a dynamické ikony hlaviček — záložka Import dat teď sama vyhledá soubory hned při otevření, pokud jsou pole už vyplněná, a u vybraného souboru rovnou ověří (bez importu dat), že obsahuje oba očekávané listy se všemi sloupci, tlačítko Synchronizovat se povolí až podle výsledku
 - přibylo ovládání noční automatické synchronizace přímo v appce (zapnout/vypnout, hodina spuštění), beze změny zůstává i ruční založení triggeru z editoru

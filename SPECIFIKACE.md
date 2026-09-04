@@ -373,6 +373,7 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiSaveLogisticCenter(payload)` | `settings_manage` | `{ id, cislo, zkratka }` | uložené LC — edituje jen tato dvě pole, název je needitovatelný |
 | `apiSetLogisticCenterActive(payload)` | `settings_manage` | `{ id, active }` | uložené LC — deaktivace přežije i další synchronizaci, viz 9.6 |
 | `apiSetStoreActive(payload)` | `settings_manage` | `{ id, active }` | uložená filiálka — jediné ručně řízené pole u filiálky, přežije i další synchronizaci |
+| `apiGetHolidays(payload)` | `calendar_read` | `{ year }` (nepovinné, výchozí aktuální rok) | `{ year, holidays }` — pole `{ date, name }`, čistě dopočítané (viz 9.7), žádná databázová tabulka; čtení smí každý přihlášený, ne jen SUPERADMIN |
 
 **Rozsah v `apiGetEvents`** se vyhodnocuje jako **průnik**, ne jako „start
 uvnitř rozsahu" — jinak by vícedenní událost začínající minulý měsíc v aktuální
@@ -716,6 +717,52 @@ firemní adresář):
 - Chyby nočního běhu (špatná složka, žádný soubor, chyba při čtení) se
   zatím jen logují (Stackdriver/Spuštění v editoru) — appka o nich
   uvnitř sebe sama nijak neinformuje, na rozdíl od úspěšné synchronizace.
+
+### 9.7 Státní svátky ČR
+
+Svátky jsou **čistě dopočítané** (zákon č. 245/2000 Sb.), žádná databázová
+tabulka — stejný princip jako u `DEFAULT_EVENT_TYPES`/`ROLE_LABELS`: appka
+je jen zobrazuje, nejde je v appce editovat.
+
+- `CZECH_FIXED_HOLIDAYS` (00_config.js) — 11 svátků s pevným datem
+  (1.1., 1.5., 8.5., 5.7., 6.7., 28.9., 28.10., 17.11., 24.-26.12.).
+- Dva pohyblivé svátky (Velký pátek, Velikonoční pondělí) se dopočítávají
+  z data velikonoční neděle — `_easterSunday_` (50_api.js) je anonymní
+  gregoriánský algoritmus (Meeus/Jones/Butcher), čistě celočíselná
+  aritmetika. Posun o ±dny (`_addDaysToDate_`) jde přes `Date.UTC`/
+  `getUTC*`, NIKDY přes lokální časovou zónu ani `Utilities.formatDate` —
+  jde jen o kalendářní aritmetiku (kolikátého je "o den dřív/později"),
+  ne o okamžik v čase, takže by lokální TIMEZONE appky mohla výsledek
+  posunout o den (stejná třída chyby jako opakovaně zdokumentovaný
+  UTC/lokální čas jinde v této specifikaci).
+- `_czechHolidaysForYear_(year)` spojí pevné i pohyblivé svátky, seřadí
+  podle data a vrátí `{date, name}` (`date` jako `RRRR-MM-DD`).
+  `apiGetHolidays({year})` je jen tenký obal s `guard_(CALENDAR_READ, …)` —
+  vidí je každý přihlášený uživatel, ne jen SUPERADMIN, i když samotná
+  záložka Nastavení je jinak přístupná jen jemu (svátky se totiž
+  zobrazují i v mřížce kalendáře, kterou vidí všichni).
+- **Nastavení → záložka „Státní svátky ČR"** — přepínač roku (`◀ RRRR ▶`,
+  `holidaysYear` v klientovi) a prostý seznam datum/název pro vybraný rok
+  (`loadHolidaysForYear` cachuje podle roku, ať appka nevolá server
+  opakovaně pro stejný rok).
+- **V mřížce kalendáře** — u dnů, které jsou svátkem, nahradí `.cal-daynum`
+  (jen číslo dne) `.cal-holiday-bar`, červený pruh přes celou šířku buňky
+  s číslem dne a názvem svátku (bílým textem, ořízne se třemi tečkami,
+  pokud se nevejde — `title` atribut nese celý název). Celá buňka navíc
+  dostane červené orámování (`.cal-cell.is-holiday`), s výjimkou dnešního
+  dne, kde vyhraje žluté orámování dnešku (`.cal-cell.is-today`, pravidlo
+  v CSS je záměrně AŽ ZA `.is-holiday` kvůli pořadí v kaskádě) — červený
+  pruh se svátkem se ale zobrazí v obou případech, je to samostatný prvek,
+  nekonkuruje o stejnou vlastnost jako orámování.
+- Zobrazení řídí nastavení `holidaysEnabled` (`_settings`, výchozí
+  zapnuto) — appka ho už dřív posílala klientovi přes `apiGetBootstrap`,
+  teď je poprvé skutečně použité (`App.holidaysEnabled`).
+- Mřížka kalendáře běžně přesahuje do sousedního měsíce a na přelomu
+  roku i do sousedního roku — `renderCalendar` proto na konci zavolá
+  `ensureHolidaysLoaded` se všemi roky, které aktuálně zobrazená mřížka
+  potřebuje; chybějící dotáhne ze serveru a mřížku pak sama znovu
+  vykreslí (druhé volání už nic nedotahuje, cache je plná — bez rizika
+  nekonečné smyčky).
 
 ---
 

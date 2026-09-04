@@ -1836,6 +1836,30 @@
     gap: 6px;
   }
 
+  /* Datum v řádku záložky Státní svátky ČR — pevná šířka, ať názvy svátků pod sebou začínají na stejném místě. */
+  .holiday-row-date {
+    color: var(--muted);
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 700;
+    width: 130px;
+  }
+
+  /* Přepínač roku v hlavičce záložky Státní svátky ČR — stejné tlačítko jako navigace měsíců v kalendáři (.cal-nav-btn). */
+  .holidays-year-switch {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+  }
+
+  .holidays-year-label {
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 700;
+    min-width: 42px;
+    text-align: center;
+  }
+
   /* Barevná dlaždice s ikonou typu — stejný jazyk jako .day-event-icon/
      .notify-item-icon (--type-color se nastavuje inline, viz renderEventTypeRow). */
   .settings-row-icon {
@@ -2529,6 +2553,58 @@
     position: absolute;
     top: 4px;
     z-index: 1;
+  }
+
+  /* Svátek — pruh přes celou šířku buňky nahradí .cal-daynum (viz
+     renderCalendar), číslo dne + název svátku. Výška napevno CAL_HEAD_ROW
+     (20px v JS) — musí se přesně vejít nad první dráhu s pruhy událostí,
+     ať do ní nezasahuje. Zaoblení horních rohů zdarma díky overflow:hidden
+     a border-radius na rodičovské .cal-cell (viz komentář výše). */
+  .cal-holiday-bar {
+    align-items: center;
+    background: var(--lidl-red);
+    color: var(--white);
+    display: flex;
+    gap: 4px;
+    height: 20px;
+    left: 0;
+    padding: 0 6px;
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 1;
+  }
+
+  .cal-holiday-num {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  /* Název svátku — ořízne se třemi tečkami, pokud se nevejde (viz screenshot v zadání), title atribut na .cal-holiday-bar nabídne celý název. */
+  .cal-holiday-name {
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* Svátek — celá karta orámovaná červeně (viz i .cal-holiday-bar níže,
+     číslo dne + název svátku). Pravidlo musí být PŘED .is-today (níže),
+     aby při souběhu (dnešek je zároveň svátek) vyhrálo žluté orámování
+     dnešku — stejný princip řazení jako u .is-weekend/.is-past výše,
+     červený pruh se svátkem se ale zobrazí vždy, i pak (viz renderCalendar,
+     je to samostatný prvek, nekonkuruje o stejnou vlastnost). */
+  .cal-cell.is-holiday {
+    border-color: var(--lidl-red);
+  }
+
+  .cal-cell.is-holiday:hover {
+    background: #fdecec;
   }
 
   /* Dnešek — celá karta výrazně orámovaná žlutou (firemní akcent), aby bylo

@@ -886,3 +886,87 @@ function _publicDepartment_(row) {
     name: String(row.name),
   };
 }
+
+/**
+ * Státní svátky ČR pro daný rok — záložka „Státní svátky ČR" v Nastavení
+ * i barevné pruhy v mřížce kalendáře. Vidí je každý přihlášený uživatel
+ * (CALENDAR_READ), ne jen SUPERADMIN, i když samotná záložka Nastavení
+ * je jinak přístupná jen jemu — svátky jsou informace pro celý kalendář.
+ *
+ * Čistě dopočítané z CZECH_FIXED_HOLIDAYS + pohyblivých svátků, žádná
+ * databázová tabulka (stejný princip jako DEFAULT_EVENT_TYPES apod.).
+ *
+ * @param {Object} payload  { year } — RRRR, výchozí aktuální rok
+ */
+function apiGetHolidays(payload) {
+  return guard_(PERM_KEYS.CALENDAR_READ, () => {
+    const data = payload || {};
+    let year = parseInt(data.year, 10);
+    if (!year || year < 1900 || year > 2200) year = new Date().getFullYear();
+    return { year: year, holidays: _czechHolidaysForYear_(year) };
+  });
+}
+
+/**
+ * Datum velikonoční neděle pro daný rok — anonymní gregoriánský algoritmus
+ * (Meeus/Jones/Butcher), čistě celočíselná aritmetika, bez jediného
+ * Date objektu — vrací {month, day} (měsíc 1-12).
+ */
+function _easterSunday_(year) {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return { month: month, day: day };
+}
+
+/**
+ * Datum posunuté o `deltaDays` dní od zadaného {year, month, day} — počítáno
+ * přes Date.UTC/getUTC*, ne přes lokální časovou zónu, aby posun přes
+ * půlnoc/měsíc/rok nezávisel na TIMEZONE appky (viz opakovaně zdokumentovaná
+ * chyba UTC/lokální čas v SPECIFIKACE.md — tady jde jen o kalendářní
+ * aritmetiku, ne o okamžik v čase, takže UTC je bezpečná volba).
+ */
+function _addDaysToDate_(year, month, day, deltaDays) {
+  const utcMs = Date.UTC(year, month - 1, day) + deltaDays * 86400000;
+  const d = new Date(utcMs);
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
+}
+
+/** Doplní nulu zleva na dvě číslice (měsíc/den v RRRR-MM-DD). */
+function _pad2_(n) {
+  return n < 10 ? '0' + n : String(n);
+}
+
+/**
+ * Všechny státní svátky ČR pro daný rok — pevné (CZECH_FIXED_HOLIDAYS)
+ * i pohyblivé (Velký pátek = neděle Velikonoc - 2 dny, Velikonoční
+ * pondělí = neděle Velikonoc + 1 den), seřazené podle data.
+ *
+ * @return {Array<{date, name}>}  date jako RRRR-MM-DD
+ */
+function _czechHolidaysForYear_(year) {
+  const easter = _easterSunday_(year);
+  const goodFriday = _addDaysToDate_(year, easter.month, easter.day, -2);
+  const easterMonday = _addDaysToDate_(year, easter.month, easter.day, 1);
+
+  const items = CZECH_FIXED_HOLIDAYS.map((h) => ({ year: year, month: h.month, day: h.day, name: h.name }))
+    .concat([
+      { year: goodFriday.year, month: goodFriday.month, day: goodFriday.day, name: 'Velký pátek' },
+      { year: easterMonday.year, month: easterMonday.month, day: easterMonday.day, name: 'Velikonoční pondělí' },
+    ]);
+
+  return items
+    .map((h) => ({ date: h.year + '-' + _pad2_(h.month) + '-' + _pad2_(h.day), name: h.name }))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+}
