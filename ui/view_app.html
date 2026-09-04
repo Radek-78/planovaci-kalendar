@@ -2731,8 +2731,10 @@
     /**
      * Sestaví obsah modalu detailu filiálky — jen ke čtení (data needituje
      * appka, jen (de)aktivace v seznamu, viz renderStoreRow). Tři sloupce
-     * vedle sebe (Adresa / Kontakty / Otevírací doba), každý vlastní oddíl
-     * — modal je proto dost široký (.modal-xwide, viz styles.html).
+     * vedle sebe (Adresa / Kontakty / Otevírací doba), každý vlastní karta
+     * s modrým orámováním (.field-group/.field-group-accent — stejný
+     * vizuální jazyk jako formuláře, viz SPECIFIKACE.md 9.8) — modal je
+     * proto dost široký (.modal-xwide, viz styles.html).
      */
     renderStoreDetail(store) {
       const contactRow = (label, name, phone) => {
@@ -2769,15 +2771,15 @@
           closedBadge + inactiveBadge +
         '</div>' +
         '<div class="store-detail-columns">' +
-          '<div class="store-detail-col">' +
+          '<div class="field-group field-group-accent store-detail-col">' +
             '<p class="kicker"><i class="ph ph-map-pin" aria-hidden="true"></i> Adresa</p>' +
             '<p>' + Ui.escape(store.ulice || '—') + (store.psc || store.mesto ? ', ' + Ui.escape((store.psc + ' ' + store.mesto).trim()) : '') + '</p>' +
           '</div>' +
-          '<div class="store-detail-col">' +
+          '<div class="field-group field-group-accent store-detail-col">' +
             '<p class="kicker"><i class="ph ph-phone" aria-hidden="true"></i> Kontakty</p>' +
             (contacts || '<p class="store-detail-empty">Bez kontaktů.</p>') +
           '</div>' +
-          '<div class="store-detail-col">' +
+          '<div class="field-group field-group-accent store-detail-col">' +
             '<p class="kicker"><i class="ph ph-clock" aria-hidden="true"></i> Otevírací doba</p>' +
             '<table class="store-detail-hours"><tbody>' + hoursRows + '</tbody></table>' +
           '</div>' +

@@ -668,8 +668,13 @@ firemní adresář):
   `flex`/ellipsis) — šířku sloupců (`grid-template-columns`) appka
   nastavuje tak, aby se i s oběma sloty vešly celé.
 - **Detail filiálky ve třech sloupcích** (Adresa / Kontakty / Otevírací
-  doba), každý vlastní oddíl — modal proto používá novou širší třídu
-  `.modal-xwide` (960 px) místo `.modal-wide` (720 px).
+  doba) — modal proto používá novou širší třídu `.modal-xwide` (960 px)
+  místo `.modal-wide` (720 px). Každý sloupec je od v0.7.3 vlastní karta
+  s modrým orámováním (`.field-group`/`.field-group-accent`, viz 9.8) —
+  dřív jen holý sloupec bez boxu, jen s kickerem nahoře, teď stejný
+  vizuální jazyk jako formuláře. `.store-detail-label` (šířka popisku
+  kontaktu, např. „Zástupce RM") kvůli tomu zúžena na 100px (dřív 130px)
+  — karta ubírá místo navíc oproti holému sloupci.
 
 **Etapa 3 (implementováno)** — podrobný rozdíl a trvalá historie:
 
@@ -779,9 +784,12 @@ zákonnou sadou, ať uživatel nezačíná od prázdného seznamu.
   `.modal-wide` (720 px) — i tak jednoduchý formulář (dvě pole) díky tomu
   nepůsobí prázdně/amatérsky jako předchozí těsný `.modal-grow` (480 px).
   Mezera mezi hero polem a kartou (`.holiday-form-body{gap}`) je tu
-  záměrně větší (32px) než v hustším formuláři události (18px) — u tak
-  řídkého obsahu stejná hodnota vizuálně splývala s okolní bílou plochou
-  a působila jako žádná mezera (nahlášená zpětná vazba).
+  záměrně mnohem větší (44px) než v hustším formuláři události (18px) —
+  u tak řídkého obsahu menší hodnoty (i vyzkoušené 32px) vizuálně splývaly
+  s okolní bílou plochou a opakovaně se hlásily jako „žádná mezera".
+  `.holiday-form-body .field-group-accent` má navíc `margin-top: 12px`
+  jako nezávislý doplňkový odstup (jiný mechanismus než grid `gap`), ať
+  mezera zůstane jistě viditelná bez ohledu na jediné číslo.
 - **V mřížce kalendáře** — u dnů, které jsou svátkem, nahradí `.cal-daynum`
   (jen číslo dne) `.cal-holiday-bar`, červený pruh přes celou šířku buňky
   s číslem dne a názvem svátku (bílým textem, ořízne se třemi tečkami,
@@ -865,6 +873,9 @@ formulář události a svátku:
   Role a oprávnění / Organizace) dostala `.field-group-accent`, samotné
   rozvržení (dva sloupce, užší mezery — viz komentář u `.user-form-body`)
   se nemění.
+- **Detail filiálky** (jen ke čtení, ne formulář) — tři sloupce (Adresa/
+  Kontakty/Otevírací doba) dostaly stejné karty s modrým orámováním, viz
+  9.6.
 
 ---
 

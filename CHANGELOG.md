@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.7.3 - 04.09.2026 13:13
+- v0.7.3: Detail filiálky ve stejném profesionálním designu — tři sloupce (Adresa/Kontakty/Otevírací doba) v modalu detailu filiálky jsou teď karty s modrým orámováním, stejný vizuální jazyk jako formuláře, dřív jen holé sloupce bez boxu. Skutečná oprava mezery v modalu svátku — i po předchozím zvětšení na 32px pořád nedostatečné, teď 44px a navíc nezávislý doplňkový odstup (margin) na kartě samotné, ať mezera zůstane jistě vidět bez ohledu na jediný mechanismus.
+
 ## v0.7.2 - 04.09.2026 12:50
 - v0.7.2: Sjednocený profesionální vzhled napříč všemi modal okny — hero pole (výrazné hlavní pole) a karty s modrým orámováním z formuláře události/svátku teď mají i Pracovní pozice, Oddělení, LC, Typ události a Uživatel, ne jen ty dva. Oprava: v modalu svátku chyběla viditelná mezera mezi polem Název svátku a kartou s Datem — u tak řídkého formuláře splývala se stejnou hodnotou jako v hustším formuláři události, teď má vlastní větší mezeru.
 

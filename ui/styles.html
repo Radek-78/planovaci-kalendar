@@ -1672,20 +1672,18 @@
     gap: 4px;
   }
 
-  /* Tři sloupce vedle sebe, každý vlastní oddíl (Adresa/Kontakty/Otevírací
-     doba) — modal je proto dost široký (.modal-xwide). */
+  /* Tři sloupce vedle sebe, každý vlastní karta s modrým orámováním
+     (.field-group/.field-group-accent — stejný jazyk jako formuláře, viz
+     9.8 v SPECIFIKACE.md) — modal je proto dost široký (.modal-xwide).
+     Dřív jen holé sloupce bez boxu/orámování, jen s kickerem nahoře. */
   .store-detail-columns {
     display: grid;
-    gap: 24px;
+    gap: 20px;
     grid-template-columns: repeat(3, 1fr);
   }
 
   .store-detail-col {
     min-width: 0;
-  }
-
-  .store-detail-col .kicker {
-    margin-bottom: 6px;
   }
 
   .store-detail-row {
@@ -1695,10 +1693,13 @@
     padding: 3px 0;
   }
 
+  /* Užší než dřív (130px) — karta má vlastní odsazení navíc k rámečku
+     modalu, na label i hodnotu vedle sebe zbývá méně místa než
+     v předchozí holé (bez boxu) podobě sloupce. */
   .store-detail-label {
     color: var(--muted);
     flex-shrink: 0;
-    width: 130px;
+    width: 100px;
   }
 
   .store-detail-empty {
@@ -3871,14 +3872,23 @@
      (.form-hero-*/.field-group-accent), jen jediná karta (Datum), ať
      i tak jednoduchý formulář (dvě pole) nepůsobí prázdně/amatérsky
      v širším .modal-wide okně. Mezera mezi hero polem a kartou je tu
-     záměrně větší než v hustším formuláři události (18px) — u tak
-     řídkého obsahu (jen dvě pole, kolem nich hodně prázdného místa) by
-     stejná hodnota vizuálně splynula s okolní bílou plochou a působila
-     jako žádná mezera (nahlášená zpětná vazba). ── */
+     záměrně mnohem větší než v hustším formuláři události (18px) — u tak
+     řídkého obsahu (jen dvě pole, kolem nich hodně prázdného místa) menší
+     hodnota vizuálně splývala s okolní bílou plochou a působila jako
+     žádná mezera (opakovaně nahlášená zpětná vazba — i po zvětšení na
+     32px pořád nedostatečné, proto teď 44px + navíc explicitní margin-top
+     na kartě samotné níže, ať mezera nezávisí jen na jediném mechanismu). ── */
   .holiday-form-body {
     display: grid;
-    gap: 32px;
+    gap: 44px;
     padding: 20px 24px;
+  }
+
+  /* Záložní/doplňkový odstup NAD gap výše — nezávislý mechanismus
+     (margin, ne grid-gap), aby mezera zůstala jistě viditelná, i kdyby
+     grid gap sám o sobě z nějakého důvodu neposkytoval dost prostoru. */
+  .holiday-form-body .field-group-accent {
+    margin-top: 12px;
   }
 
   /* Datum + živě dopočítaný den v týdnu vedle sebe — ne na celou šířku
