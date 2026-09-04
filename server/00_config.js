@@ -30,7 +30,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.5.0',
+  version: 'v0.5.1',
   releaseDate: '4.9.2026',
 
   /**
@@ -178,7 +178,7 @@ const EVENT_TYPE_ICONS = [
  * Státní svátky ČR s pevným datem (den v měsíci se rok od roku nemění) —
  * viz zákon č. 245/2000 Sb. Pohyblivé svátky (Velký pátek, Velikonoční
  * pondělí, odvozené od data Velikonoc) se dopočítávají zvlášť, viz
- * _czechHolidaysForYear_ v 60_import.js. Použito v apiGetHolidays
+ * _czechHolidaysForYear_ v 50_api.js. Použito v apiGetHolidays
  * (server) i v záložce „Státní svátky ČR" v Nastavení a v mřížce
  * kalendáře (client), kde appka svátky jen ZOBRAZUJE — nejde o žádnou
  * editovatelnou databázovou tabulku, seznam je daný zákonem, stejný

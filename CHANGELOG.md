@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.5.1 - 04.09.2026 08:32
+- v0.5.1: Oprava komentáře — v 00_config.js u CZECH_FIXED_HOLIDAYS chybně odkazovaný soubor s _czechHolidaysForYear_ (napsáno 60_import.js, funkce je ve skutečnosti v 50_api.js), bez dopadu na chování appky.
+
 ## v0.5.0 - 04.09.2026 08:31
 - v0.5.0: Systém státních svátků ČR — v Nastavení přibyla záložka Státní svátky ČR s přepínačem roku a dynamicky dopočítaným seznamem všech svátků daného roku (11 s pevným datem + dva pohyblivé, Velký pátek a Velikonoční pondělí, odvozené od data Velikonoc)
 - appka je nikde needituje, jde o zákonem daný seznam, jen ho zobrazuje. V mřížce kalendáře se u dnů se svátkem místo pouhého čísla zobrazí červený pruh s číslem dne a názvem svátku a celá buňka dostane červené orámování — u dnešního dne s výjimkou, orámování zůstává žluté (svátek), pruh se svátkem se ale zobrazí vždy. Zobrazení řídí už dřív existující, ale doposud nepoužité nastavení pro zobrazování svátků. Mřížka občas přesahuje do sousedního roku (přelom prosinec/leden) — appka si podle potřeby dotáhne svátky i pro něj, bez nutnosti dalšího kliku.
