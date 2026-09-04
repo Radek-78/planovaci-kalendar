@@ -132,14 +132,23 @@ const TEXT_COLUMNS = {
   _event_types: ['created_at', 'updated_at'],
   _departments: ['created_at', 'updated_at'],
   // otevírací doba (např. "7:00") i updated_at — obojí by Sheets rádo
-  // převedlo na čas/datum, viz komentář výše.
+  // převedlo na čas/datum, viz komentář výše. `id` = "Číslo" filiálky ze
+  // zdroje (např. "994") — bez ochrany by ho Sheets tiše převedlo na typ
+  // Number, `dbFindById_` by pak takovou filiálku nikdy nedohledal
+  // (nahlášená chyba „Filiálka nebyla nalezena" u (de)aktivace) — čtecí
+  // strana (dbFindBy_) už na tenhle nesoulad typů netahá, ale řádky
+  // zapsané ještě před touhle opravou (dokud je nepřepíše další sync)
+  // v listu samotném pořád budou vypadat jako číslo (vpravo zarovnané),
+  // ne jako text — vizuální kosmetika, appce samotné už nevadí.
   _stores: [
+    'id',
     'po_otevreno', 'po_zavreno', 'ut_otevreno', 'ut_zavreno', 'st_otevreno', 'st_zavreno',
     'ct_otevreno', 'ct_zavreno', 'pa_otevreno', 'pa_zavreno', 'so_otevreno', 'so_zavreno',
     'ne_otevreno', 'ne_zavreno', 'updated_at',
   ],
   _logistic_centers: ['created_at', 'updated_at'],
-  _store_closures: ['od', 'do', 'updated_at'],
+  // id = stejné "Číslo" jako u _stores, stejný důvod ochrany.
+  _store_closures: ['id', 'od', 'do', 'updated_at'],
   _import_log: ['created_at'],
   _holidays: ['date', 'created_at', 'updated_at'],
 };
@@ -347,9 +356,22 @@ function dbGetAll_(table) {
   return records;
 }
 
-/** Najde první záznam, jehož sloupec `column` má hodnotu `value`, jinak null. */
+/**
+ * Najde první záznam, jehož sloupec `column` má hodnotu `value`, jinak null.
+ *
+ * Porovnává se jako TEXT (String() na obou stranách), ne striktní `===` —
+ * sloupec mimo TEXT_COLUMNS, jehož hodnota vypadá jako číslo (typicky
+ * `_stores.id` = "Číslo" filiálky ze zdroje, např. "994"), si Sheets tiše
+ * převede na typ Number při zápisu. `dbFindById_` pak posílal `String(id)`
+ * ("994"), ale skutečná hodnota v listu byla number 994 — striktní `===`
+ * je nikdy neztotožnilo a appka hlásila „Filiálka nebyla nalezena", i když
+ * v databázi normálně byla (nahlášená chyba, deaktivace filiálky 994).
+ * String() na obou stranách je tu vždycky bezpečné — sloupce, podle kterých
+ * se appka takhle dohledává (id/email/key), jsou pojmově vždycky textové
+ * identifikátory, nikdy záměrně číselný typ.
+ */
 function dbFindBy_(table, column, value) {
-  return dbGetAll_(table).find((record) => record[column] === value) || null;
+  return dbGetAll_(table).find((record) => String(record[column]) === String(value)) || null;
 }
 
 /** Najde záznam podle id, jinak null. */

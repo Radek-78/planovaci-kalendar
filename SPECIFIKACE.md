@@ -203,6 +203,19 @@ Viz [[apps-script-text-format-nespolehlive]] v paměti projektu.
 porovnání rozsahu pro všechny typy událostí a řazení je prosté textové
 porovnání.
 
+**Druhá reálná manifestace téže třídy chyby (4. 9. 2026):** `_stores.id`
+(= "Číslo" filiálky ze zdroje, např. `"994"`) není v `TEXT_COLUMNS`, takže
+si ho Sheets tiše převedl na typ Number. `dbFindBy_`/`dbFindById_`
+porovnávaly striktním `===` — `record.id` (number `994`) se s poslaným
+`String(id)` (`"994"`) nikdy neshodovalo, takže (de)aktivace filiálky
+vždycky spadla na „Filiálka nebyla nalezena — mohla ji mezitím smazat
+synchronizace", i když filiálka v databázi normálně byla. Oprava (viz
+20_db.js): `dbFindBy_` teď porovnává `String()` na obou stranách (bezpečné
+pro všechny sloupce, podle kterých se appka takhle dohledává — id/email/
+key jsou pojmově vždycky text), `id` navíc doplněno do `TEXT_COLUMNS._stores`/
+`_store_closures`, ať se u obou napříště zapisuje chráněně (projeví se
+až při dalším přepsání `dbReplaceAll_`, tedy dalším importu).
+
 ### 5.3 Font
 
 Všechny listy databáze se po vytvoření naformátují firemním fontem přes
@@ -668,17 +681,20 @@ firemní adresář):
   `flex`/ellipsis) — šířku sloupců (`grid-template-columns`) appka
   nastavuje tak, aby se i s oběma sloty vešly celé.
 - **Detail filiálky ve čtyřech sloupcích** (Adresa / Kontakty / Otevírací
-  doba / malý kalendář měsíce) — modal proto používá novou širší třídu
-  `.modal-xwide` (960 px) místo `.modal-wide` (720 px). Každý sloupec je
-  od v0.7.3 vlastní karta s modrým orámováním (`.field-group`/
-  `.field-group-accent`, viz 9.8) — dřív jen holý sloupec bez boxu, jen
-  s kickerem nahoře, teď stejný vizuální jazyk jako formuláře.
-  `.store-detail-label` (šířka popisku kontaktu, např. „Zástupce RM")
-  kvůli tomu zúžena na 100px (dřív 130px) — karta ubírá místo navíc
-  oproti holému sloupci. `.store-detail-columns{align-items: start}` —
-  bez toho grid natahoval každou kartu na výšku nejdelší (Otevírací
-  doba), a řídká Adresa (jen jeden řádek textu) tak vypadala zbytečně
-  velká (nahlášená zpětná vazba).
+  doba / malý kalendář měsíce) — modal proto používá vlastní nejširší
+  třídu `.modal-2xwide` (1100 px, viz níže — na běžné `.modal-xwide`
+  960 px se čtvrtým sloupcem navíc zbylé tři zalamovaly a nebyly
+  přehledné, nahlášená zpětná vazba). Každý sloupec je od v0.7.3 vlastní
+  karta s modrým orámováním (`.field-group`/`.field-group-accent`, viz
+  9.8) — dřív jen holý sloupec bez boxu, jen s kickerem nahoře, teď
+  stejný vizuální jazyk jako formuláře. `.store-detail-columns{align-
+  items: start}` — bez toho grid natahoval každou kartu na výšku
+  nejdelší (Otevírací doba), a řídká Adresa (jen jeden řádek textu) tak
+  vypadala zbytečně velká (nahlášená zpětná vazba). Řádek kontaktu
+  (`.store-detail-row`) má od v0.7.5 popisek NAD hodnotou, ne vedle sebe
+  v řádku jako dřív (`.store-detail-label` už nemá pevnou šířku) — jméno
+  kontaktu + telefon dohromady bývá dost dlouhý text, vedle pevně
+  širokého popisku se lámal do víc řádků a nepůsobil přehledně.
   - **Odznaky (badges)** nad sloupci — Číslo a LC dostaly vlastní
     zvýrazněnou variantu `.store-detail-badge.is-primary` (modrý podklad),
     ať jsou jasně vidět jako "identita" filiálky, ne stejně nenápadné
@@ -839,7 +855,7 @@ Původně holé podepsané řádky (čistě výchozí vzhled prohlížeče), pak
 mezikrok s `.field-group` boxy v úzkém jednosloupcém `.modal-wide`
 (zpětná vazba: „modal je moc malý, vypadá to amatérsky", „vše příliš
 stejné, vzhled moc klasický") — dnešní podoba je široký dvousloupcový
-modal (`.modal-xwide`, 960 px, stejná třída jako detail filiálky):
+modal (`.modal-xwide`, 960 px):
 
 - **Název** stojí sám nahoře jako "hero" pole (`.form-hero-field`/
   `.form-hero-input` — sdílená komponenta, používá i modal svátku, viz

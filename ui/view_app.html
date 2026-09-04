@@ -403,8 +403,10 @@
 
 <!-- ══ Modal: detail filiálky (klik na řádek v sekci Filiálky) ══
      Jen ke čtení — data přichází importem (viz server/60_import.js),
-     appka je needituje. -->
-<dialog class="modal modal-xwide modal-grow" id="storeDetailModal">
+     appka je needituje. .modal-2xwide (širší než běžné .modal-xwide) —
+     4 sloupce (Adresa/Kontakty/Otevírací doba/malý kalendář) potřebují
+     víc místa, aby se text v kartách nezalamoval (viz styles.html). -->
+<dialog class="modal modal-2xwide modal-grow" id="storeDetailModal">
   <div class="modal-header">
     <span class="modal-icon"><i class="ph ph-storefront" aria-hidden="true"></i></span>
     <div class="modal-header-text">
@@ -429,8 +431,8 @@
      vlastník nebo správce cizích událostí — viz podmínky u tlačítek/ikon,
      která ho otevírají (canCreateOn/canManageEvent).
 
-     Široký dvousloupcový modal (.modal-xwide, stejná třída jako detail
-     filiálky) — Název stojí sám nahoře jako "hero" pole (větší písmo, bez
+     Široký dvousloupcový modal (.modal-xwide) — Název stojí sám nahoře
+     jako "hero" pole (větší písmo, bez
      boxu), pod ním dva sloupce (Typ+Celý den / Termín) a Popis přes celou
      šířku dole. Termín: datumy Od+Do vedle sebe v jednom řádku, časy Od+Do
      vedle sebe v dalším (ne datum+čas k sobě jako dřív — appka tak zvlášť
@@ -2734,8 +2736,10 @@
      * vedle sebe (Adresa / Kontakty / Otevírací doba / malý kalendář
      * měsíce), každý vlastní karta s modrým orámováním (.field-group/
      * .field-group-accent — stejný vizuální jazyk jako formuláře, viz
-     * SPECIFIKACE.md 9.8) — modal je proto dost široký (.modal-xwide, viz
-     * styles.html). align-items: start na .store-detail-columns (viz CSS)
+     * SPECIFIKACE.md 9.8) — modal je proto dost široký (.modal-2xwide,
+     * širší než běžné .modal-xwide, viz styles.html — čtvrtý sloupec
+     * navíc jinak zalamoval text ve zbylých třech, nahlášená zpětná
+     * vazba). align-items: start na .store-detail-columns (viz CSS)
      * nechává každou kartu vysokou jen podle vlastního obsahu — bez toho
      * by se řídká Adresa natahovala na výšku nejdelší karty (Otevírací
      * doba), a působila zbytečně velká (nahlášená zpětná vazba).
