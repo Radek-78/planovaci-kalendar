@@ -578,12 +578,23 @@
           <div class="event-time-slider-wrap">
             <span class="event-time-badge" id="eventFormTimeStartBadge"><i class="ph ph-clock" aria-hidden="true"></i><span class="event-time-badge-text">09:00</span></span>
             <span class="event-time-badge" id="eventFormTimeEndBadge"><i class="ph ph-clock" aria-hidden="true"></i><span class="event-time-badge-text">10:00</span></span>
-            <div class="event-time-slider">
+            <!-- Úchyty jsou OBYČEJNÁ tlačítka, ne <input type=range>. Dva
+                 překryté nativní posuvníky se ukázaly jako neřešitelné:
+                 každý si kreslí vlastní stínový DOM přes CELOU šířku, takže
+                 ten vykreslený později vždycky překryl úchyt toho druhého
+                 (viz historie oprav v SPECIFIKACE.md, kapitola 9.8). Dvě
+                 samostatná tlačítka na vlastní pozici se překrýt nemůžou.
+                 Ovládání (tažení i klávesnice) řeší bindEventTimeSlider. -->
+            <div class="event-time-slider" id="eventFormTimeSliderArea">
               <div class="event-time-slider-track">
                 <div class="event-time-slider-fill" id="eventFormTimeSliderFill"></div>
               </div>
-              <input type="range" id="eventFormTimeSliderStart" class="event-time-slider-input" min="0" max="1425" step="15" value="540">
-              <input type="range" id="eventFormTimeSliderEnd" class="event-time-slider-input" min="0" max="1425" step="15" value="600">
+              <button type="button" class="event-time-thumb" id="eventFormTimeSliderStart"
+                      role="slider" aria-label="Začátek" aria-valuemin="0" aria-valuemax="1425"
+                      aria-valuenow="540" aria-valuetext="09:00"></button>
+              <button type="button" class="event-time-thumb" id="eventFormTimeSliderEnd"
+                      role="slider" aria-label="Konec" aria-valuemin="0" aria-valuemax="1425"
+                      aria-valuenow="600" aria-valuetext="10:00"></button>
             </div>
           </div>
           <div class="event-time-slider-labels">
@@ -2020,62 +2031,157 @@
       }
     },
 
+    /**
+     * Meze časové osy. TIME_SLIDER_MAX je 23:45, ne 24:00 — "24:00" by
+     * server odmítl (cleanDateTime_ zná jen hodiny 00–23), zatímco stupnice
+     * pod osou (a tedy i přepočet pozice) jde celých 1440 minut do 24:00.
+     * TIME_SLIDER_GAP drží mezi úchyty vždy aspoň 15 minut, ať se nedají
+     * přetáhnout přes sebe a nedá se založit událost s nulovou délkou.
+     */
+    TIME_SLIDER_STEP: 15,
+    TIME_SLIDER_MAX: 1425,
+    TIME_SLIDER_SCALE: 1440,
+    TIME_SLIDER_GAP: 15,
+    TIME_SLIDER_THUMB: 18,
+
     /** Přepočítá posuvník podle skutečných hodnot #eventFormStartTime/#eventFormEndTime — volat po každém (i programovém) nastavení času. */
     syncEventTimeSliderFromInputs() {
       const start = this.hmToMinutes(document.querySelector('#eventFormStartTime').value);
       const end = this.hmToMinutes(document.querySelector('#eventFormEndTime').value);
-      document.querySelector('#eventFormTimeSliderStart').value = start;
-      document.querySelector('#eventFormTimeSliderEnd').value = end;
       this.renderEventTimeSlider(start, end);
     },
 
     /**
-     * Dvojitý posuvník času — dva překryté <input type=range>, každý ovládá
-     * jen svůj úchyt (viz .event-time-slider-input v CSS — track má
-     * pointer-events: none, klikací je jen samotný úchyt). MIN_GAP brání
-     * přejetí jednoho úchytu přes druhý, ať jde oba pořád rozeznat a chytit
-     * zvlášť. Skutečná hodnota se zapisuje do skrytých #eventFormStartTime/
+     * Dvojitý posuvník času — dva úchyty jsou obyčejná tlačítka na vlastní
+     * pozici (viz #eventFormTimeSliderArea v HTML), ne <input type=range>:
+     * dva překryté nativní posuvníky si kreslí vlastní stínový DOM přes
+     * celou šířku a vzájemně si úchyty překrývaly. Tažení jede přes pointer
+     * události se setPointerCapture (myš i dotyk jedním kódem, tažení
+     * pokračuje i mimo úchyt), klávesnice zůstává kvůli přístupnosti —
+     * nativní posuvník ji uměl sám, tady si ji musíme obsloužit.
+     * Skutečná hodnota se zapisuje do skrytých #eventFormStartTime/
      * #eventFormEndTime — na ty se váže submitEventForm beze změny.
      */
     bindEventTimeSlider() {
-      document.querySelector('#eventFormTimeSliderStart').addEventListener('input', () => this.onEventTimeSliderChange('start'));
-      document.querySelector('#eventFormTimeSliderEnd').addEventListener('input', () => this.onEventTimeSliderChange('end'));
+      ['start', 'end'].forEach((which) => {
+        const thumb = document.querySelector(which === 'start' ? '#eventFormTimeSliderStart' : '#eventFormTimeSliderEnd');
+
+        thumb.addEventListener('pointerdown', (e) => {
+          if (thumb.disabled) return;
+          e.preventDefault(); // ať tažení nezačne označovat text v okolí
+          thumb.focus(); // preventDefault výše potlačí i zaostření, ale to chceme zachovat kvůli ovládání šipkami
+          thumb.setPointerCapture(e.pointerId);
+        });
+
+        thumb.addEventListener('pointermove', (e) => {
+          // Bez zachyceného pointeru jde o pouhé přejetí myší, ne tažení.
+          if (!thumb.hasPointerCapture(e.pointerId)) return;
+          this.setEventTimeValue(which, this.eventTimeFromClientX(e.clientX));
+        });
+
+        thumb.addEventListener('keydown', (e) => {
+          const step = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 }[e.key];
+          const current = this.hmToMinutes(document.querySelector(
+            which === 'start' ? '#eventFormStartTime' : '#eventFormEndTime').value);
+
+          let next = null;
+          if (step) next = current + (step * this.TIME_SLIDER_STEP);
+          else if (e.key === 'PageUp') next = current + 60;
+          else if (e.key === 'PageDown') next = current - 60;
+          else if (e.key === 'Home') next = 0;
+          else if (e.key === 'End') next = this.TIME_SLIDER_MAX;
+          if (next === null) return;
+
+          e.preventDefault(); // šipky/PageUp jinak rolují obsahem modalu
+          this.setEventTimeValue(which, next);
+        });
+      });
     },
 
-    onEventTimeSliderChange(which) {
-      const MIN_GAP = 15;
-      const startInput = document.querySelector('#eventFormTimeSliderStart');
-      const endInput = document.querySelector('#eventFormTimeSliderEnd');
-      let start = Number(startInput.value);
-      let end = Number(endInput.value);
+    /**
+     * Přepočte vodorovnou pozici kurzoru na minuty. Použitelná část dráhy je
+     * o šířku úchytu užší (o půl úchytu z každé strany) — úchyt je vůči své
+     * pozici vystředěný, takže jinak by krajní hodnoty 00:00/23:45 vyčnívaly
+     * půlkou ven z dráhy. Musí sedět se stejným přepočtem v eventTimeOffset.
+     */
+    eventTimeFromClientX(clientX) {
+      const rect = document.querySelector('#eventFormTimeSliderArea').getBoundingClientRect();
+      const usable = rect.width - this.TIME_SLIDER_THUMB;
+      const ratio = usable > 0 ? (clientX - rect.left - (this.TIME_SLIDER_THUMB / 2)) / usable : 0;
+      const minutes = ratio * this.TIME_SLIDER_SCALE;
+      return Math.round(minutes / this.TIME_SLIDER_STEP) * this.TIME_SLIDER_STEP;
+    },
 
-      if (which === 'start' && start > end - MIN_GAP) {
-        start = Math.max(0, end - MIN_GAP);
-        startInput.value = start;
-      }
-      if (which === 'end' && end < start + MIN_GAP) {
-        end = Math.min(1425, start + MIN_GAP);
-        endInput.value = end;
+    /**
+     * Zapíše novou hodnotu jednoho úchytu — ořízne ji do mezí osy i na
+     * povinný odstup od druhého úchytu (TIME_SLIDER_GAP), uloží do skrytého
+     * pole a překreslí osu.
+     */
+    setEventTimeValue(which, minutes) {
+      const startField = document.querySelector('#eventFormStartTime');
+      const endField = document.querySelector('#eventFormEndTime');
+      let start = this.hmToMinutes(startField.value);
+      let end = this.hmToMinutes(endField.value);
+
+      // Ořez do mezí osy je až NAVRCHU odstupu od druhého úchytu — opačné
+      // pořadí by u krajních hodnot pustilo ven zápornou hodnotu (start),
+      // resp. hodnotu za koncem osy (end).
+      if (which === 'start') {
+        start = Math.max(0, Math.min(minutes, end - this.TIME_SLIDER_GAP));
+      } else {
+        end = Math.min(this.TIME_SLIDER_MAX, Math.max(minutes, start + this.TIME_SLIDER_GAP));
       }
 
-      document.querySelector('#eventFormStartTime').value = this.minutesToHm(start);
-      document.querySelector('#eventFormEndTime').value = this.minutesToHm(end);
+      startField.value = this.minutesToHm(start);
+      endField.value = this.minutesToHm(end);
       this.renderEventTimeSlider(start, end);
     },
 
-    /** Přebarví vyplněný úsek posuvníku a přesune bublinky s časem nad oba úchyty. */
-    renderEventTimeSlider(startMinutes, endMinutes) {
-      const startPct = (startMinutes / 1440 * 100) + '%';
-      const endPct = (endMinutes / 1440 * 100) + '%';
+    /**
+     * Vodorovná pozice pro danou hodnotu jako CSS calc() — stejný přepočet
+     * jako eventTimeFromClientX, jen opačným směrem: procenta se počítají
+     * z dráhy zmenšené o šířku úchytu a posunuté o jeho polovinu, ať úchyt
+     * v krajních hodnotách nevyčnívá ven. Používá se pro úchyt i pro
+     * bublinku s časem nad ním, ať nad sebou vždy přesně sedí.
+     */
+    eventTimeOffset(minutes) {
+      const pct = (minutes / this.TIME_SLIDER_SCALE) * 100;
+      const shift = (this.TIME_SLIDER_THUMB / 2) - (pct / 100 * this.TIME_SLIDER_THUMB);
+      // Znaménko se skládá do výrazu jako operátor (…% - 9px), ne jako
+      // záporná hodnota za plusem (…% + -9px) — druhý tvar je sice podle
+      // gramatiky calc() platný, ale zbytečně balancuje na hraně parseru.
+      return 'calc(' + pct + '% ' + (shift < 0 ? '- ' : '+ ') + Math.abs(shift) + 'px)';
+    },
 
+    /** Posune oba úchyty i bublinky s časem a přebarví vyplněný úsek mezi nimi. */
+    renderEventTimeSlider(startMinutes, endMinutes) {
+      const startOffset = this.eventTimeOffset(startMinutes);
+      const endOffset = this.eventTimeOffset(endMinutes);
+
+      const startThumb = document.querySelector('#eventFormTimeSliderStart');
+      const endThumb = document.querySelector('#eventFormTimeSliderEnd');
+      startThumb.style.left = startOffset;
+      endThumb.style.left = endOffset;
+
+      // Odečet pro odečítače obrazovky — role=slider bez aktuální hodnoty by
+      // byla pro nevidomého uživatele nepoužitelná.
+      startThumb.setAttribute('aria-valuenow', startMinutes);
+      endThumb.setAttribute('aria-valuenow', endMinutes);
+      startThumb.setAttribute('aria-valuetext', this.minutesToHm(startMinutes));
+      endThumb.setAttribute('aria-valuetext', this.minutesToHm(endMinutes));
+
+      // Šířka výplně je rozdíl obou pozic — počítá se stejným přepočtem
+      // (procenta zmenšená o poměrnou část šířky úchytu), jen bez posunu
+      // o půl úchytu, ten se mezi krajními body odečte.
+      const spanPct = ((endMinutes - startMinutes) / this.TIME_SLIDER_SCALE) * 100;
       const fill = document.querySelector('#eventFormTimeSliderFill');
-      fill.style.left = startPct;
-      fill.style.width = ((endMinutes - startMinutes) / 1440 * 100) + '%';
+      fill.style.left = startOffset;
+      fill.style.width = 'calc(' + spanPct + '% - ' + (spanPct / 100 * this.TIME_SLIDER_THUMB) + 'px)';
 
       const startBadge = document.querySelector('#eventFormTimeStartBadge');
       const endBadge = document.querySelector('#eventFormTimeEndBadge');
-      startBadge.style.left = startPct;
-      endBadge.style.left = endPct;
+      startBadge.style.left = startOffset;
+      endBadge.style.left = endOffset;
       startBadge.querySelector('.event-time-badge-text').textContent = this.minutesToHm(startMinutes);
       endBadge.querySelector('.event-time-badge-text').textContent = this.minutesToHm(endMinutes);
     },

@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.8.4 - 05.09.2026 09:34
+- v0.8.4: Časová osa události přepsaná bez nativních posuvníků - úchyty Od i Do jsou konečně vidět oba. Předchozí dva pokusy opravovaly následek, ne příčinu: dva překryté nativní posuvníky si každý kreslí vlastní vnitřní strukturu přes celou šířku, takže ten navrchu vždy překryl úchyt toho druhého - proto po opravě přes z-index zmizel místo úchytu Od zase úchyt Do. Oba úchyty jsou teď obyčejná tlačítka na vlastní pozici, která se překrýt nemůžou. Tažení myší i prstem, ovládání šipkami, PageUp/PageDown a Home/End appka obsluhuje sama.
+
 ## v0.8.3 - 05.09.2026 09:01
 - v0.8.3: Formulář události - další doladění. Panel Typu se místo zalamování dlouhých názvů dopočítá na potřebnou šířku, ať se nic nezalomuje ani neuřízne. Typ a Opakování už nejdou otevřít najednou - otevření jednoho panelu vždy zavře ten druhý. Oprava úchytu Od u časové osy: skutečná příčina byla jinde, než jsem předpokládal - novější Chrome/Edge kreslí kolem dráhy vlastní neprůhledný obal, který úchyt Od přes celou šířku překrýval. Teď je řešeno třemi nezávislými mechanismy najednou, ať je úchyt spolehlivě vidět.
 

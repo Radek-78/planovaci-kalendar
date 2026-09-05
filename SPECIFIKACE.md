@@ -934,27 +934,27 @@ zmizelo):
   (`.event-form-date-row`, `input[type=date]` bez rámečku uvnitř karty),
   ne dva samostatně popsané řádky. Celý den vedle nich vpravo
   (`.event-form-allday-toggle`).
-- **Časová osa** (`.event-time-slider`) nahradila dva `input[type=time]`
-  — dvojitý posuvník, technicky dva PŘEKRYTÉ nativní `<input type=range>`
-  (běžná technika pro rozsahové posuvníky): track je vizuálně vlastní
-  (appka ho kreslí sama, `.event-time-slider-track`/`-fill`), na
-  samotných `<input>` je `pointer-events: none` a jen jejich `::-webkit-
-  slider-thumb`/`::-moz-range-thumb` má `pointer-events: auto` — myš tak
-  vždycky trefí jen úchyt, ne celou dráhu. `MIN_GAP` (15 min) brání
+- **Časová osa** (`.event-time-slider`) nahradila dva `input[type=time]` —
+  dvojitý posuvník. Původně přes dva překryté nativní `<input type=range>`,
+  od pátého kola (viz níže) přes **dvě obyčejná tlačítka jako úchyty**
+  (`.event-time-thumb`) — dráhu i výplň appka kreslí sama
+  (`.event-time-slider-track`/`-fill`). `TIME_SLIDER_GAP` (15 min) brání
   přejetí jednoho úchytu přes druhý. Nad posuvníkem plavou dvě bublinky
-  s aktuálním časem (`.event-time-badge`, pozice přes `left: X%` +
-  `transform: translateX(-50%)`, přepočet při každé změně). Skutečná
-  hodnota žije ve skrytých `#eventFormStartTime`/`#eventFormEndTime`
-  (`minutesToHm`/`hmToMinutes` převádí mezi minutami od půlnoci a
-  `HH:mm`) — `submitEventForm` se tak nemusel měnit. Rozsah posuvníku je
-  0–23:45 po 15 minutách (NE až do 24:00 — `cleanDateTime_` na serveru by
-  "24:00" odmítl jako neplatný čas, půlnoc dalšího dne se v `HH:mm`
-  zapisuje jako "00:00" následujícího data, ne "24:00" téhož).
+  s aktuálním časem (`.event-time-badge`) — úchyt i jeho bublinka se
+  pozicují stejným přepočtem (`eventTimeOffset`), takže nad sebou vždy
+  přesně sedí. Skutečná hodnota žije ve skrytých `#eventFormStartTime`/
+  `#eventFormEndTime` (`minutesToHm`/`hmToMinutes` převádí mezi minutami
+  od půlnoci a `HH:mm`) — `submitEventForm` se tak nemusel měnit. Rozsah
+  posuvníku je 0–23:45 po 15 minutách (NE až do 24:00 — `cleanDateTime_`
+  na serveru by "24:00" odmítl jako neplatný čas, půlnoc dalšího dne se
+  v `HH:mm` zapisuje jako "00:00" následujícího data, ne "24:00" téhož);
+  stupnice pod osou ale jde celých 1440 minut do 24:00, proto zvlášť
+  `TIME_SLIDER_MAX` (1425) a `TIME_SLIDER_SCALE` (1440).
   **Při "Celý den" appka posuvník NESCHOVÁ**, jen ho zešedne a
   znepřístupní (`.event-time-section.is-disabled`, `disabled` na obou
-  `<input type=range>`) — uživatel tak pořád vidí, na jaký čas byl
-  nastavený, kdyby přepínač zase vypnul; skutečné odeslané hodnoty
-  appka i tak přepíše na 00:00/23:59 (beze změny, `submitEventForm`).
+  úchytech) — uživatel tak pořád vidí, na jaký čas byl nastavený, kdyby
+  přepínač zase vypnul; skutečné odeslané hodnoty appka i tak přepíše na
+  00:00/23:59 (beze změny, `submitEventForm`).
 - **Poznámka** (dřív "Popis") — jen přejmenovaný popisek a placeholder,
   žádná změna chování.
 
@@ -1021,7 +1021,46 @@ zmizelo):
   `appearance: none`), a `z-index` (`#eventFormTimeSliderStart{z-index:2}`,
   `#eventFormTimeSliderEnd{z-index:1}`) jako záložní pojistka, ať úchyt
   Od vyhraje překryv i kdyby předchozí dva mechanismy z nějakého důvodu
-  nestačily.
+  nestačily. **Ani to nestačilo** — `z-index` problém jen otočil (nově
+  nebyl vidět úchyt Do), čímž se potvrdilo, že jde skutečně o vzájemné
+  překrývání dvou nativních posuvníků, ne o barvu ani pozici úchytu.
+  Viz páté kolo níže.
+
+**Páté kolo — časová osa bez nativních posuvníků**:
+
+Dva překryté `<input type=range>` se ukázaly jako slepá ulička: každý si
+kreslí vlastní stínový DOM přes **celou šířku** prvku, takže ten
+vykreslený navrchu vždy překryl úchyt toho druhého. Zprůhledňování
+jednotlivých pseudoelementů (`::-webkit-slider-container`,
+`::-webkit-slider-runnable-track`) ani přehazování `z-index` problém
+nevyřešilo, jen přesunulo z jednoho úchytu na druhý — jde o vnitřní
+strukturu, kterou z CSS nemáme spolehlivě pod kontrolou a která se navíc
+mezi verzemi prohlížečů mění.
+
+Řešení: **oba úchyty jsou obyčejná `<button>` na vlastní absolutní
+pozici** (`.event-time-thumb`, `type="button"` — bez toho by kliknutí
+odeslalo formulář), žádný nativní posuvník v tom už není. Dvě samostatná
+tlačítka, každé na své pozici, se překrýt nemůžou. Veškerou logiku, kterou
+dřív obstarával prohlížeč, si tak appka řeší sama (vše v `bindEventTimeSlider`
+a okolí, `ui/view_app.html`):
+
+- **Tažení** přes pointer události s `setPointerCapture` — jeden kód pro
+  myš i dotyk a tažení pokračuje, i když kurzor sjede mimo úchyt.
+  `pointermove` bez zachyceného pointeru se ignoruje (to je jen přejetí
+  myší, ne tažení). Na úchytu je `touch-action: none`, jinak by prohlížeč
+  bral tah prstem jako rolování stránky.
+- **Klávesnice** (nativní posuvník ji uměl sám, tady se musí obsloužit):
+  šipky ±15 min, PageUp/PageDown ±60 min, Home/End na kraje osy;
+  `preventDefault`, ať šipky nerolují obsahem modalu. Po kliknutí se úchyt
+  explicitně zaostří (`focus()`), protože `preventDefault` v `pointerdown`
+  (nutný proti označování textu při tažení) potlačí i zaostření.
+- **Přístupnost**: `role="slider"` + `aria-valuemin/max/now/valuetext`,
+  hodnota se aktualizuje při každém překreslení.
+- **Přepočet pozice** (`eventTimeOffset`) a **přepočet kliknutí na
+  minuty** (`eventTimeFromClientX`) jsou navzájem opačné a musí si
+  odpovídat: použitelná část dráhy je o šířku úchytu užší a posunutá
+  o jeho polovinu, jinak by úchyt v krajních hodnotách vyčníval půlkou
+  ven z dráhy.
 
 **Sjednocení napříč appkou** — na žádost „aby všechna podobná modal okna
 v appce měla stejný design" dostaly `.form-hero-field`/`.form-hero-input`

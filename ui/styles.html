@@ -3970,96 +3970,41 @@
     top: 8px;
   }
 
-  /* Dva překryté nativní <input type=range> — track je průhledný (appka
-     kreslí vlastní, viz výše), klikací/tažitelný je jen samotný úchyt
-     (thumb), ať jde oba rozeznat a chytit zvlášť i když leží blízko sebe.
-     Cross-browser (::-webkit-/::-moz-) — jde o dvě různé pseudotřídy, ne
-     jednu se seznamem, proto samostatná pravidla pro každou. */
-  .event-time-slider-input {
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-    height: 20px;
-    left: 0;
-    margin: 0;
-    pointer-events: none;
+  /* Úchyt časové osy — obyčejné tlačítko na vlastní pozici, ne nativní
+     <input type=range>. Dva překryté nativní posuvníky si každý kreslil
+     vlastní stínový DOM přes CELOU šířku, takže ten vykreslený později
+     vždycky překryl úchyt toho druhého (nejdřív nebyl vidět Od, po pokusu
+     o opravu přes z-index zase Do). Dvě samostatná tlačítka, každé na
+     své pozici, se překrýt nemůžou — pozici i tažení řídí appka sama
+     (viz bindEventTimeSlider). Svisle vystředěné na dráhu: dráha je
+     4px na top: 8px, tedy střed 10px, úchyt 18px → top: 1px.
+     touch-action: none je nutné, aby na dotykovém displeji tažení
+     úchytu nezačal prohlížeč brát jako rolování stránky. */
+  .event-time-thumb {
+    background: var(--white);
+    border: 3px solid var(--lidl-blue);
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0, 20, 80, 0.3);
+    cursor: grab;
+    height: 18px;
+    padding: 0;
     position: absolute;
-    top: 0;
-    width: 100%;
-  }
-
-  /* Novější Chrome/Edge (přepracované nativní ovládací prvky) vkládají
-     kolem dráhy ještě obalový ::-webkit-slider-container s VLASTNÍM
-     neprůhledným pozadím na celou šířku — bez jeho zprůhlednění by
-     PRVEK NAKRESLENÝ POZDĚJI V DOM (Do) svým obalem physically
-     PŘEKRYL úchyt prvku PŘED ním (Od), i když jsou hodnoty na jiné
-     pozici (obal je vždy na 100% šířky, ne jen pod vlastním úchytem).
-     Přesně tohle bylo za tím, že šlo vidět jen úchyt Do a Od "zmizel" —
-     samotné vystředění úchytu (níže) na tom nic nezměnilo, protože
-     problém byl v neprůhledném obalu nad ním, ne v pozici úchytu.
-     Pravidlo je no-op ve starších prohlížečích, které tenhle
-     pseudoelement vůbec neznají. */
-  .event-time-slider-input::-webkit-slider-container {
-    background: transparent;
-  }
-
-  .event-time-slider-input::-webkit-slider-runnable-track {
-    background: transparent;
-    height: 4px;
-  }
-
-  .event-time-slider-input::-moz-range-track {
-    background: transparent;
-    height: 4px;
-  }
-
-  /* Úchyt Od musí zůstat nahoře i kdyby výše uvedené zprůhlednění obalu
-     z nějakého důvodu nestačilo — druhá, nezávislá pojistka (viz komentář
-     u ::-webkit-slider-container výše, princip "víc nezávislých mechanismů
-     najednou" jako jinde v appce u podobně houževnatých vizuálních chyb). */
-  #eventFormTimeSliderStart {
-    z-index: 2;
-  }
-
-  #eventFormTimeSliderEnd {
-    z-index: 1;
-  }
-
-  /* Chrome/Edge (na rozdíl od Firefoxu) úchyt sám nevystředí na dráhu —
-     bez margin-top by se úchyt vykreslil zarovnaný nahoru k dráze
-     (height výše), efektivně mimo viditelnou 20px výšku posuvníku, kde
-     splýval s okolím (nahlášeno jako "úchyt Od není vidět"). Vzorec:
-     (výška dráhy − výška úchytu) / 2 = (4 − 18) / 2 = -7px. */
-  .event-time-slider-input::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    background: var(--white);
-    border: 3px solid var(--lidl-blue);
-    border-radius: 50%;
-    box-shadow: 0 1px 4px rgba(0, 20, 80, 0.3);
-    cursor: grab;
-    height: 18px;
-    margin-top: -7px;
-    pointer-events: auto;
+    top: 1px;
+    touch-action: none;
+    transform: translateX(-50%);
     width: 18px;
   }
 
-  .event-time-slider-input::-moz-range-thumb {
-    background: var(--white);
-    border: 3px solid var(--lidl-blue);
-    border-radius: 50%;
-    box-shadow: 0 1px 4px rgba(0, 20, 80, 0.3);
-    cursor: grab;
-    height: 18px;
-    width: 18px;
+  .event-time-thumb:active {
+    cursor: grabbing;
   }
 
-  .event-time-slider-input:disabled::-webkit-slider-thumb {
-    border-color: var(--muted);
-    cursor: not-allowed;
+  .event-time-thumb:focus-visible {
+    box-shadow: 0 0 0 3px rgba(0, 83, 179, 0.25);
+    outline: none;
   }
 
-  .event-time-slider-input:disabled::-moz-range-thumb {
+  .event-time-thumb:disabled {
     border-color: var(--muted);
     cursor: not-allowed;
   }
