@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.8.7 - 05.09.2026 19:09
+- v0.8.7: Moduly Typ a Opakování na celou šířku a čas vedle data. Oba moduly mají teď stejnou šířku a dohromady vyplní celou šířku formuláře, šipka pro rozbalení sedí u pravého okraje modulu jako u běžného výběru. Když se modul Opakování schová (u běžné úpravy události), zabere Typ celou šířku sám a nezůstane po něm poloprázdné místo. V kartě Termín se nově u každého data vypisuje i jeho čas, takže se obě strany čtou jako úplný okamžik a text se přepisuje živě při tažení posuvníku. Při zapnutí Celý den se čas u data schová, protože se stejně neuplatní.
+
 ## v0.8.6 - 05.09.2026 18:59
 - v0.8.6: Pole Název a Datum konečně bez boxu a Opakování ukazuje zadanou hodnotu. Název je nově jen podtržená čára bez rámečku a bílého pozadí, při psaní se podtržení zvýrazní modrou. Při té příležitosti se ukázalo, proč tenhle vzhled nefungoval už od v0.8.1: globální pravidlo pro formulářová pole má vyšší specificitu než samotná třída, takže pole dál přebíralo rámeček a bílé pozadí. Stejná chyba se týkala i polí s datem v kartě Termín, ta jsou teď taky bez rámečku, takže uvnitř karty nevzniká druhé orámování. Modul Opakování nově vypisuje i zadaný konec série, tedy třeba Každý týden 10x nebo Každý týden do 30.11.2026.
 

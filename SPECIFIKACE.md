@@ -972,14 +972,11 @@ zmizelo):
   `updateRecurrenceUi`) přepíná na téhle obalové kartě, ne na
   `.recurrence-picker` uvnitř — jinak by nadpis zůstal viditelný osiřelý
   bez tlačítka pod sebou.
-- **Šířka obou tlačítek je vyztužená na nejdelší možný popisek**, ať
-  tlačítko neposkakuje do stran při přepnutí vybrané hodnoty. Nová
-  klientská metoda `App.sizeTriggerLabelToLongest(labelEl, texts)` změří
-  v DOM neviditelný klon popisku postupně se všemi možnými texty
-  a nastaví `min-width` podle nejširšího z nich. U Typu se volá při
-  každém `fillEventTypeSelect()` (seznam typů je dynamický — spravuje se
-  v Nastavení), u Opakování jednou při `bindRecurrencePicker()` (seznam
-  frekvencí `Neopakovat/Každý den/.../Opakující se` je pevný).
+- **Šířka obou tlačítek byla vyztužená na nejdelší možný popisek**, ať
+  tlačítko neposkakuje do stran při přepnutí vybrané hodnoty (metoda
+  `sizeTriggerLabelToLongest`). **V osmém kole zrušeno** — moduly mají
+  napevno půlku šířky formuláře, takže tlačítko poskočit nemůže a
+  rezervace by u dlouhého názvu jen vytlačila obsah ven z karty.
 - **Karta Termín** dostala nadpis `<p class="kicker">Termín</p>` (do
   prvního kola přepracování ho neměla vůbec).
 - **Oprava viditelnosti úchytu časové osy (1. pokus)** — v Chrome/Edge
@@ -996,9 +993,8 @@ zmizelo):
 - **Panel Typu se místo zalamování popisků dopočítává na potřebnou
   šířku** — `.type-picker-option-label` je zpátky na jednom řádku
   (`white-space: nowrap`, žádný ellipsis), ale nová klientská metoda
-  `App.sizeTypeMenuWidth(labels)` (volaná z `fillEventTypeSelect()`,
-  sdílí měřicí základ `measureMaxTextWidth` s `sizeTriggerLabelToLongest`)
-  spočítá potřebnou šířku dvou sloupců podle nejdelšího z aktuálně
+  `App.sizeTypeMenuWidth(labels)` (volaná z `fillEventTypeSelect()`, měří
+  přes `measureMaxTextWidth`) spočítá potřebnou šířku dvou sloupců podle nejdelšího z aktuálně
   nastavených typů a přepíše ji jako inline `width` na `#eventFormTypeMenu`
   — panel je tak vždy přesně tak široký, aby se nic nezalomilo ani
   neuřízlo (zpětná vazba: "okno zobraz široké, aby se vše zobrazilo
@@ -1116,6 +1112,34 @@ netýká — ty musí zůstat přesně na své hodnotě.
   přímý důsledek toho, co uživatel sám zadal, a tlačítko se jen roztáhne
   doprava do prázdna — rezervovat místo na nejdelší možnou kombinaci by
   znamenalo mít modul natrvalo přes dvakrát širší i u „Neopakovat".
+
+**Osmé kolo — moduly na celou šířku a čas u data**:
+
+- **Typ a Opakování mají stejnou šířku a dohromady vyplní celý formulář.**
+  `.event-form-pills` je nově mřížka s `grid-auto-flow: column` +
+  `grid-auto-columns: minmax(0, 1fr)`. Automatický tok sloupců (ne dva
+  napevno určené) proto, že se modul Opakování u běžné úpravy schovává
+  přes `display:none` — skrytý prvek si v mřížce nedrží sloupec, takže
+  zbylý modul sám zabere celou šířku a nezůstane po něm poloprázdné
+  místo. `minmax(0, …)` místo holého `1fr` brání tomu, aby sloupec vyrostl
+  nad svůj podíl kvůli dlouhému obsahu — oba musí zůstat stejně široké.
+  Tlačítka uvnitř jsou `width: 100 %`, takže rozbalovací šipka sedí
+  u pravého okraje modulu jako u `<select>`, ne nalepená za textem.
+  Na úzkém displeji (`@media max-width: 620px`) se přepíná
+  `grid-auto-flow: row` — u mřížky nemá `flex-direction` význam.
+- **Zrušena rezervace šířky popisku** (`sizeTriggerLabelToLongest`, třetí
+  kolo) — s pevnou půlkou šířky tlačítko poskočit nemůže, takže rezervace
+  ztratila smysl a u dlouhého názvu typu by nově obsah jen vytlačila ven
+  z karty. `measureMaxTextWidth` zůstává, používá ho `sizeTypeMenuWidth`.
+- **U každého data stojí i jeho čas** (`.event-form-date-time`,
+  `#eventFormStartDateTime`/`#eventFormEndDateTime`) — obě strany řádku se
+  tak čtou jako úplný okamžik („8.9.2026 09:00 → 8.9.2026 11:45"). Text
+  přepisuje `renderEventTimeSlider`, tedy živě při tažení posuvníku.
+  Bublinky u dráhy zůstávají: ukazují hodnotu přímo u úchytu při tažení,
+  kdežto tohle je čitelný souhrn celého termínu. Při „Celý den" se čas
+  u data **schová úplně** (na rozdíl od posuvníku, který jen zešedne) —
+  zešedlý čas u data by vypadal jako součást termínu, přitom se neuplatní
+  (ukládá se 00:00/23:59).
 
 **Sjednocení napříč appkou** — na žádost „aby všechna podobná modal okna
 v appce měla stejný design" dostaly `.form-hero-field`/`.form-hero-input`

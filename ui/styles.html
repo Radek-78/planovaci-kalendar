@@ -3793,10 +3793,19 @@
      nadpisem (.kicker) nad tlačítkem — obě jsou rozbalovací seznamy
      (.type-picker.is-pill / .recurrence-picker), žádná není nativní
      <select>. */
+  /* Oba moduly stejně široké a dohromady přes celou šířku formuláře.
+     grid-auto-flow: column + grid-auto-columns: minmax(0, 1fr) místo dvou
+     napevno určených sloupců: skrytý modul (Opakování se u běžné úpravy
+     schovává přes display:none, viz updateRecurrenceUi) si v mřížce
+     nedrží sloupec, takže zbylý modul sám zabere celou šířku a nezůstane
+     po něm poloprázdné místo. minmax(0, …) místo holého 1fr proto, aby
+     sloupec nemohl vyrůst nad svůj podíl kvůli dlouhému obsahu — oba
+     musí zůstat přesně stejně široké. */
   .event-form-pills {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
     gap: 16px;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
   }
 
   /* Obal jednoho modulu (nadpis + tlačítko) — vlastní malá karta ve stejném
@@ -3907,6 +3916,19 @@
     border-color: transparent;
     box-shadow: none;
     outline: none;
+  }
+
+  /* Čas u data — stejná velikost jako datum, ale modrý a o kus méně
+     výrazný než samotné datum, ať je jasné, co je co. Levý záporný odstup
+     ho přitáhne k datu (nativní input[type=date] má kolem obsahu vlastní
+     vnitřní mezeru), aby dvojice datum+čas držela pohromadě a nerozpadla
+     se na dva samostatné údaje. */
+  .event-form-date-time {
+    color: var(--lidl-blue);
+    flex-shrink: 0;
+    font-size: 15px;
+    font-weight: 700;
+    margin-left: -4px;
   }
 
   .event-form-date-arrow {
@@ -4196,7 +4218,10 @@
     border-radius: var(--radius);
     font-weight: 600;
     padding: 2px;
-    width: auto;
+    /* Přes celou šířku karty (ne jen na šířku textu) — rozbalovací šipka
+       tak sedí u pravého okraje modulu jako u <select>, ne nalepená za
+       textem s prázdnem za sebou. */
+    width: 100%;
   }
 
   .type-picker-trigger.is-pill:hover {
@@ -4228,10 +4253,9 @@
     font-size: 13px;
   }
 
-  /* Šířka je zdola vyztužená na míru nejdelšímu z aktuálně nabízených
-     popisků (viz sizeTriggerLabelToLongest v JS) — text se proto NIKDY
-     neuřezává (žádný ellipsis/overflow:hidden, jen pojistka
-     white-space:nowrap, kdyby se měření z nějakého důvodu netrefilo). */
+  /* Text se NIKDY neuřezává — žádný ellipsis ani overflow:hidden. flex:1
+     ho roztáhne přes zbytek tlačítka, takže rozbalovací šipka sedí až
+     u pravého okraje modulu. */
   .type-picker-trigger-label {
     flex: 1;
     font-weight: 400;
@@ -4363,13 +4387,16 @@
     border-radius: var(--radius);
     color: var(--text);
     cursor: pointer;
-    display: inline-flex;
+    display: flex;
     font-size: 13px;
     font-weight: 600;
     gap: 8px;
     min-height: 38px;
     padding: 2px;
     transition: background-color 0.15s;
+    /* Stejně jako u Typu vedle — přes celou šířku karty, ať šipka sedí
+       u pravého okraje modulu. */
+    width: 100%;
     /* Popisek může být delší (frekvence + zadaný konec série, viz
        updateRecurrenceTriggerLabel) — musí se roztáhnout do šířky, ne
        zalomit na dva řádky uvnitř tlačítka. */
@@ -4378,6 +4405,13 @@
 
   .recurrence-picker-trigger:hover {
     background: rgba(0, 83, 179, 0.06);
+  }
+
+  /* Popisek vyplní zbytek tlačítka, takže šipku odsune až k pravému okraji
+     (obdoba .type-picker-trigger-label u Typu vedle). */
+  .recurrence-picker-trigger-label {
+    flex: 1;
+    text-align: left;
   }
 
   .recurrence-picker-trigger:focus-visible {
@@ -4791,8 +4825,13 @@
       grid-template-columns: 1fr;
     }
 
-    /* Pilulky Typ/Opakování a řádek Od→Do na úzkém displeji taky pod sebe. */
-    .event-form-pills,
+    /* Moduly Typ/Opakování a řádek Od→Do na úzkém displeji taky pod sebe.
+       Moduly jsou mřížka (viz .event-form-pills), takže se přepínají
+       směrem toku, ne flex-direction. */
+    .event-form-pills {
+      grid-auto-flow: row;
+    }
+
     .event-form-date-row {
       flex-direction: column;
       align-items: stretch;

@@ -521,7 +521,7 @@
           <div class="recurrence-picker">
             <button type="button" class="recurrence-picker-trigger" id="eventFormRecurrenceTrigger" aria-haspopup="true">
               <i class="ph ph-repeat" aria-hidden="true"></i>
-              <span id="eventFormRecurrenceTriggerLabel">Neopakovat</span>
+              <span class="recurrence-picker-trigger-label" id="eventFormRecurrenceTriggerLabel">Neopakovat</span>
               <i class="ph ph-caret-down type-picker-caret" aria-hidden="true"></i>
             </button>
             <div class="type-picker-menu is-pill-menu is-hidden" id="eventFormRecurrenceMenu">
@@ -561,10 +561,17 @@
 
       <div class="field-group field-group-accent event-form-datetime-card">
         <p class="kicker">Termín</p>
+        <!-- Čas vedle každého data — obě strany se tak čtou jako úplný
+             okamžik ("8.9.2026 09:00 → 8.9.2026 11:45"). Text drží
+             renderEventTimeSlider, tedy se přepisuje živě při tažení
+             posuvníku; při "Celý den" se schová (viz
+             updateEventFormTimeVisibility), protože se stejně neuplatní. -->
         <div class="event-form-date-row">
           <input type="date" id="eventFormStartDate" class="event-form-bare-date" required>
+          <span class="event-form-date-time" id="eventFormStartDateTime">09:00</span>
           <i class="ph ph-arrow-right event-form-date-arrow" aria-hidden="true"></i>
           <input type="date" id="eventFormEndDate" class="event-form-bare-date" required>
+          <span class="event-form-date-time" id="eventFormEndDateTime">10:00</span>
           <label class="event-form-toggle-field event-form-allday-toggle">
             <span>Celý den</span>
             <span class="toggle-switch">
@@ -1286,24 +1293,22 @@
         '</button>';
       }).join('');
 
-      // Tlačítko Typu má rezervované místo pro nejdelší z AKTUÁLNĚ
-      // nastavených typů — jinak by při přepnutí z krátkého na dlouhý název
-      // (nebo naopak) tlačítko viditelně poskočilo do stran (zpětná vazba:
-      // "rezervováno místo pro nejdelší název typu, který se dá vybrat").
-      const labels = Object.keys(this.eventTypes).map((key) => this.eventTypes[key].label);
-      this.sizeTriggerLabelToLongest(document.querySelector('#eventFormTypeTriggerLabel'), labels);
-
-      // Šířka rozbalovacího panelu dopočítaná na míru stejným seznamem
-      // popisků — ať se ani ten nejdelší z nich nemusí v panelu zalamovat
-      // (zpětná vazba: "okno zobraz široké, aby se vše zobrazilo
-      // neuříznuté a nezalomené").
-      this.sizeTypeMenuWidth(labels);
+      // Šířka rozbalovacího panelu dopočítaná na míru nejdelšímu z popisků —
+      // ať se ani ten nejdelší z nich nemusí v panelu zalamovat (zpětná
+      // vazba: "okno zobraz široké, aby se vše zobrazilo neuříznuté
+      // a nezalomené").
+      //
+      // Šířka SAMOTNÉHO tlačítka se naopak dopočítávat nemusí: moduly Typ
+      // a Opakování mají pevnou půlku šířky formuláře (.event-form-pills je
+      // mřížka), takže tlačítko při přepnutí typu nikam neposkočí — dřívější
+      // rezervace místa na nejdelší popisek by dnes byla jen na škodu,
+      // protože by u dlouhého názvu vytlačila obsah ven z karty.
+      this.sizeTypeMenuWidth(Object.keys(this.eventTypes).map((key) => this.eventTypes[key].label));
     },
 
     /**
      * Změří v DOM neviditelný klon prvku se třídou `className` postupně se
-     * všemi `texts` a vrátí šířku (v px) toho nejširšího z nich — sdílený
-     * základ pro sizeTriggerLabelToLongest i sizeTypeMenuWidth.
+     * všemi `texts` a vrátí šířku (v px) toho nejširšího z nich.
      */
     measureMaxTextWidth(className, texts) {
       const probe = document.createElement('span');
@@ -1317,16 +1322,6 @@
       });
       document.body.removeChild(probe);
       return maxWidth;
-    },
-
-    /**
-     * Nastaví na `labelEl` min-width podle nejširšího z `texts` — tlačítko
-     * modulu (Typ/Opakování) tak neposkočí do stran při přepnutí vybrané
-     * možnosti, protože má místo na nejdelší z nich rezervované předem.
-     */
-    sizeTriggerLabelToLongest(labelEl, texts) {
-      const maxWidth = this.measureMaxTextWidth(labelEl.className, texts);
-      labelEl.style.minWidth = Math.ceil(maxWidth) + 'px';
     },
 
     /**
@@ -1952,6 +1947,12 @@
       document.querySelector('#eventFormTimeSliderStart').disabled = allDay;
       document.querySelector('#eventFormTimeSliderEnd').disabled = allDay;
       document.querySelector('#eventFormTimeSection').classList.toggle('is-disabled', allDay);
+
+      // Čas u data se při "Celý den" schová úplně (na rozdíl od posuvníku,
+      // který jen zešedne) — u data by zešedlý čas vypadal jako součást
+      // termínu, přitom se neuplatní: ukládá se 00:00/23:59.
+      document.querySelector('#eventFormStartDateTime').classList.toggle('is-hidden', allDay);
+      document.querySelector('#eventFormEndDateTime').classList.toggle('is-hidden', allDay);
     },
 
     /**
@@ -1963,18 +1964,6 @@
     bindRecurrencePicker() {
       const btn = document.querySelector('#eventFormRecurrenceTrigger');
       const menu = document.querySelector('#eventFormRecurrenceMenu');
-
-      // Na rozdíl od Typu je seznam popisků Opakování pevný (viz
-      // RECURRENCE_LABELS + updateRecurrenceUi) — stačí ho tu vypsat jednou
-      // při napojení panelu, ne přepočítávat při každé změně. Rezervuje se
-      // místo jen na SAMOTNOU frekvenci, ne i na dopsaný konec série
-      // ("· 10×", "· do 30.11.2026"): ten přibude až jako přímý důsledek
-      // toho, co uživatel sám zadal, a tlačítko se jen roztáhne doprava do
-      // prázdna — kdežto rezervovat místo na nejdelší možnou kombinaci by
-      // znamenalo mít modul natrvalo přes dvakrát širší i u "Neopakovat".
-      const freqLabels = Object.keys(this.RECURRENCE_LABELS).map((key) => this.RECURRENCE_LABELS[key]);
-      this.sizeTriggerLabelToLongest(
-        document.querySelector('#eventFormRecurrenceTriggerLabel'), freqLabels.concat(['Opakující se']));
 
       // Popisek musí ukázat i zadaný konec série hned při psaní, ne až po
       // zavření panelu — proto 'input', ne 'change'.
@@ -2248,6 +2237,11 @@
       endBadge.style.left = this.eventBadgeOffset(endOffset);
       startBadge.querySelector('.event-time-badge-text').textContent = this.minutesToHm(startMinutes);
       endBadge.querySelector('.event-time-badge-text').textContent = this.minutesToHm(endMinutes);
+
+      // Týž čas i vedle data nahoře — bublinky ukazují hodnotu u úchytu
+      // při tažení, tohle je čitelný souhrn celého termínu.
+      Ui.setText('#eventFormStartDateTime', this.minutesToHm(startMinutes));
+      Ui.setText('#eventFormEndDateTime', this.minutesToHm(endMinutes));
     },
 
     /** Minuty od půlnoci → "HH:mm". */
