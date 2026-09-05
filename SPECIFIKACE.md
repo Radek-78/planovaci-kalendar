@@ -905,8 +905,58 @@ modal (`.modal-xwide`, 960 px):
   `#eventFormType` — na to, co čte `submitEventForm`, se tím nic nemění.
   Otevírání/zavírání stejný vzor jako `.cal-month-picker` (`bindTypePicker`,
   klik mimo panel zavře).
-- Na displeji do 620 px (`@media (max-width: 620px)`) se `.event-form-columns`/
-  `.event-form-row`/`.type-picker-menu` rozpadnou na jeden sloupec.
+- Na displeji do 620 px (`@media (max-width: 620px)`) se `.event-form-row`/
+  `.type-picker-menu` rozpadnou na jeden sloupec.
+
+**Druhé kolo přepracování (podle zadaného návrhu)** — modal zúžen zpět na
+`.modal-wide` (720 px, dvousloupcové `.event-form-columns` z prvního kola
+zmizelo):
+
+- **Název** je teď zcela bez rámečku/popisku — vlastní `.event-form-bare-
+  title-field`/`.event-form-bare-title-input` (velký, tučný, placeholder
+  "Bez názvu"), NE sdílený `.form-hero-*` (ten zůstává pro formulář
+  svátku/oddělení/pozice/typu beze změny).
+- **Typ a Opakování** jsou dvě úzké "pilulky" vedle sebe (`.event-form-
+  pills`), ne dva široké boxy. Opakování je nová `.recurrence-picker`
+  komponenta — stejný vzor jako `.type-picker` (pilulka + panel,
+  `bindRecurrencePicker`), jen bez ikony na dlaždicích (frekvence je
+  čistě text) a se dvěma přepínatelnými obsahy panelu podle režimu (viz
+  `updateRecurrenceUi`, kapitola 9.9): u nové události nabídka frekvence
+  + "Počet opakování"/"Nebo do data" (`#eventFormRecurrenceEndFields`,
+  objeví se pod nabídkou, jakmile je vybraná jiná frekvence než
+  "Neopakovat" — panel se PO VÝBĚRU frekvence sám nezavírá, na rozdíl od
+  Typu, ať má uživatel prostor to hned vyplnit), u úpravy výskytu ze
+  série volba rozsahu ("Jen tuto"/"Tuto a všechny následující"). Pilulka
+  se u obyčejné (nikdy neopakující se) úpravy schová úplně. Skutečná
+  hodnota frekvence pořád žije ve skrytém `#eventFormRecurrenceFreq` —
+  `submitEventForm` se tak nemusel měnit.
+- **Datum Od→Do** je jeden kompaktní řádek se šipkou mezi daty
+  (`.event-form-date-row`, `input[type=date]` bez rámečku uvnitř karty),
+  ne dva samostatně popsané řádky. Celý den vedle nich vpravo
+  (`.event-form-allday-toggle`).
+- **Časová osa** (`.event-time-slider`) nahradila dva `input[type=time]`
+  — dvojitý posuvník, technicky dva PŘEKRYTÉ nativní `<input type=range>`
+  (běžná technika pro rozsahové posuvníky): track je vizuálně vlastní
+  (appka ho kreslí sama, `.event-time-slider-track`/`-fill`), na
+  samotných `<input>` je `pointer-events: none` a jen jejich `::-webkit-
+  slider-thumb`/`::-moz-range-thumb` má `pointer-events: auto` — myš tak
+  vždycky trefí jen úchyt, ne celou dráhu. `MIN_GAP` (15 min) brání
+  přejetí jednoho úchytu přes druhý. Nad posuvníkem plavou dvě bublinky
+  s aktuálním časem (`.event-time-badge`, pozice přes `left: X%` +
+  `transform: translateX(-50%)`, přepočet při každé změně). Skutečná
+  hodnota žije ve skrytých `#eventFormStartTime`/`#eventFormEndTime`
+  (`minutesToHm`/`hmToMinutes` převádí mezi minutami od půlnoci a
+  `HH:mm`) — `submitEventForm` se tak nemusel měnit. Rozsah posuvníku je
+  0–23:45 po 15 minutách (NE až do 24:00 — `cleanDateTime_` na serveru by
+  "24:00" odmítl jako neplatný čas, půlnoc dalšího dne se v `HH:mm`
+  zapisuje jako "00:00" následujícího data, ne "24:00" téhož).
+  **Při "Celý den" appka posuvník NESCHOVÁ**, jen ho zešedne a
+  znepřístupní (`.event-time-section.is-disabled`, `disabled` na obou
+  `<input type=range>`) — uživatel tak pořád vidí, na jaký čas byl
+  nastavený, kdyby přepínač zase vypnul; skutečné odeslané hodnoty
+  appka i tak přepíše na 00:00/23:59 (beze změny, `submitEventForm`).
+- **Poznámka** (dřív "Popis") — jen přejmenovaný popisek a placeholder,
+  žádná změna chování.
 
 **Sjednocení napříč appkou** — na žádost „aby všechna podobná modal okna
 v appce měla stejný design" dostaly `.form-hero-field`/`.form-hero-input`

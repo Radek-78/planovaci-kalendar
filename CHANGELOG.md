@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.8.1 - 05.09.2026 08:25
+- v0.8.1: Formulář události — druhé kolo přepracování podle zadaného návrhu. Název je teď zcela bez rámečku (velký placeholder Bez názvu), Typ a Opakování jsou dvě úzké pilulky vedle sebe — obě otevírají vlastní rozbalovací panel s možnostmi. Datum Od→Do je jeden kompaktní řádek se šipkou mezi daty, Celý den vedle nich. Dva časové inputy nahrazeny dvojitým posuvníkem s bublinkami aktuálního času nad úchyty. Při zapnutí Celý den se časová osa neschová, jen zešedne a znepřístupní se, ať uživatel pořád vidí, na jaký čas byla nastavená.
+
 ## v0.8.0 - 04.09.2026 19:24
 - v0.8.0: Opakující se událost, duplikování, šablony událostí — tři nové možnosti při zakládání a správě událostí. Opakování: formulář nové události nabízí Neopakovat/Denně/Týdně/Co 2 týdny/Měsíčně s koncem podle počtu opakování nebo data, appka rovnou založí celou sérii
 - úprava/smazání výskytu ze série nabídne volbu Jen tuto / Tuto a všechny následující. Duplikovat: v detailu události nová ikona vedle Upravit/Smazat otevře formulář nové události předvyplněný obsahem té existující, bez trvalé vazby na ni. Šablony událostí: nová záložka v Nastavení pro uložení opakovaně používaného obsahu (název/typ/čas/délka/popis), který jde při zakládání nové události načíst jedním výběrem.

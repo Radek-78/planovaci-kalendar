@@ -454,19 +454,23 @@
      vlastník nebo správce cizích událostí — viz podmínky u tlačítek/ikon,
      která ho otevírají (canCreateOn/canManageEvent).
 
-     Široký dvousloupcový modal (.modal-xwide) — Název stojí sám nahoře
-     jako "hero" pole (větší písmo, bez
-     boxu), pod ním dva sloupce (Typ+Celý den / Termín) a Popis přes celou
-     šířku dole. Termín: datumy Od+Do vedle sebe v jednom řádku, časy Od+Do
-     vedle sebe v dalším (ne datum+čas k sobě jako dřív — appka tak zvlášť
-     zobrazí "kdy" a zvlášť "od kolika do kolika"), celý časový řádek
-     (#eventFormTimeRow) se schová najednou při zaškrtnutí "Celý den" (viz
-     updateEventFormTimeVisibility). Typ události je vlastní rozbalovací
-     seznam (.type-picker) ve dvou sloupcích ikon, ne nativní <select> —
-     ten neumí vedle popisku zobrazit ikonu typu (viz fillEventTypeSelect/
-     bindTypePicker); skutečná vybraná hodnota pořád žije ve skrytém
-     #eventFormType, submitEventForm se tak nemusí měnit. -->
-<dialog class="modal modal-xwide modal-grow" id="eventFormModal">
+     Druhé kolo přepracování vzhledu (podle zadaného návrhu) — Název je teď
+     zcela bez rámečku/popisku, jen velký placeholder "Bez názvu" (stejný
+     princip jako rychlé zakládání v Google Kalendáři). Typ a Opakování
+     jsou dvě úzké "pilulky" vedle sebe (ne dva široké boxy) — obě jsou
+     rozbalovací seznamy (.type-picker/.recurrence-picker), klik na
+     kteroukoli otevře vlastní panel s možnostmi, žádná z nich není
+     nativní <select>. Datum Od/Do je jeden kompaktní řádek se šipkou
+     mezi daty (ne dva samostatné popsané řádky), Celý den vedle nich.
+     Časová osa (#eventFormTimeSection, dvojitý posuvník) při "Celý den"
+     NEZMIZÍ, jen zešedne a znepřístupní se (viz updateEventFormTimeVisibility)
+     — uživatel tak pořád vidí, na jaký čas byla nastavená, kdyby přepínač
+     zase vypnul. Skutečné hodnoty času žijí ve skrytých #eventFormStartTime/
+     #eventFormEndTime (posuvník je jen jejich vizuální ovládání), skutečná
+     hodnota typu ve skrytém #eventFormType, opakování ve skrytém
+     #eventFormRecurrenceFreq — submitEventForm se tak vůbec nemusel měnit,
+     čte stejná pole jako předtím. -->
+<dialog class="modal modal-wide modal-grow" id="eventFormModal">
   <div class="modal-header">
     <span class="modal-icon" id="eventFormModalIcon"><i class="ph ph-calendar-plus" aria-hidden="true"></i></span>
     <div class="modal-header-text">
@@ -486,27 +490,73 @@
         </select>
       </label>
 
-      <label class="form-hero-field">
-        <span>Název *</span>
-        <input type="text" id="eventFormTitle" maxlength="120" required class="form-hero-input">
+      <label class="event-form-bare-title-field" aria-label="Název">
+        <input type="text" id="eventFormTitle" maxlength="120" required class="event-form-bare-title-input" placeholder="Bez názvu">
       </label>
 
-      <div class="event-form-columns">
-        <div class="field-group field-group-accent">
-          <p class="kicker"><i class="ph ph-tag" aria-hidden="true"></i> Typ události</p>
-          <label>
-            <span>Typ</span>
-            <div class="type-picker" id="eventFormTypePicker">
-              <button type="button" class="type-picker-trigger" id="eventFormTypeTrigger" aria-haspopup="true">
-                <span class="type-picker-trigger-icon" id="eventFormTypeTriggerIcon"><i class="ph ph-chat-circle" aria-hidden="true"></i></span>
-                <span class="type-picker-trigger-label" id="eventFormTypeTriggerLabel">Běžné</span>
-                <i class="ph ph-caret-down type-picker-caret" aria-hidden="true"></i>
-              </button>
-              <div class="type-picker-menu is-hidden" id="eventFormTypeMenu"><!-- vykresleno JS --></div>
+      <div class="event-form-pills">
+        <div class="type-picker" id="eventFormTypePicker">
+          <button type="button" class="type-picker-trigger is-pill" id="eventFormTypeTrigger" aria-haspopup="true">
+            <span class="type-picker-trigger-icon" id="eventFormTypeTriggerIcon"><i class="ph ph-chat-circle" aria-hidden="true"></i></span>
+            <span class="type-picker-trigger-label" id="eventFormTypeTriggerLabel">Běžné</span>
+            <i class="ph ph-caret-down type-picker-caret" aria-hidden="true"></i>
+          </button>
+          <div class="type-picker-menu is-pill-menu is-hidden" id="eventFormTypeMenu"><!-- vykresleno JS --></div>
+        </div>
+        <input type="hidden" id="eventFormType" value="default">
+
+        <!-- Opakování — vlastní pilulka/panel, stejný vzor jako Typ vlevo.
+             Panel má DVA obsahy, přepínané v JS podle režimu (viz
+             updateRecurrenceUi): u NOVÉ události nabídka frekvence
+             (#eventFormRecurrenceFreqOptions), u úpravy výskytu ze série
+             volba rozsahu úpravy (#eventFormRecurrenceScope). Pilulka se
+             u běžné (nikdy neopakující se) úpravy schová úplně. -->
+        <div class="recurrence-picker" id="eventFormRecurrencePicker">
+          <button type="button" class="recurrence-picker-trigger" id="eventFormRecurrenceTrigger" aria-haspopup="true">
+            <i class="ph ph-repeat" aria-hidden="true"></i>
+            <span id="eventFormRecurrenceTriggerLabel">Neopakovat</span>
+            <i class="ph ph-caret-down type-picker-caret" aria-hidden="true"></i>
+          </button>
+          <div class="type-picker-menu is-pill-menu is-hidden" id="eventFormRecurrenceMenu">
+            <div id="eventFormRecurrenceFreqOptions">
+              <button type="button" class="recurrence-picker-option" data-freq="">Neopakovat</button>
+              <button type="button" class="recurrence-picker-option" data-freq="daily">Každý den</button>
+              <button type="button" class="recurrence-picker-option" data-freq="weekly">Každý týden</button>
+              <button type="button" class="recurrence-picker-option" data-freq="biweekly">Každé 2 týdny</button>
+              <button type="button" class="recurrence-picker-option" data-freq="monthly">Každý měsíc</button>
+              <div class="recurrence-picker-end is-hidden" id="eventFormRecurrenceEndFields">
+                <label>
+                  <span>Počet opakování</span>
+                  <input type="number" id="eventFormRecurrenceCount" min="1" max="52" placeholder="např. 10">
+                </label>
+                <label>
+                  <span>Nebo do data</span>
+                  <input type="date" id="eventFormRecurrenceUntil">
+                </label>
+              </div>
             </div>
-            <input type="hidden" id="eventFormType" value="default">
-          </label>
-          <label class="event-form-toggle-field">
+            <div class="is-hidden" id="eventFormRecurrenceScope">
+              <p class="recurrence-picker-scope-note"><i class="ph ph-repeat" aria-hidden="true"></i> Součást opakující se série</p>
+              <label class="recurrence-picker-option-radio">
+                <input type="radio" name="eventFormRecurrenceScopeRadio" value="single" checked>
+                <span>Upravit jen tuto</span>
+              </label>
+              <label class="recurrence-picker-option-radio">
+                <input type="radio" name="eventFormRecurrenceScopeRadio" value="following">
+                <span>Upravit tuto a všechny následující</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <input type="hidden" id="eventFormRecurrenceFreq" value="">
+      </div>
+
+      <div class="field-group field-group-accent event-form-datetime-card">
+        <div class="event-form-date-row">
+          <input type="date" id="eventFormStartDate" class="event-form-bare-date" required>
+          <i class="ph ph-arrow-right event-form-date-arrow" aria-hidden="true"></i>
+          <input type="date" id="eventFormEndDate" class="event-form-bare-date" required>
+          <label class="event-form-toggle-field event-form-allday-toggle">
             <span>Celý den</span>
             <span class="toggle-switch">
               <input type="checkbox" id="eventFormAllDay">
@@ -515,73 +565,31 @@
           </label>
         </div>
 
-        <div class="field-group field-group-accent">
-          <p class="kicker"><i class="ph ph-calendar-check" aria-hidden="true"></i> Termín</p>
-          <div class="event-form-row">
-            <label>
-              <span>Od *</span>
-              <input type="date" id="eventFormStartDate" required>
-            </label>
-            <label>
-              <span>Do *</span>
-              <input type="date" id="eventFormEndDate" required>
-            </label>
+        <div class="event-time-section" id="eventFormTimeSection">
+          <div class="event-time-slider-wrap">
+            <span class="event-time-badge" id="eventFormTimeStartBadge"><i class="ph ph-clock" aria-hidden="true"></i><span class="event-time-badge-text">09:00</span></span>
+            <span class="event-time-badge" id="eventFormTimeEndBadge"><i class="ph ph-clock" aria-hidden="true"></i><span class="event-time-badge-text">10:00</span></span>
+            <div class="event-time-slider">
+              <div class="event-time-slider-track">
+                <div class="event-time-slider-fill" id="eventFormTimeSliderFill"></div>
+              </div>
+              <input type="range" id="eventFormTimeSliderStart" class="event-time-slider-input" min="0" max="1425" step="15" value="540">
+              <input type="range" id="eventFormTimeSliderEnd" class="event-time-slider-input" min="0" max="1425" step="15" value="600">
+            </div>
           </div>
-          <div class="event-form-row" id="eventFormTimeRow">
-            <label>
-              <span>Čas od</span>
-              <input type="time" id="eventFormStartTime">
-            </label>
-            <label>
-              <span>Čas do</span>
-              <input type="time" id="eventFormEndTime">
-            </label>
-          </div>
-
-          <!-- Nastavení opakování — jen u NOVÉ události (viz updateRecurrenceUi). -->
-          <div class="event-form-row" id="eventFormRecurrenceRow">
-            <label>
-              <span>Opakování</span>
-              <select id="eventFormRecurrenceFreq">
-                <option value="">Neopakovat</option>
-                <option value="daily">Každý den</option>
-                <option value="weekly">Každý týden</option>
-                <option value="biweekly">Každé 2 týdny</option>
-                <option value="monthly">Každý měsíc</option>
-              </select>
-            </label>
-          </div>
-          <div class="event-form-row is-hidden" id="eventFormRecurrenceEndRow">
-            <label>
-              <span>Počet opakování</span>
-              <input type="number" id="eventFormRecurrenceCount" min="1" max="52" placeholder="např. 10">
-            </label>
-            <label>
-              <span>Nebo do data</span>
-              <input type="date" id="eventFormRecurrenceUntil">
-            </label>
-          </div>
-
-          <!-- Volba rozsahu úpravy — jen při editaci výskytu, který je součástí
-               opakující se série (viz openEventFormModal/updateRecurrenceUi). -->
-          <div class="event-form-recurrence-scope is-hidden" id="eventFormRecurrenceScope">
-            <span class="event-form-recurrence-scope-note"><i class="ph ph-repeat" aria-hidden="true"></i> Součást opakující se série</span>
-            <label class="event-form-recurrence-scope-option">
-              <input type="radio" name="eventFormRecurrenceScopeRadio" value="single" checked>
-              <span>Upravit jen tuto</span>
-            </label>
-            <label class="event-form-recurrence-scope-option">
-              <input type="radio" name="eventFormRecurrenceScopeRadio" value="following">
-              <span>Upravit tuto a všechny následující</span>
-            </label>
+          <div class="event-time-slider-labels">
+            <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span>
           </div>
         </div>
+
+        <input type="hidden" id="eventFormStartTime" value="09:00">
+        <input type="hidden" id="eventFormEndTime" value="10:00">
       </div>
 
       <div class="field-group field-group-accent">
-        <p class="kicker"><i class="ph ph-note-pencil" aria-hidden="true"></i> Popis</p>
-        <label aria-label="Popis">
-          <textarea id="eventFormDescription" maxlength="2000" rows="4"></textarea>
+        <p class="kicker"><i class="ph ph-note-pencil" aria-hidden="true"></i> Poznámka</p>
+        <label aria-label="Poznámka">
+          <textarea id="eventFormDescription" maxlength="2000" rows="3" placeholder="Doplňující informace…"></textarea>
         </label>
       </div>
     </div>
@@ -1838,7 +1846,6 @@
       });
 
       document.querySelector('#eventFormAllDay').addEventListener('change', () => this.updateEventFormTimeVisibility());
-      document.querySelector('#eventFormRecurrenceFreq').addEventListener('change', () => this.updateRecurrenceEndVisibility());
       document.querySelector('#eventFormTemplatePicker').addEventListener('change', () => this.applyEventTemplate());
       document.querySelector('#eventForm').addEventListener('submit', (e) => {
         e.preventDefault();
@@ -1846,45 +1853,166 @@
       });
 
       this.bindTypePicker();
-    },
-
-    /** Skryje celý řádek s časem, když je zaškrtnuté „Celý den" — čas pak nedává smysl vyplňovat. */
-    updateEventFormTimeVisibility() {
-      const allDay = document.querySelector('#eventFormAllDay').checked;
-      // visibility, ne display:none — řádek zůstává v layoutu (jen neviditelný
-      // a mimo tab pořadí), takže se prostor pod ním ani o pixel nepohne.
-      // .is-hidden (display:none) by tu naopak přepočítalo výšku a vše by
-      // se mírně posunulo — přesně to, co dřív vadilo.
-      document.querySelector('#eventFormTimeRow').classList.toggle('event-form-field--hidden', allDay);
+      this.bindRecurrencePicker();
+      this.bindEventTimeSlider();
     },
 
     /**
-     * Přepne mezi třemi stavy pole Opakování v Termínu (viz eventFormModal):
+     * Časová osa (posuvník) při "Celý den" nezmizí, jen zešedne a znepřístupní
+     * se (zaškrtnutí je vratné — appka nechce uživateli zahodit už nastavený
+     * čas, kdyby si to rozmyslel). Skutečné hodnoty #eventFormStartTime/
+     * #eventFormEndTime appka při odeslání stejně přepíše na 00:00/23:59
+     * (viz submitEventForm), posuvník je jen vizuální ovládání.
+     */
+    updateEventFormTimeVisibility() {
+      const allDay = document.querySelector('#eventFormAllDay').checked;
+      document.querySelector('#eventFormTimeSliderStart').disabled = allDay;
+      document.querySelector('#eventFormTimeSliderEnd').disabled = allDay;
+      document.querySelector('#eventFormTimeSection').classList.toggle('is-disabled', allDay);
+    },
+
+    /**
+     * Otevírání/zavírání panelu Opakování — stejný vzor jako bindTypePicker.
+     * Klik na možnost frekvence NEZAVÍRÁ panel automaticky (na rozdíl od
+     * Typu) — po výběru frekvence uvnitř téhož panelu přibude "Počet
+     * opakování / Nebo do data", které chce uživatel hned vyplnit.
+     */
+    bindRecurrencePicker() {
+      const btn = document.querySelector('#eventFormRecurrenceTrigger');
+      const menu = document.querySelector('#eventFormRecurrenceMenu');
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.classList.contains('is-hidden') ? this.openRecurrencePicker() : this.closeRecurrencePicker();
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!menu.classList.contains('is-hidden') && !menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+          this.closeRecurrencePicker();
+        }
+      });
+
+      document.querySelector('#eventFormRecurrenceFreqOptions').addEventListener('click', (e) => {
+        const option = e.target.closest('.recurrence-picker-option');
+        if (option) this.setEventFormRecurrenceFreq(option.dataset.freq);
+      });
+    },
+
+    openRecurrencePicker() {
+      document.querySelector('#eventFormRecurrenceMenu').classList.remove('is-hidden');
+    },
+
+    closeRecurrencePicker() {
+      document.querySelector('#eventFormRecurrenceMenu').classList.add('is-hidden');
+    },
+
+    /** Nastaví vybranou frekvenci opakování — zapíše do skrytého #eventFormRecurrenceFreq, přepíše popisek na pilulce a ukáže/skryje "Počet opakování / Nebo do data". */
+    setEventFormRecurrenceFreq(freq) {
+      const labels = { '': 'Neopakovat', daily: 'Každý den', weekly: 'Každý týden', biweekly: 'Každé 2 týdny', monthly: 'Každý měsíc' };
+      document.querySelector('#eventFormRecurrenceFreq').value = freq;
+      Ui.setText('#eventFormRecurrenceTriggerLabel', labels[freq] || freq);
+      document.querySelectorAll('#eventFormRecurrenceFreqOptions .recurrence-picker-option').forEach((btn) => {
+        btn.classList.toggle('is-selected', btn.dataset.freq === freq);
+      });
+      document.querySelector('#eventFormRecurrenceEndFields').classList.toggle('is-hidden', !freq);
+    },
+
+    /**
+     * Přepne mezi třemi stavy pilulky Opakování (viz eventFormModal):
      * u NOVÉ události nabídne nastavení opakování; u úpravy výskytu, který
      * už součástí opakující se série JE, nabídne místo toho volbu rozsahu
-     * úpravy (jen tuto / tuto a následující); u obyčejné (nikdy neopakující
-     * se) úpravy nezobrazí nic z toho.
+     * úpravy (jen tuto / tuto a následující), pilulka pak místo frekvence
+     * ukazuje "Opakující se"; u obyčejné (nikdy neopakující se) úpravy se
+     * pilulka schová úplně — nemá co nabídnout.
      */
     updateRecurrenceUi(event) {
       const isRecurringInstance = !!(event && event.recurrenceId);
-      document.querySelector('#eventFormRecurrenceRow').classList.toggle('is-hidden', !!event);
+      document.querySelector('#eventFormRecurrencePicker').classList.toggle('is-hidden', !!event && !isRecurringInstance);
+      document.querySelector('#eventFormRecurrenceFreqOptions').classList.toggle('is-hidden', !!event);
       document.querySelector('#eventFormRecurrenceScope').classList.toggle('is-hidden', !isRecurringInstance);
+      this.closeRecurrencePicker();
 
       if (!event) {
-        document.querySelector('#eventFormRecurrenceFreq').value = '';
+        this.setEventFormRecurrenceFreq('');
         document.querySelector('#eventFormRecurrenceCount').value = '';
         document.querySelector('#eventFormRecurrenceUntil').value = '';
-        this.updateRecurrenceEndVisibility();
-      }
-      if (isRecurringInstance) {
+      } else if (isRecurringInstance) {
+        Ui.setText('#eventFormRecurrenceTriggerLabel', 'Opakující se');
         document.querySelector('input[name="eventFormRecurrenceScopeRadio"][value="single"]').checked = true;
       }
     },
 
-    /** Řádek "Počet opakování / Nebo do data" se zobrazí, jen když je vybraná nějaká frekvence. */
-    updateRecurrenceEndVisibility() {
-      const freq = document.querySelector('#eventFormRecurrenceFreq').value;
-      document.querySelector('#eventFormRecurrenceEndRow').classList.toggle('is-hidden', !freq);
+    /** Přepočítá posuvník podle skutečných hodnot #eventFormStartTime/#eventFormEndTime — volat po každém (i programovém) nastavení času. */
+    syncEventTimeSliderFromInputs() {
+      const start = this.hmToMinutes(document.querySelector('#eventFormStartTime').value);
+      const end = this.hmToMinutes(document.querySelector('#eventFormEndTime').value);
+      document.querySelector('#eventFormTimeSliderStart').value = start;
+      document.querySelector('#eventFormTimeSliderEnd').value = end;
+      this.renderEventTimeSlider(start, end);
+    },
+
+    /**
+     * Dvojitý posuvník času — dva překryté <input type=range>, každý ovládá
+     * jen svůj úchyt (viz .event-time-slider-input v CSS — track má
+     * pointer-events: none, klikací je jen samotný úchyt). MIN_GAP brání
+     * přejetí jednoho úchytu přes druhý, ať jde oba pořád rozeznat a chytit
+     * zvlášť. Skutečná hodnota se zapisuje do skrytých #eventFormStartTime/
+     * #eventFormEndTime — na ty se váže submitEventForm beze změny.
+     */
+    bindEventTimeSlider() {
+      document.querySelector('#eventFormTimeSliderStart').addEventListener('input', () => this.onEventTimeSliderChange('start'));
+      document.querySelector('#eventFormTimeSliderEnd').addEventListener('input', () => this.onEventTimeSliderChange('end'));
+    },
+
+    onEventTimeSliderChange(which) {
+      const MIN_GAP = 15;
+      const startInput = document.querySelector('#eventFormTimeSliderStart');
+      const endInput = document.querySelector('#eventFormTimeSliderEnd');
+      let start = Number(startInput.value);
+      let end = Number(endInput.value);
+
+      if (which === 'start' && start > end - MIN_GAP) {
+        start = Math.max(0, end - MIN_GAP);
+        startInput.value = start;
+      }
+      if (which === 'end' && end < start + MIN_GAP) {
+        end = Math.min(1425, start + MIN_GAP);
+        endInput.value = end;
+      }
+
+      document.querySelector('#eventFormStartTime').value = this.minutesToHm(start);
+      document.querySelector('#eventFormEndTime').value = this.minutesToHm(end);
+      this.renderEventTimeSlider(start, end);
+    },
+
+    /** Přebarví vyplněný úsek posuvníku a přesune bublinky s časem nad oba úchyty. */
+    renderEventTimeSlider(startMinutes, endMinutes) {
+      const startPct = (startMinutes / 1440 * 100) + '%';
+      const endPct = (endMinutes / 1440 * 100) + '%';
+
+      const fill = document.querySelector('#eventFormTimeSliderFill');
+      fill.style.left = startPct;
+      fill.style.width = ((endMinutes - startMinutes) / 1440 * 100) + '%';
+
+      const startBadge = document.querySelector('#eventFormTimeStartBadge');
+      const endBadge = document.querySelector('#eventFormTimeEndBadge');
+      startBadge.style.left = startPct;
+      endBadge.style.left = endPct;
+      startBadge.querySelector('.event-time-badge-text').textContent = this.minutesToHm(startMinutes);
+      endBadge.querySelector('.event-time-badge-text').textContent = this.minutesToHm(endMinutes);
+    },
+
+    /** Minuty od půlnoci → "HH:mm". */
+    minutesToHm(totalMinutes) {
+      const h = Math.floor(totalMinutes / 60);
+      const m = totalMinutes % 60;
+      return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    },
+
+    /** "HH:mm" → minuty od půlnoci. */
+    hmToMinutes(hm) {
+      const parts = String(hm || '00:00').split(':').map(Number);
+      return (parts[0] || 0) * 60 + (parts[1] || 0);
     },
 
     /**
@@ -1922,6 +2050,7 @@
       }
 
       this.updateEventFormTimeVisibility();
+      this.syncEventTimeSliderFromInputs();
     },
 
     /**
@@ -1935,6 +2064,7 @@
     openEventFormModal(event, dateIso, originEl, prefill) {
       this.hideChipTooltip();
       this.closeTypePicker(); // ať menu typu nezůstane omylem otevřené z minulého otevření formuláře
+      this.closeRecurrencePicker(); // totéž pro panel opakování
 
       document.querySelector('#eventFormModalIcon').innerHTML =
         '<i class="ph ' + (event ? 'ph-pencil-simple' : 'ph-calendar-plus') + '" aria-hidden="true"></i>';
@@ -1965,6 +2095,7 @@
         document.querySelector('#eventFormDescription').value = prefill ? (prefill.description || '') : '';
       }
       this.updateEventFormTimeVisibility();
+      this.syncEventTimeSliderFromInputs();
       this.updateRecurrenceUi(event);
       this.updateEventFormTemplatePicker(!event);
 

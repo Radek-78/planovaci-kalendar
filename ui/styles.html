@@ -2990,7 +2990,7 @@
     max-width: min(720px, calc(100vw - 32px));
   }
 
-  /* Ještě širší varianta — pro modaly se sloupci vedle sebe (viz formulář události, .event-form-columns). */
+  /* Ještě širší varianta — pro modaly se sloupci vedle sebe. */
   .modal-xwide {
     max-width: min(960px, calc(100vw - 32px));
   }
@@ -3712,24 +3712,22 @@
     font-size: 15px;
   }
 
-  /* ── Formulář nové události ───────────────────────────────────────────
-     Popisky polí ("Od", "Typ"...) používají globální pravidlo pro label
-     (viz začátek souboru) — malá verzálková šedá, žádná zvláštní třída
-     navíc potřeba. Název stojí sám nahoře jako "hero" pole (.form-hero-*
-     níže — sdílená komponenta, používá i formulář svátku), pod ním dva
-     sloupce (.event-form-columns) a Popis přes celou šířku dole. Šířka
-     celého modalu je .modal-xwide (viz eventFormModal), stejná jako
-     detail filiálky — dvousloupcový obsah ji vyplní, ne holé prázdné
-     okolo úzkého jednosloupcového formuláře jako dřív. ── */
+  /* ── Formulář nové události — druhé kolo přepracování vzhledu (podle
+     zadaného návrhu) ───────────────────────────────────────────────────
+     Název je teď zcela bez rámečku/popisku (.event-form-bare-title-*
+     níže — VLASTNÍ komponenta jen pro tenhle formulář, na rozdíl od
+     .form-hero-*, který zůstává sdílený s formulářem svátku/oddělení/
+     pozice/typu), jen velký placeholder "Bez názvu". Pod ním dvě úzké
+     "pilulky" vedle sebe (Typ/Opakování, .event-form-pills), pak karta
+     s daty/časem (.event-form-datetime-card) a Poznámka přes celou šířku
+     dole. Modal zúžený zpět na .modal-wide (720 px) — bez dvou širokých
+     sloupců vedle sebe ho tolik místa nepotřebuje. ── */
 
-  /* Bez pevné výšky — přizpůsobí se skutečnému obsahu, jediný skutečný
-     limit je .modal{max-height}. align-content: start drží skupiny nahoře,
-     ať případné skrytí řádku s časem (viz .event-form-field--hidden níže)
-     nezůstane s dírou uprostřed. */
+  /* Bez pevné výšky — přizpůsobí se skutečnému obsahu, jediný skutečný limit je .modal{max-height}. */
   .event-form-body {
     align-content: start;
     display: grid;
-    gap: 18px;
+    gap: 16px;
     overflow-y: auto;
     padding: 20px 24px;
   }
@@ -3737,8 +3735,9 @@
   /* ── "Hero" pole — bez boxu, jen větší a tučnější input, ať vizuálně
      vede formulář (stejný princip jako název události v Google Kalendáři
      apod.), ne jen další řádek stejné váhy jako všechny ostatní. Sdílená
-     komponenta — formulář události (Název) i formulář svátku (Název
-     svátku), ne vázaná jen na "event". ── */
+     komponenta — formulář svátku/oddělení/pozice/typu, NE formulář
+     události (ten má od druhého kola přepracování vlastní, ještě
+     střídmější .event-form-bare-title-*, viz níže). ── */
   .form-hero-field {
     gap: 8px;
   }
@@ -3750,13 +3749,43 @@
     padding: 12px 16px;
   }
 
-  /* Dva sloupce vedle sebe (Typ+Celý den / Termín) — vyplní šířku
-     .modal-xwide, aby formulář vypadal jako promyšlený celek, ne úzký
-     proužek uprostřed širokého okna. */
-  .event-form-columns {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: 1fr 1fr;
+  /* Název ve formuláři události — úplně bez rámečku/pozadí, jen velký
+     placeholder text "Bez názvu" (přebírá barvu z --muted, dokud se
+     nezačne psát) — nejstřídmější varianta hero pole v appce, přesně
+     podle zadaného návrhu. */
+  .event-form-bare-title-field {
+    gap: 0;
+  }
+
+  .event-form-bare-title-input {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    font-size: 26px;
+    font-weight: 700;
+    min-height: auto;
+    padding: 4px 2px;
+  }
+
+  .event-form-bare-title-input::placeholder {
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .event-form-bare-title-input:focus {
+    border-color: transparent;
+    box-shadow: none;
+    outline: none;
+  }
+
+  /* Typ a Opakování vedle sebe jako dvě úzké "pilulky" (ne dva široké
+     boxy jako v prvním kole přepracování) — obě jsou rozbalovací seznamy
+     (.type-picker.is-pill / .recurrence-picker), žádná není nativní
+     <select>. */
+  .event-form-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
   }
 
   /* Modré orámování nahoře — modifikátor k .field-group (sdílené jinde
@@ -3774,10 +3803,11 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  /* Skrytí celého řádku s časem při "Celý den" — visibility, ne display:none.
+  /* Skrytí pole beze změny výšky formuláře — visibility, ne display:none.
      Prostor v layoutu zůstává rezervovaný, takže se prostor pod ním ani
      o pixel neposune (display:none by přepočítalo výšku a vše by se mírně
-     posunulo — přesně to, co dřív vadilo). */
+     posunulo). Použito u pole Oprávnění ve formuláři uživatele (zmizí jen
+     pro roli, kde nedává smysl, viz #userFormPermissionField). */
   .event-form-field--hidden {
     visibility: hidden;
   }
@@ -3803,6 +3833,182 @@
     font-weight: 600;
     letter-spacing: 0;
     text-transform: none;
+  }
+
+  /* ── Karta Datum/Čas ve formuláři události ─────────────────────────────
+     Řádek Od→Do (jedna kompaktní řada se šipkou mezi daty, ne dva
+     samostatné popsané řádky) + přepínač Celý den vpravo, pod tím časová
+     osa (dvojitý posuvník, viz .event-time-* níže). ── */
+  .event-form-datetime-card {
+    gap: 14px;
+  }
+
+  .event-form-date-row {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+  }
+
+  /* Datum bez rámečku uvnitř karty — karta sama už má vlastní orámování
+     (.field-group-accent), druhé kolo rámečků uvnitř by působilo těžce. */
+  .event-form-bare-date {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    flex-shrink: 0;
+    font-size: 15px;
+    font-weight: 700;
+    min-height: auto;
+    padding: 4px 2px;
+    width: auto;
+  }
+
+  .event-form-bare-date:focus {
+    border-color: transparent;
+    box-shadow: none;
+    outline: none;
+  }
+
+  .event-form-date-arrow {
+    color: var(--muted);
+    flex-shrink: 0;
+    font-size: 15px;
+  }
+
+  /* Celý den přepínač zarovnaný úplně vpravo v řádku Od→Do. */
+  .event-form-allday-toggle {
+    margin-left: auto;
+    padding-top: 0;
+  }
+
+  /* ── Časová osa (dvojitý posuvník) ──────────────────────────────────────
+     Při "Celý den" appka posuvník NESCHOVÁ, jen ho zešedne a znepřístupní
+     (viz updateEventFormTimeVisibility) — uživatel tak pořád vidí, na jaký
+     čas byl nastavený, kdyby přepínač zase vypnul. */
+  .event-time-section {
+    margin-top: 4px;
+    transition: opacity 0.15s;
+  }
+
+  .event-time-section.is-disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  /* Nahoře nad posuvníkem prostor pro bublinky s časem (viz
+     .event-time-badge, position: absolute vůči tomuto wrapperu). */
+  .event-time-slider-wrap {
+    padding-top: 26px;
+    position: relative;
+  }
+
+  .event-time-badge {
+    align-items: center;
+    background: var(--lidl-dark-blue);
+    border-radius: 999px;
+    color: var(--white);
+    display: inline-flex;
+    font-size: 11px;
+    font-weight: 700;
+    gap: 4px;
+    padding: 3px 8px;
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+
+  .event-time-badge i {
+    font-size: 10px;
+  }
+
+  .event-time-slider {
+    height: 20px;
+    position: relative;
+  }
+
+  .event-time-slider-track {
+    background: var(--line);
+    border-radius: 999px;
+    height: 4px;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 8px;
+  }
+
+  .event-time-slider-fill {
+    background: var(--lidl-blue);
+    border-radius: 999px;
+    height: 4px;
+    position: absolute;
+    top: 8px;
+  }
+
+  /* Dva překryté nativní <input type=range> — track je průhledný (appka
+     kreslí vlastní, viz výše), klikací/tažitelný je jen samotný úchyt
+     (thumb), ať jde oba rozeznat a chytit zvlášť i když leží blízko sebe.
+     Cross-browser (::-webkit-/::-moz-) — jde o dvě různé pseudotřídy, ne
+     jednu se seznamem, proto samostatná pravidla pro každou. */
+  .event-time-slider-input {
+    appearance: none;
+    background: transparent;
+    height: 20px;
+    left: 0;
+    margin: 0;
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    width: 100%;
+  }
+
+  .event-time-slider-input::-webkit-slider-runnable-track {
+    background: transparent;
+  }
+
+  .event-time-slider-input::-moz-range-track {
+    background: transparent;
+  }
+
+  .event-time-slider-input::-webkit-slider-thumb {
+    appearance: none;
+    background: var(--white);
+    border: 3px solid var(--lidl-blue);
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0, 20, 80, 0.3);
+    cursor: grab;
+    height: 18px;
+    pointer-events: auto;
+    width: 18px;
+  }
+
+  .event-time-slider-input::-moz-range-thumb {
+    background: var(--white);
+    border: 3px solid var(--lidl-blue);
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0, 20, 80, 0.3);
+    cursor: grab;
+    height: 18px;
+    width: 18px;
+  }
+
+  .event-time-slider-input:disabled::-webkit-slider-thumb {
+    border-color: var(--muted);
+    cursor: not-allowed;
+  }
+
+  .event-time-slider-input:disabled::-moz-range-thumb {
+    border-color: var(--muted);
+    cursor: not-allowed;
+  }
+
+  .event-time-slider-labels {
+    color: var(--muted);
+    display: flex;
+    font-size: 10px;
+    font-weight: 600;
+    justify-content: space-between;
+    margin-top: 4px;
   }
 
   /* ── Přepínač (toggle switch) — obecná komponenta, použitá zatím jen
@@ -3940,6 +4146,17 @@
     border-color: var(--lidl-blue);
   }
 
+  /* Úzká "pilulka" místo širokého boxu na celou šířku pole — použito ve
+     formuláři události vedle pilulky Opakování (.recurrence-picker-
+     trigger níže sdílí stejný jazyk). */
+  .type-picker-trigger.is-pill {
+    background: var(--page);
+    border-radius: 999px;
+    font-weight: 600;
+    padding: 8px 14px;
+    width: auto;
+  }
+
   .type-picker-trigger:focus-visible {
     box-shadow: 0 0 0 3px rgba(0, 83, 179, 0.2);
     border-color: var(--lidl-blue);
@@ -4002,6 +4219,15 @@
     z-index: 40;
   }
 
+  /* Panel je širší, než jak úzká je samotná pilulka triggeru (viz
+     .type-picker-trigger.is-pill) — vlastní pevná šířka, panel se
+     rozvine doprava, ne jen na šířku pilulky. */
+  .type-picker-menu.is-pill-menu {
+    left: 0;
+    right: auto;
+    width: 280px;
+  }
+
   .type-picker-option {
     align-items: center;
     background: none;
@@ -4048,6 +4274,131 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* ── Výběr opakování (.recurrence-picker) — stejný vizuální jazyk jako
+     .type-picker vedle něj (pilulka + panel), jen bez ikony na dlaždicích
+     (frekvence je čistě text). Panel má DVA obsahy přepínané v JS podle
+     režimu (viz updateRecurrenceUi) — nastavení nové série, nebo volba
+     rozsahu úpravy existujícího výskytu. ── */
+  .recurrence-picker {
+    position: relative;
+  }
+
+  /* Panel sdílí .type-picker-menu/.is-pill-menu (karta/stín/pozice), ale
+     OBSAH je svislý seznam textových možností, ne mřížka ikon jako
+     u Typu — přepis na jeden sloupec, jinak by viditelný obsah (jen JEDNO
+     ze dvou #eventFormRecurrenceFreqOptions/#eventFormRecurrenceScope,
+     druhé má display:none přes .is-hidden) zabíral jen jeden ze dvou
+     zděděných gridových sloupců, zbytek panelu by zůstal prázdný. */
+  #eventFormRecurrenceMenu {
+    grid-template-columns: 1fr;
+    width: 240px;
+  }
+
+  .recurrence-picker-trigger {
+    align-items: center;
+    background: var(--page);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--text);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 13px;
+    font-weight: 600;
+    gap: 8px;
+    min-height: 38px;
+    padding: 8px 14px;
+    transition: border-color 0.15s;
+  }
+
+  .recurrence-picker-trigger:hover {
+    border-color: var(--lidl-blue);
+  }
+
+  .recurrence-picker-trigger:focus-visible {
+    border-color: var(--lidl-blue);
+    box-shadow: 0 0 0 3px rgba(0, 83, 179, 0.2);
+    outline: none;
+  }
+
+  .recurrence-picker-trigger > i:first-child {
+    color: var(--lidl-blue);
+    font-size: 14px;
+  }
+
+  .recurrence-picker-option {
+    background: none;
+    border: none;
+    border-radius: var(--radius);
+    color: var(--text);
+    cursor: pointer;
+    display: block;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 10px;
+    text-align: left;
+    width: 100%;
+  }
+
+  .recurrence-picker-option:hover {
+    background: var(--page);
+  }
+
+  .recurrence-picker-option.is-selected {
+    background: #e6eef8;
+    color: var(--lidl-dark-blue);
+  }
+
+  /* "Počet opakování / Nebo do data" — objeví se pod nabídkou frekvencí,
+     jen když je vybraná nějaká jiná než "Neopakovat" (viz
+     setEventFormRecurrenceFreq). */
+  .recurrence-picker-end {
+    border-top: 1px solid var(--line-soft);
+    display: grid;
+    gap: 10px;
+    margin-top: 6px;
+    padding-top: 10px;
+  }
+
+  .recurrence-picker-scope-note {
+    align-items: center;
+    color: var(--lidl-blue);
+    display: flex;
+    font-size: 11px;
+    font-weight: 700;
+    gap: 5px;
+    letter-spacing: 0.03em;
+    margin: 0 0 8px;
+    text-transform: uppercase;
+  }
+
+  /* Přepis globálního .label (malá verzálková šedá, display:grid) —
+     tady jde o obyčejný čitelný text vedle přepínače, stejný princip
+     jako .event-form-recurrence-scope-option (viz komentář tam). */
+  .recurrence-picker-option-radio {
+    align-items: center;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    font-size: 13px;
+    font-weight: 400;
+    gap: 8px;
+    letter-spacing: 0;
+    padding: 6px 4px;
+    text-transform: none;
+  }
+
+  .recurrence-picker-option-radio:hover {
+    background: var(--page);
+    border-radius: var(--radius);
+  }
+
+  .recurrence-picker-option-radio input {
+    accent-color: var(--lidl-blue);
+    height: 15px;
+    width: 15px;
   }
 
   /* ── Formulář svátku — stejný vizuální jazyk jako formulář události výše
@@ -4369,13 +4720,18 @@
       grid-template-columns: 1fr;
     }
 
-    /* Formulář události — na úzkém displeji se dva sloupce (Typ+Celý den /
-       Termín) i dvojice polí v řádku (Od/Do, Čas od/Čas do) rozpadnou pod
-       sebe, ať se nemačkají na málo místa; totéž menu výběru typu. */
-    .event-form-columns,
+    /* Dvojice polí v řádku (např. LC Číslo/Zkratka) se na úzkém displeji
+       rozpadne pod sebe, ať se nemačká na málo místa; totéž menu výběru typu. */
     .event-form-row,
     .type-picker-menu {
       grid-template-columns: 1fr;
+    }
+
+    /* Pilulky Typ/Opakování a řádek Od→Do na úzkém displeji taky pod sebe. */
+    .event-form-pills,
+    .event-form-date-row {
+      flex-direction: column;
+      align-items: stretch;
     }
 
     .gate {
