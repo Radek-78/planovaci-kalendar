@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.8.3 - 05.09.2026 09:01
+- v0.8.3: Formulář události - další doladění. Panel Typu se místo zalamování dlouhých názvů dopočítá na potřebnou šířku, ať se nic nezalomuje ani neuřízne. Typ a Opakování už nejdou otevřít najednou - otevření jednoho panelu vždy zavře ten druhý. Oprava úchytu Od u časové osy: skutečná příčina byla jinde, než jsem předpokládal - novější Chrome/Edge kreslí kolem dráhy vlastní neprůhledný obal, který úchyt Od přes celou šířku překrýval. Teď je řešeno třemi nezávislými mechanismy najednou, ať je úchyt spolehlivě vidět.
+
 ## v0.8.2 - 05.09.2026 08:49
 - v0.8.2: Formulář události - doladění vzhledu po zpětné vazbě. Typ a Opakování dostaly nadpis a přestaly být osamocené pilulky - každý modul je teď vlastní malá karta se stejným modrým orámováním jako zbytek formuláře, tlačítko uvnitř je bez vlastního rámečku. Obě tlačítka mají místo rezervované na nejdelší možný název, takže při přepnutí neposkakují do stran, a dlouhé názvy typů se v panelu vypisují celé, ne uříznuté. Karta Datum a čas dostala nadpis Termín. Oprava: úchyt Od u časové osy nebyl v Chrome/Edge vidět - chybělo mu svislé vystředění na dráhu posuvníku.
 

@@ -3976,6 +3976,7 @@
      Cross-browser (::-webkit-/::-moz-) — jde o dvě různé pseudotřídy, ne
      jednu se seznamem, proto samostatná pravidla pro každou. */
   .event-time-slider-input {
+    -webkit-appearance: none;
     appearance: none;
     background: transparent;
     height: 20px;
@@ -3985,6 +3986,21 @@
     position: absolute;
     top: 0;
     width: 100%;
+  }
+
+  /* Novější Chrome/Edge (přepracované nativní ovládací prvky) vkládají
+     kolem dráhy ještě obalový ::-webkit-slider-container s VLASTNÍM
+     neprůhledným pozadím na celou šířku — bez jeho zprůhlednění by
+     PRVEK NAKRESLENÝ POZDĚJI V DOM (Do) svým obalem physically
+     PŘEKRYL úchyt prvku PŘED ním (Od), i když jsou hodnoty na jiné
+     pozici (obal je vždy na 100% šířky, ne jen pod vlastním úchytem).
+     Přesně tohle bylo za tím, že šlo vidět jen úchyt Do a Od "zmizel" —
+     samotné vystředění úchytu (níže) na tom nic nezměnilo, protože
+     problém byl v neprůhledném obalu nad ním, ne v pozici úchytu.
+     Pravidlo je no-op ve starších prohlížečích, které tenhle
+     pseudoelement vůbec neznají. */
+  .event-time-slider-input::-webkit-slider-container {
+    background: transparent;
   }
 
   .event-time-slider-input::-webkit-slider-runnable-track {
@@ -3997,12 +4013,25 @@
     height: 4px;
   }
 
+  /* Úchyt Od musí zůstat nahoře i kdyby výše uvedené zprůhlednění obalu
+     z nějakého důvodu nestačilo — druhá, nezávislá pojistka (viz komentář
+     u ::-webkit-slider-container výše, princip "víc nezávislých mechanismů
+     najednou" jako jinde v appce u podobně houževnatých vizuálních chyb). */
+  #eventFormTimeSliderStart {
+    z-index: 2;
+  }
+
+  #eventFormTimeSliderEnd {
+    z-index: 1;
+  }
+
   /* Chrome/Edge (na rozdíl od Firefoxu) úchyt sám nevystředí na dráhu —
      bez margin-top by se úchyt vykreslil zarovnaný nahoru k dráze
      (height výše), efektivně mimo viditelnou 20px výšku posuvníku, kde
      splýval s okolím (nahlášeno jako "úchyt Od není vidět"). Vzorec:
      (výška dráhy − výška úchytu) / 2 = (4 − 18) / 2 = -7px. */
   .event-time-slider-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
     appearance: none;
     background: var(--white);
     border: 3px solid var(--lidl-blue);
@@ -4261,9 +4290,13 @@
     z-index: 40;
   }
 
-  /* Panel je širší, než jak úzká je samotná pilulka triggeru (viz
-     .type-picker-trigger.is-pill) — vlastní pevná šířka, panel se
-     rozvine doprava, ne jen na šířku pilulky. */
+  /* Panel je širší, než jak úzké je samotné tlačítko triggeru — 280px je
+     jen výchozí hodnota PŘED prvním vykreslením menu; skutečnou šířku si
+     appka po naplnění menu dopočítá v JS podle nejdelšího z aktuálně
+     nastavených typů (viz fillEventTypeSelect → sizeTypeMenuWidth) a
+     přepíše inline stylem, ať se ani jeden název nemusí zalamovat
+     (zpětná vazba: "okno zobraz široké, aby se vše zobrazilo neuříznuté
+     a nezalomené"). */
   .type-picker-menu.is-pill-menu {
     left: 0;
     right: auto;
@@ -4308,17 +4341,18 @@
     font-size: 13px;
   }
 
-  /* Zalamuje se přes víc řádků, nikdy se neuřezává ellipsis — dlouhý
-     vlastní název typu (Nastavení → Typy událostí, až 40 znaků) se v panelu
-     musí vypsat celý (zpětná vazba: "vše musí vypsat kompletně a ne
-     uříznutě"). */
+  /* Jeden řádek, žádný ellipsis — dlouhý vlastní název typu (Nastavení →
+     Typy událostí, až 40 znaků) se musí vypsat celý a nezalomený (zpětná
+     vazba: "vše musí vypsat kompletně a ne uříznutě/nezalomeně"). Panel
+     je proto místo zalamování textu dopočítaný na potřebnou šířku v JS
+     (viz sizeTypeMenuWidth) — tahle pojistka (overflow:visible) se
+     uplatní jen kdyby se to měření z nějakého důvodu netrefilo. */
   .type-picker-option-label {
     color: var(--text);
     font-size: 13px;
     font-weight: 600;
-    min-width: 0;
-    overflow-wrap: break-word;
-    white-space: normal;
+    overflow: visible;
+    white-space: nowrap;
   }
 
   /* ── Výběr opakování (.recurrence-picker) — stejný vizuální jazyk jako

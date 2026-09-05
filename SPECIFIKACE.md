@@ -978,22 +978,50 @@ zmizelo):
   každém `fillEventTypeSelect()` (seznam typů je dynamický — spravuje se
   v Nastavení), u Opakování jednou při `bindRecurrencePicker()` (seznam
   frekvencí `Neopakovat/Každý den/.../Opakující se` je pevný).
-- **Žádné uřezávání textu uvnitř panelů** — `.type-picker-option-label`
-  (název typu v rozbalovacím panelu, až 40 znaků z `EVENT_TYPE_LABEL_MAX`)
-  se teď zalamuje přes víc řádků (`white-space: normal`) místo dřívějšího
-  `overflow: hidden; text-overflow: ellipsis`. Stejně tak popisek na
-  samotném tlačítku (`.type-picker-trigger-label`) ztratil ellipsis —
-  díky vyztužené šířce výše by se stejně nikdy neuplatnil, ponechán je
-  jen `white-space: nowrap` jako pojistka.
 - **Karta Termín** dostala nadpis `<p class="kicker">Termín</p>` (do
   prvního kola přepracování ho neměla vůbec).
-- **Oprava viditelnosti úchytu časové osy** — v Chrome/Edge (na rozdíl od
-  Firefoxu) se `::-webkit-slider-thumb` sám nevystředí na dráhu; bez
-  explicitního `margin-top` se úchyt vykresloval mimo viditelnou výšku
-  posuvníku a splýval s okolím (nahlášeno jako "úchyt Od není vidět,
-  asi má stejnou barvu jako podklad"). Oprava: `::-webkit-slider-
-  runnable-track`/`::-moz-range-track` dostaly explicitní `height: 4px`
-  a `::-webkit-slider-thumb` `margin-top: -7px` (vzorec (dráha − úchyt) / 2).
+- **Oprava viditelnosti úchytu časové osy (1. pokus)** — v Chrome/Edge
+  (na rozdíl od Firefoxu) se `::-webkit-slider-thumb` sám nevystředí na
+  dráhu; bez explicitního `margin-top` se úchyt vykresloval mimo
+  viditelnou výšku posuvníku a splýval s okolím (nahlášeno jako "úchyt
+  Od není vidět, asi má stejnou barvu jako podklad"). Oprava: `::-webkit-
+  slider-runnable-track`/`::-moz-range-track` dostaly explicitní
+  `height: 4px` a `::-webkit-slider-thumb` `margin-top: -7px` (vzorec
+  (dráha − úchyt) / 2). **Nestačilo** — viz čtvrté kolo níže.
+
+**Čtvrté kolo (doladění po třetím kole)**:
+
+- **Panel Typu se místo zalamování popisků dopočítává na potřebnou
+  šířku** — `.type-picker-option-label` je zpátky na jednom řádku
+  (`white-space: nowrap`, žádný ellipsis), ale nová klientská metoda
+  `App.sizeTypeMenuWidth(labels)` (volaná z `fillEventTypeSelect()`,
+  sdílí měřicí základ `measureMaxTextWidth` s `sizeTriggerLabelToLongest`)
+  spočítá potřebnou šířku dvou sloupců podle nejdelšího z aktuálně
+  nastavených typů a přepíše ji jako inline `width` na `#eventFormTypeMenu`
+  — panel je tak vždy přesně tak široký, aby se nic nezalomilo ani
+  neuřízlo (zpětná vazba: "okno zobraz široké, aby se vše zobrazilo
+  neuříznuté a nezalomené").
+- **Typ a Opakování nejdou nikdy otevřít najednou** — `openTypePicker()`
+  nejdřív zavře panel Opakování a naopak (`openRecurrencePicker()`
+  zavře Typ), než otevře ten svůj. Dřív byly obě otevírání/zavírání
+  vzájemně nezávislá.
+- **Oprava viditelnosti úchytu časové osy (2., robustnější pokus)** —
+  vystředění z třetího kola samo o sobě nestačilo. Skutečná příčina:
+  přepracované nativní ovládací prvky v novějším Chrome/Edge vkládají
+  kolem dráhy obalový `::-webkit-slider-container` s VLASTNÍM pozadím na
+  celou šířku prvku — element vykreslený POZDĚJI v DOM (Do) tak svým
+  obalem fyzicky překryl úchyt prvku PŘED ním (Od) přes celou šířku
+  posuvníku, bez ohledu na to, že úchyty leží na jiné pozici (obal není
+  jen pod úchytem, ale na 100 % šířky). Oprava přidává TŘI nezávislé
+  mechanismy najednou (viz `.event-time-slider-input` v `ui/styles.html`):
+  `::-webkit-slider-container{background:transparent}` (řeší skutečnou
+  příčinu; no-op ve starších prohlížečích, které pseudoelement neznají),
+  explicitní `-webkit-appearance: none` na inputu i na
+  `::-webkit-slider-thumb` (vedle stávajícího neprefixovaného
+  `appearance: none`), a `z-index` (`#eventFormTimeSliderStart{z-index:2}`,
+  `#eventFormTimeSliderEnd{z-index:1}`) jako záložní pojistka, ať úchyt
+  Od vyhraje překryv i kdyby předchozí dva mechanismy z nějakého důvodu
+  nestačily.
 
 **Sjednocení napříč appkou** — na žádost „aby všechna podobná modal okna
 v appce měla stejný design" dostaly `.form-hero-field`/`.form-hero-input`

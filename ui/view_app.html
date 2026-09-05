@@ -1277,17 +1277,22 @@
       // "rezervováno místo pro nejdelší název typu, který se dá vybrat").
       const labels = Object.keys(this.eventTypes).map((key) => this.eventTypes[key].label);
       this.sizeTriggerLabelToLongest(document.querySelector('#eventFormTypeTriggerLabel'), labels);
+
+      // Šířka rozbalovacího panelu dopočítaná na míru stejným seznamem
+      // popisků — ať se ani ten nejdelší z nich nemusí v panelu zalamovat
+      // (zpětná vazba: "okno zobraz široké, aby se vše zobrazilo
+      // neuříznuté a nezalomené").
+      this.sizeTypeMenuWidth(labels);
     },
 
     /**
-     * Změří v DOM neviditelný klon `labelEl` postupně se všemi `texts` a na
-     * `labelEl` nastaví min-width podle toho nejširšího — tlačítko modulu
-     * (Typ/Opakování) tak neposkakuje do stran při přepnutí vybrané
-     * možnosti, protože má místo na nejdelší z nich rezervované předem.
+     * Změří v DOM neviditelný klon prvku se třídou `className` postupně se
+     * všemi `texts` a vrátí šířku (v px) toho nejširšího z nich — sdílený
+     * základ pro sizeTriggerLabelToLongest i sizeTypeMenuWidth.
      */
-    sizeTriggerLabelToLongest(labelEl, texts) {
+    measureMaxTextWidth(className, texts) {
       const probe = document.createElement('span');
-      probe.className = labelEl.className;
+      probe.className = className;
       probe.style.cssText = 'position:absolute; left:-9999px; top:-9999px; visibility:hidden; white-space:nowrap;';
       document.body.appendChild(probe);
       let maxWidth = 0;
@@ -1296,7 +1301,31 @@
         maxWidth = Math.max(maxWidth, probe.getBoundingClientRect().width);
       });
       document.body.removeChild(probe);
+      return maxWidth;
+    },
+
+    /**
+     * Nastaví na `labelEl` min-width podle nejširšího z `texts` — tlačítko
+     * modulu (Typ/Opakování) tak neposkočí do stran při přepnutí vybrané
+     * možnosti, protože má místo na nejdelší z nich rezervované předem.
+     */
+    sizeTriggerLabelToLongest(labelEl, texts) {
+      const maxWidth = this.measureMaxTextWidth(labelEl.className, texts);
       labelEl.style.minWidth = Math.ceil(maxWidth) + 'px';
+    },
+
+    /**
+     * Dopočítá šířku panelu #eventFormTypeMenu tak, aby se ani nejdelší
+     * z `labels` nemusel v žádném ze dvou sloupců zalamovat. Ikona (26px)
+     * + mezera (8px) + text + vodorovný padding tlačítka (2×8px) tvoří
+     * jeden sloupec, dva sloupce vedle sebe + mezera mřížky (4px) + padding
+     * panelu (2×8px) dají celkovou šířku panelu.
+     */
+    sizeTypeMenuWidth(labels) {
+      const maxLabelWidth = this.measureMaxTextWidth('type-picker-option-label', labels);
+      const columnWidth = 26 + 8 + maxLabelWidth + 16;
+      const menuWidth = (columnWidth * 2) + 4 + 16;
+      document.querySelector('#eventFormTypeMenu').style.width = Math.ceil(menuWidth) + 'px';
     },
 
     /**
@@ -1367,6 +1396,9 @@
     },
 
     openTypePicker() {
+      // Nikdy neotevřené obě menu najednou — Typ a Opakování sdílejí stejný
+      // řádek pilulek, otevřená obě by se navzájem překrývala/mátla.
+      this.closeRecurrencePicker();
       document.querySelector('#eventFormTypeMenu').classList.remove('is-hidden');
     },
 
@@ -1942,6 +1974,9 @@
     },
 
     openRecurrencePicker() {
+      // Stejná pojistka jako v openTypePicker — Opakování a Typ nikdy
+      // otevřené najednou.
+      this.closeTypePicker();
       document.querySelector('#eventFormRecurrenceMenu').classList.remove('is-hidden');
     },
 
