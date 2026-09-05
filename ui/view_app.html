@@ -576,8 +576,12 @@
 
         <div class="event-time-section" id="eventFormTimeSection">
           <div class="event-time-slider-wrap">
+            <!-- Bublinka Od je NAD dráhou, Do POD ní (.is-below) — dvě
+                 bublinky tak nikdy nesdílí stejnou vodorovnou rovinu a
+                 nemůžou se překrýt ani u krátké události, kde jsou úchyty
+                 pár pixelů od sebe. Viz komentář u .event-time-badge v CSS. -->
             <span class="event-time-badge" id="eventFormTimeStartBadge"><i class="ph ph-clock" aria-hidden="true"></i><span class="event-time-badge-text">09:00</span></span>
-            <span class="event-time-badge" id="eventFormTimeEndBadge"><i class="ph ph-clock" aria-hidden="true"></i><span class="event-time-badge-text">10:00</span></span>
+            <span class="event-time-badge is-below" id="eventFormTimeEndBadge"><i class="ph ph-clock" aria-hidden="true"></i><span class="event-time-badge-text">10:00</span></span>
             <!-- Úchyty jsou OBYČEJNÁ tlačítka, ne <input type=range>. Dva
                  překryté nativní posuvníky se ukázaly jako neřešitelné:
                  každý si kreslí vlastní stínový DOM přes CELOU šířku, takže
@@ -2043,6 +2047,11 @@
     TIME_SLIDER_SCALE: 1440,
     TIME_SLIDER_GAP: 15,
     TIME_SLIDER_THUMB: 18,
+    // Polovina šířky bublinky s časem. Obsah je vždycky stejně dlouhý
+    // ("HH:MM" + ikona), takže stačí konstanta — s drobnou rezervou, ať
+    // bublinka u krajních časů raději o pár pixelů ustoupí dovnitř, než
+    // aby vyčnívala ven z karty.
+    TIME_BADGE_HALF: 32,
 
     /** Přepočítá posuvník podle skutečných hodnot #eventFormStartTime/#eventFormEndTime — volat po každém (i programovém) nastavení času. */
     syncEventTimeSliderFromInputs() {
@@ -2153,6 +2162,20 @@
       return 'calc(' + pct + '% ' + (shift < 0 ? '- ' : '+ ') + Math.abs(shift) + 'px)';
     },
 
+    /**
+     * Vodorovná pozice bublinky s časem — stejná jako u jejího úchytu, jen
+     * omezená na okraje dráhy, ať u krajních časů (00:00, 23:45) nepřečnívá
+     * půlkou ven z karty. Ořezává se v CSS přes clamp(), ne v JS: JS by
+     * musel znát šířku dráhy v pixelech, tu ale při zavřeném modalu ještě
+     * nezná (getBoundingClientRect vrací nuly), kdežto CSS si ji dosadí až
+     * při vykreslení, tedy vždy správně. Úchytu ani výplně se ořez netýká,
+     * ty musí zůstat přesně na své hodnotě.
+     */
+    eventBadgeOffset(offset) {
+      const half = this.TIME_BADGE_HALF;
+      return 'clamp(' + half + 'px, ' + offset + ', calc(100% - ' + half + 'px))';
+    },
+
     /** Posune oba úchyty i bublinky s časem a přebarví vyplněný úsek mezi nimi. */
     renderEventTimeSlider(startMinutes, endMinutes) {
       const startOffset = this.eventTimeOffset(startMinutes);
@@ -2180,8 +2203,8 @@
 
       const startBadge = document.querySelector('#eventFormTimeStartBadge');
       const endBadge = document.querySelector('#eventFormTimeEndBadge');
-      startBadge.style.left = startOffset;
-      endBadge.style.left = endOffset;
+      startBadge.style.left = this.eventBadgeOffset(startOffset);
+      endBadge.style.left = this.eventBadgeOffset(endOffset);
       startBadge.querySelector('.event-time-badge-text').textContent = this.minutesToHm(startMinutes);
       endBadge.querySelector('.event-time-badge-text').textContent = this.minutesToHm(endMinutes);
     },

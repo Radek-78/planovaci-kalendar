@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.8.5 - 05.09.2026 13:09
+- v0.8.5: Bublinky s časem u časové osy se už nepřekrývají - Od zůstala nad dráhou, Do je nově pod ní. Překrývaly se u každé události kratší než zhruba 2,5 hodiny, tedy u většiny schůzek: bublinka je široká asi 58 pixelů, ale hodina zabírá na dráze jen 26. Rozdělením nad a pod dráhu se nemůžou potkat vůbec, ať jsou úchyty jakkoli blízko, a každá zůstává přesně nad nebo pod svým úchytem. Bublinky se navíc u krajních časů 00:00 a 23:45 už nevysunou ven z karty.
+
 ## v0.8.4 - 05.09.2026 09:34
 - v0.8.4: Časová osa události přepsaná bez nativních posuvníků - úchyty Od i Do jsou konečně vidět oba. Předchozí dva pokusy opravovaly následek, ne příčinu: dva překryté nativní posuvníky si každý kreslí vlastní vnitřní strukturu přes celou šířku, takže ten navrchu vždy překryl úchyt toho druhého - proto po opravě přes z-index zmizel místo úchytu Od zase úchyt Do. Oba úchyty jsou teď obyčejná tlačítka na vlastní pozici, která se překrýt nemůžou. Tažení myší i prstem, ovládání šipkami, PageUp/PageDown a Home/End appka obsluhuje sama.
 

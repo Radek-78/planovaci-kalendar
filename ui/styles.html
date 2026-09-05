@@ -3922,11 +3922,24 @@
 
   /* Nahoře nad posuvníkem prostor pro bublinky s časem (viz
      .event-time-badge, position: absolute vůči tomuto wrapperu). */
+  /* Odsazení shora i zdola je místo vyhrazené bublinkám s časem — jedna
+     nad dráhou, druhá pod ní (viz .event-time-badge níže). Stupnice
+     00:00–24:00 stojí až za tímhle blokem, takže se spodní bublince
+     odsazením sama uhne a nekříží se s ní. */
   .event-time-slider-wrap {
+    padding-bottom: 26px;
     padding-top: 26px;
     position: relative;
   }
 
+  /* Bublinky NEJSOU obě nad dráhou: Od je nad ní, Do pod ní (.is-below).
+     Obě nahoře se u kratších událostí překrývaly — bublinka je ~58 px
+     široká, ale hodina je na dráze jen ~26 px, takže cokoli kratšího než
+     ~2,5 hodiny (tedy většina schůzek) se překrylo a při minimálním
+     odstupu 15 minut (~6 px) skoro úplně. Rozdělením nad/pod se nemůžou
+     potkat vůbec, ať jsou úchyty jakkoli blízko, a každá zůstane přesně
+     nad/pod svým úchytem (na rozdíl od odsouvání do stran, kde by
+     ukazovala vedle). */
   .event-time-badge {
     align-items: center;
     background: var(--lidl-dark-blue);
@@ -3941,6 +3954,11 @@
     top: 0;
     transform: translateX(-50%);
     white-space: nowrap;
+  }
+
+  .event-time-badge.is-below {
+    bottom: 0;
+    top: auto;
   }
 
   .event-time-badge i {

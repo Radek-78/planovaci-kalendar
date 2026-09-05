@@ -939,10 +939,11 @@ zmizelo):
   od pátého kola (viz níže) přes **dvě obyčejná tlačítka jako úchyty**
   (`.event-time-thumb`) — dráhu i výplň appka kreslí sama
   (`.event-time-slider-track`/`-fill`). `TIME_SLIDER_GAP` (15 min) brání
-  přejetí jednoho úchytu přes druhý. Nad posuvníkem plavou dvě bublinky
-  s aktuálním časem (`.event-time-badge`) — úchyt i jeho bublinka se
-  pozicují stejným přepočtem (`eventTimeOffset`), takže nad sebou vždy
-  přesně sedí. Skutečná hodnota žije ve skrytých `#eventFormStartTime`/
+  přejetí jednoho úchytu přes druhý. U posuvníku plavou dvě bublinky
+  s aktuálním časem (`.event-time-badge`) — **Od nad dráhou, Do pod ní**
+  (`.is-below`, viz šesté kolo níže). Úchyt i jeho bublinka se pozicují
+  stejným přepočtem (`eventTimeOffset`), takže nad/pod sebou vždy přesně
+  sedí. Skutečná hodnota žije ve skrytých `#eventFormStartTime`/
   `#eventFormEndTime` (`minutesToHm`/`hmToMinutes` převádí mezi minutami
   od půlnoci a `HH:mm`) — `submitEventForm` se tak nemusel měnit. Rozsah
   posuvníku je 0–23:45 po 15 minutách (NE až do 24:00 — `cleanDateTime_`
@@ -1061,6 +1062,30 @@ a okolí, `ui/view_app.html`):
   odpovídat: použitelná část dráhy je o šířku úchytu užší a posunutá
   o jeho polovinu, jinak by úchyt v krajních hodnotách vyčníval půlkou
   ven z dráhy.
+
+**Šesté kolo — bublinky s časem nad a pod dráhou**:
+
+Obě bublinky nad dráhou se u kratších událostí překrývaly. Není to
+okrajový případ: bublinka je ~58 px široká, ale hodina zabírá na dráze
+jen ~26 px (624 použitelných px na 1440 minut), takže se překryla
+**každá událost kratší než ~2,5 hodiny** — a při minimálním odstupu
+15 minut (~6 px) skoro úplně.
+
+Řešení (návrh uživatele): **Od zůstává nad dráhou, Do jde pod ni**
+(`.event-time-badge.is-below`). Dvě bublinky tak nikdy nesdílí stejnou
+vodorovnou rovinu a překryv je — stejně jako u úchytů v pátém kole —
+konstrukčně nemožný, ne jen ošetřený výpočtem. Oproti odsouvání bublinek
+do stran má tohle řešení navíc tu výhodu, že každá bublinka zůstane
+přesně nad/pod svým úchytem a neukazuje vedle. Místo pro spodní bublinku
+dělá `padding-bottom` na `.event-time-slider-wrap` — stupnice
+00:00–24:00 stojí až za tímhle blokem, takže se sama posune níž.
+
+Zároveň se **bublinky ořezávají na okraje dráhy** (`eventBadgeOffset`),
+ať u krajních časů (00:00, 23:45) nepřečnívají půlkou ven z karty. Ořez
+dělá CSS `clamp()`, ne JS: JS by musel znát šířku dráhy v pixelech, tu
+ale při zavřeném modalu nezná (`getBoundingClientRect` vrací nuly),
+kdežto CSS si ji dosadí až při vykreslení. Úchytu ani výplně se ořez
+netýká — ty musí zůstat přesně na své hodnotě.
 
 **Sjednocení napříč appkou** — na žádost „aby všechna podobná modal okna
 v appce měla stejný design" dostaly `.form-hero-field`/`.form-hero-input`
