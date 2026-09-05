@@ -495,63 +495,72 @@
       </label>
 
       <div class="event-form-pills">
-        <div class="type-picker" id="eventFormTypePicker">
-          <button type="button" class="type-picker-trigger is-pill" id="eventFormTypeTrigger" aria-haspopup="true">
-            <span class="type-picker-trigger-icon" id="eventFormTypeTriggerIcon"><i class="ph ph-chat-circle" aria-hidden="true"></i></span>
-            <span class="type-picker-trigger-label" id="eventFormTypeTriggerLabel">Běžné</span>
-            <i class="ph ph-caret-down type-picker-caret" aria-hidden="true"></i>
-          </button>
-          <div class="type-picker-menu is-pill-menu is-hidden" id="eventFormTypeMenu"><!-- vykresleno JS --></div>
+        <div class="event-form-pill-field">
+          <p class="kicker">Typ</p>
+          <div class="type-picker" id="eventFormTypePicker">
+            <button type="button" class="type-picker-trigger is-pill" id="eventFormTypeTrigger" aria-haspopup="true">
+              <span class="type-picker-trigger-icon" id="eventFormTypeTriggerIcon"><i class="ph ph-chat-circle" aria-hidden="true"></i></span>
+              <span class="type-picker-trigger-label" id="eventFormTypeTriggerLabel">Běžné</span>
+              <i class="ph ph-caret-down type-picker-caret" aria-hidden="true"></i>
+            </button>
+            <div class="type-picker-menu is-pill-menu is-hidden" id="eventFormTypeMenu"><!-- vykresleno JS --></div>
+          </div>
+          <input type="hidden" id="eventFormType" value="default">
         </div>
-        <input type="hidden" id="eventFormType" value="default">
 
-        <!-- Opakování — vlastní pilulka/panel, stejný vzor jako Typ vlevo.
-             Panel má DVA obsahy, přepínané v JS podle režimu (viz
-             updateRecurrenceUi): u NOVÉ události nabídka frekvence
-             (#eventFormRecurrenceFreqOptions), u úpravy výskytu ze série
-             volba rozsahu úpravy (#eventFormRecurrenceScope). Pilulka se
-             u běžné (nikdy neopakující se) úpravy schová úplně. -->
-        <div class="recurrence-picker" id="eventFormRecurrencePicker">
-          <button type="button" class="recurrence-picker-trigger" id="eventFormRecurrenceTrigger" aria-haspopup="true">
-            <i class="ph ph-repeat" aria-hidden="true"></i>
-            <span id="eventFormRecurrenceTriggerLabel">Neopakovat</span>
-            <i class="ph ph-caret-down type-picker-caret" aria-hidden="true"></i>
-          </button>
-          <div class="type-picker-menu is-pill-menu is-hidden" id="eventFormRecurrenceMenu">
-            <div id="eventFormRecurrenceFreqOptions">
-              <button type="button" class="recurrence-picker-option" data-freq="">Neopakovat</button>
-              <button type="button" class="recurrence-picker-option" data-freq="daily">Každý den</button>
-              <button type="button" class="recurrence-picker-option" data-freq="weekly">Každý týden</button>
-              <button type="button" class="recurrence-picker-option" data-freq="biweekly">Každé 2 týdny</button>
-              <button type="button" class="recurrence-picker-option" data-freq="monthly">Každý měsíc</button>
-              <div class="recurrence-picker-end is-hidden" id="eventFormRecurrenceEndFields">
-                <label>
-                  <span>Počet opakování</span>
-                  <input type="number" id="eventFormRecurrenceCount" min="1" max="52" placeholder="např. 10">
+        <!-- Opakování — vlastní panel, stejný vzor jako Typ vlevo. Panel má
+             DVA obsahy, přepínané v JS podle režimu (viz updateRecurrenceUi):
+             u NOVÉ události nabídka frekvence (#eventFormRecurrenceFreqOptions),
+             u úpravy výskytu ze série volba rozsahu úpravy
+             (#eventFormRecurrenceScope). Celý modul (kicker i tlačítko) se
+             u běžné (nikdy neopakující se) úpravy schová úplně — proto
+             is-hidden přepíná JS na TÉHLE obalové <div>, ne na .recurrence-
+             -picker uvnitř, ať nadpis nezůstane osiřelý bez obsahu pod sebou. -->
+        <div class="event-form-pill-field" id="eventFormRecurrencePicker">
+          <p class="kicker">Opakování</p>
+          <div class="recurrence-picker">
+            <button type="button" class="recurrence-picker-trigger" id="eventFormRecurrenceTrigger" aria-haspopup="true">
+              <i class="ph ph-repeat" aria-hidden="true"></i>
+              <span id="eventFormRecurrenceTriggerLabel">Neopakovat</span>
+              <i class="ph ph-caret-down type-picker-caret" aria-hidden="true"></i>
+            </button>
+            <div class="type-picker-menu is-pill-menu is-hidden" id="eventFormRecurrenceMenu">
+              <div id="eventFormRecurrenceFreqOptions">
+                <button type="button" class="recurrence-picker-option" data-freq="">Neopakovat</button>
+                <button type="button" class="recurrence-picker-option" data-freq="daily">Každý den</button>
+                <button type="button" class="recurrence-picker-option" data-freq="weekly">Každý týden</button>
+                <button type="button" class="recurrence-picker-option" data-freq="biweekly">Každé 2 týdny</button>
+                <button type="button" class="recurrence-picker-option" data-freq="monthly">Každý měsíc</button>
+                <div class="recurrence-picker-end is-hidden" id="eventFormRecurrenceEndFields">
+                  <label>
+                    <span>Počet opakování</span>
+                    <input type="number" id="eventFormRecurrenceCount" min="1" max="52" placeholder="např. 10">
+                  </label>
+                  <label>
+                    <span>Nebo do data</span>
+                    <input type="date" id="eventFormRecurrenceUntil">
+                  </label>
+                </div>
+              </div>
+              <div class="is-hidden" id="eventFormRecurrenceScope">
+                <p class="recurrence-picker-scope-note"><i class="ph ph-repeat" aria-hidden="true"></i> Součást opakující se série</p>
+                <label class="recurrence-picker-option-radio">
+                  <input type="radio" name="eventFormRecurrenceScopeRadio" value="single" checked>
+                  <span>Upravit jen tuto</span>
                 </label>
-                <label>
-                  <span>Nebo do data</span>
-                  <input type="date" id="eventFormRecurrenceUntil">
+                <label class="recurrence-picker-option-radio">
+                  <input type="radio" name="eventFormRecurrenceScopeRadio" value="following">
+                  <span>Upravit tuto a všechny následující</span>
                 </label>
               </div>
             </div>
-            <div class="is-hidden" id="eventFormRecurrenceScope">
-              <p class="recurrence-picker-scope-note"><i class="ph ph-repeat" aria-hidden="true"></i> Součást opakující se série</p>
-              <label class="recurrence-picker-option-radio">
-                <input type="radio" name="eventFormRecurrenceScopeRadio" value="single" checked>
-                <span>Upravit jen tuto</span>
-              </label>
-              <label class="recurrence-picker-option-radio">
-                <input type="radio" name="eventFormRecurrenceScopeRadio" value="following">
-                <span>Upravit tuto a všechny následující</span>
-              </label>
-            </div>
           </div>
+          <input type="hidden" id="eventFormRecurrenceFreq" value="">
         </div>
-        <input type="hidden" id="eventFormRecurrenceFreq" value="">
       </div>
 
       <div class="field-group field-group-accent event-form-datetime-card">
+        <p class="kicker">Termín</p>
         <div class="event-form-date-row">
           <input type="date" id="eventFormStartDate" class="event-form-bare-date" required>
           <i class="ph ph-arrow-right event-form-date-arrow" aria-hidden="true"></i>
@@ -1261,6 +1270,33 @@
           '<span class="type-picker-option-label">' + Ui.escape(t.label) + '</span>' +
         '</button>';
       }).join('');
+
+      // Tlačítko Typu má rezervované místo pro nejdelší z AKTUÁLNĚ
+      // nastavených typů — jinak by při přepnutí z krátkého na dlouhý název
+      // (nebo naopak) tlačítko viditelně poskočilo do stran (zpětná vazba:
+      // "rezervováno místo pro nejdelší název typu, který se dá vybrat").
+      const labels = Object.keys(this.eventTypes).map((key) => this.eventTypes[key].label);
+      this.sizeTriggerLabelToLongest(document.querySelector('#eventFormTypeTriggerLabel'), labels);
+    },
+
+    /**
+     * Změří v DOM neviditelný klon `labelEl` postupně se všemi `texts` a na
+     * `labelEl` nastaví min-width podle toho nejširšího — tlačítko modulu
+     * (Typ/Opakování) tak neposkakuje do stran při přepnutí vybrané
+     * možnosti, protože má místo na nejdelší z nich rezervované předem.
+     */
+    sizeTriggerLabelToLongest(labelEl, texts) {
+      const probe = document.createElement('span');
+      probe.className = labelEl.className;
+      probe.style.cssText = 'position:absolute; left:-9999px; top:-9999px; visibility:hidden; white-space:nowrap;';
+      document.body.appendChild(probe);
+      let maxWidth = 0;
+      texts.forEach((text) => {
+        probe.textContent = text;
+        maxWidth = Math.max(maxWidth, probe.getBoundingClientRect().width);
+      });
+      document.body.removeChild(probe);
+      labelEl.style.minWidth = Math.ceil(maxWidth) + 'px';
     },
 
     /**
@@ -1880,6 +1916,13 @@
     bindRecurrencePicker() {
       const btn = document.querySelector('#eventFormRecurrenceTrigger');
       const menu = document.querySelector('#eventFormRecurrenceMenu');
+
+      // Na rozdíl od Typu je seznam popisků Opakování pevný (viz
+      // setEventFormRecurrenceFreq + updateRecurrenceUi) — stačí ho tu
+      // vypsat jednou při napojení panelu, ne přepočítávat při každé změně.
+      this.sizeTriggerLabelToLongest(document.querySelector('#eventFormRecurrenceTriggerLabel'), [
+        'Neopakovat', 'Každý den', 'Každý týden', 'Každé 2 týdny', 'Každý měsíc', 'Opakující se',
+      ]);
 
       btn.addEventListener('click', (e) => {
         e.stopPropagation();

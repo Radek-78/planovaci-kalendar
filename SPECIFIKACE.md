@@ -958,6 +958,43 @@ zmizelo):
 - **Poznámka** (dřív "Popis") — jen přejmenovaný popisek a placeholder,
   žádná změna chování.
 
+**Třetí kolo (doladění po druhém kole)**:
+
+- **Typ a Opakování** dostaly nadpis (`.kicker`) a přestaly být osamocené
+  pilulky — každý modul je teď vlastní malá karta (`.event-form-pill-
+  field`, stejný jazyk jako `.field-group-accent` — modré orámování
+  nahoře), tlačítko uvnitř (`.type-picker-trigger.is-pill`/
+  `.recurrence-picker-trigger`) je BARE/ploché, bez vlastního rámečku,
+  ať nevznikne dvojité orámování (stejný princip jako `.event-form-bare-
+  date` v kartě Termín). U Opakování se `is-hidden` (viz
+  `updateRecurrenceUi`) přepíná na téhle obalové kartě, ne na
+  `.recurrence-picker` uvnitř — jinak by nadpis zůstal viditelný osiřelý
+  bez tlačítka pod sebou.
+- **Šířka obou tlačítek je vyztužená na nejdelší možný popisek**, ať
+  tlačítko neposkakuje do stran při přepnutí vybrané hodnoty. Nová
+  klientská metoda `App.sizeTriggerLabelToLongest(labelEl, texts)` změří
+  v DOM neviditelný klon popisku postupně se všemi možnými texty
+  a nastaví `min-width` podle nejširšího z nich. U Typu se volá při
+  každém `fillEventTypeSelect()` (seznam typů je dynamický — spravuje se
+  v Nastavení), u Opakování jednou při `bindRecurrencePicker()` (seznam
+  frekvencí `Neopakovat/Každý den/.../Opakující se` je pevný).
+- **Žádné uřezávání textu uvnitř panelů** — `.type-picker-option-label`
+  (název typu v rozbalovacím panelu, až 40 znaků z `EVENT_TYPE_LABEL_MAX`)
+  se teď zalamuje přes víc řádků (`white-space: normal`) místo dřívějšího
+  `overflow: hidden; text-overflow: ellipsis`. Stejně tak popisek na
+  samotném tlačítku (`.type-picker-trigger-label`) ztratil ellipsis —
+  díky vyztužené šířce výše by se stejně nikdy neuplatnil, ponechán je
+  jen `white-space: nowrap` jako pojistka.
+- **Karta Termín** dostala nadpis `<p class="kicker">Termín</p>` (do
+  prvního kola přepracování ho neměla vůbec).
+- **Oprava viditelnosti úchytu časové osy** — v Chrome/Edge (na rozdíl od
+  Firefoxu) se `::-webkit-slider-thumb` sám nevystředí na dráhu; bez
+  explicitního `margin-top` se úchyt vykresloval mimo viditelnou výšku
+  posuvníku a splýval s okolím (nahlášeno jako "úchyt Od není vidět,
+  asi má stejnou barvu jako podklad"). Oprava: `::-webkit-slider-
+  runnable-track`/`::-moz-range-track` dostaly explicitní `height: 4px`
+  a `::-webkit-slider-thumb` `margin-top: -7px` (vzorec (dráha − úchyt) / 2).
+
 **Sjednocení napříč appkou** — na žádost „aby všechna podobná modal okna
 v appce měla stejný design" dostaly `.form-hero-field`/`.form-hero-input`
 (hlavní pole zvýrazněné jako "hero") a `.field-group-accent` (modré

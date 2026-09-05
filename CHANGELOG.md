@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.8.2 - 05.09.2026 08:49
+- v0.8.2: Formulář události - doladění vzhledu po zpětné vazbě. Typ a Opakování dostaly nadpis a přestaly být osamocené pilulky - každý modul je teď vlastní malá karta se stejným modrým orámováním jako zbytek formuláře, tlačítko uvnitř je bez vlastního rámečku. Obě tlačítka mají místo rezervované na nejdelší možný název, takže při přepnutí neposkakují do stran, a dlouhé názvy typů se v panelu vypisují celé, ne uříznuté. Karta Datum a čas dostala nadpis Termín. Oprava: úchyt Od u časové osy nebyl v Chrome/Edge vidět - chybělo mu svislé vystředění na dráhu posuvníku.
+
 ## v0.8.1 - 05.09.2026 08:25
 - v0.8.1: Formulář události — druhé kolo přepracování podle zadaného návrhu. Název je teď zcela bez rámečku (velký placeholder Bez názvu), Typ a Opakování jsou dvě úzké pilulky vedle sebe — obě otevírají vlastní rozbalovací panel s možnostmi. Datum Od→Do je jeden kompaktní řádek se šipkou mezi daty, Celý den vedle nich. Dva časové inputy nahrazeny dvojitým posuvníkem s bublinkami aktuálního času nad úchyty. Při zapnutí Celý den se časová osa neschová, jen zešedne a znepřístupní se, ať uživatel pořád vidí, na jaký čas byla nastavená.
 

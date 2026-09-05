@@ -3778,14 +3778,39 @@
     outline: none;
   }
 
-  /* Typ a Opakování vedle sebe jako dvě úzké "pilulky" (ne dva široké
-     boxy jako v prvním kole přepracování) — obě jsou rozbalovací seznamy
+  /* Typ a Opakování vedle sebe jako dva kompaktní moduly, každý s vlastním
+     nadpisem (.kicker) nad tlačítkem — obě jsou rozbalovací seznamy
      (.type-picker.is-pill / .recurrence-picker), žádná není nativní
      <select>. */
   .event-form-pills {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 16px;
+  }
+
+  /* Obal jednoho modulu (nadpis + tlačítko) — vlastní malá karta ve stejném
+     jazyce jako ostatní karty formuláře (modré orámování nahoře, viz
+     .field-group-accent), NE jen zaoblené tlačítko samo o sobě (zpětná
+     vazba: "moduly zobrazit jinak než obdélník s kulatými rohy"). Tlačítko
+     uvnitř je proto BARE/ploché (.type-picker-trigger.is-pill níže) — druhé
+     orámování uvnitř karty by působilo těžce, stejný princip jako
+     .event-form-bare-date uvnitř .event-form-datetime-card.
+     Na tomhle obalu (ne na .recurrence-picker uvnitř) se přepíná is-hidden
+     u Opakování (viz updateRecurrenceUi), ať nadpis nezůstane osiřelý bez
+     tlačítka pod sebou. */
+  .event-form-pill-field {
+    background: var(--page);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    border-top: 3px solid var(--lidl-blue);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+  }
+
+  .event-form-pill-field .kicker {
+    margin-bottom: 0;
   }
 
   /* Modré orámování nahoře — modifikátor k .field-group (sdílené jinde
@@ -3964,12 +3989,19 @@
 
   .event-time-slider-input::-webkit-slider-runnable-track {
     background: transparent;
+    height: 4px;
   }
 
   .event-time-slider-input::-moz-range-track {
     background: transparent;
+    height: 4px;
   }
 
+  /* Chrome/Edge (na rozdíl od Firefoxu) úchyt sám nevystředí na dráhu —
+     bez margin-top by se úchyt vykreslil zarovnaný nahoru k dráze
+     (height výše), efektivně mimo viditelnou 20px výšku posuvníku, kde
+     splýval s okolím (nahlášeno jako "úchyt Od není vidět"). Vzorec:
+     (výška dráhy − výška úchytu) / 2 = (4 − 18) / 2 = -7px. */
   .event-time-slider-input::-webkit-slider-thumb {
     appearance: none;
     background: var(--white);
@@ -3978,6 +4010,7 @@
     box-shadow: 0 1px 4px rgba(0, 20, 80, 0.3);
     cursor: grab;
     height: 18px;
+    margin-top: -7px;
     pointer-events: auto;
     width: 18px;
   }
@@ -4146,15 +4179,22 @@
     border-color: var(--lidl-blue);
   }
 
-  /* Úzká "pilulka" místo širokého boxu na celou šířku pole — použito ve
-     formuláři události vedle pilulky Opakování (.recurrence-picker-
-     trigger níže sdílí stejný jazyk). */
+  /* Ploché/bare tlačítko bez vlastního rámečku — kartu okolo (modré
+     orámování nahoře) už dává .event-form-pill-field, viz komentář tam.
+     Použito ve formuláři události vedle modulu Opakování
+     (.recurrence-picker-trigger níže sdílí stejný jazyk). */
   .type-picker-trigger.is-pill {
-    background: var(--page);
-    border-radius: 999px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius);
     font-weight: 600;
-    padding: 8px 14px;
+    padding: 2px;
     width: auto;
+  }
+
+  .type-picker-trigger.is-pill:hover {
+    background: rgba(0, 83, 179, 0.06);
+    border-color: transparent;
   }
 
   .type-picker-trigger:focus-visible {
@@ -4181,12 +4221,14 @@
     font-size: 13px;
   }
 
+  /* Šířka je zdola vyztužená na míru nejdelšímu z aktuálně nabízených
+     popisků (viz sizeTriggerLabelToLongest v JS) — text se proto NIKDY
+     neuřezává (žádný ellipsis/overflow:hidden, jen pojistka
+     white-space:nowrap, kdyby se měření z nějakého důvodu netrefilo). */
   .type-picker-trigger-label {
     flex: 1;
     font-weight: 400;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow: visible;
     white-space: nowrap;
   }
 
@@ -4266,14 +4308,17 @@
     font-size: 13px;
   }
 
+  /* Zalamuje se přes víc řádků, nikdy se neuřezává ellipsis — dlouhý
+     vlastní název typu (Nastavení → Typy událostí, až 40 znaků) se v panelu
+     musí vypsat celý (zpětná vazba: "vše musí vypsat kompletně a ne
+     uříznutě"). */
   .type-picker-option-label {
     color: var(--text);
     font-size: 13px;
     font-weight: 600;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: break-word;
+    white-space: normal;
   }
 
   /* ── Výběr opakování (.recurrence-picker) — stejný vizuální jazyk jako
@@ -4296,11 +4341,14 @@
     width: 240px;
   }
 
+  /* Ploché/bare tlačítko bez vlastního rámečku — kartu okolo (modré
+     orámování nahoře) už dává .event-form-pill-field, stejný princip jako
+     u .type-picker-trigger.is-pill vedle něj. */
   .recurrence-picker-trigger {
     align-items: center;
-    background: var(--page);
-    border: 1px solid var(--line);
-    border-radius: 999px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius);
     color: var(--text);
     cursor: pointer;
     display: inline-flex;
@@ -4308,12 +4356,12 @@
     font-weight: 600;
     gap: 8px;
     min-height: 38px;
-    padding: 8px 14px;
-    transition: border-color 0.15s;
+    padding: 2px;
+    transition: background-color 0.15s;
   }
 
   .recurrence-picker-trigger:hover {
-    border-color: var(--lidl-blue);
+    background: rgba(0, 83, 179, 0.06);
   }
 
   .recurrence-picker-trigger:focus-visible {
