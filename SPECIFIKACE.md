@@ -1141,11 +1141,30 @@ netýká — ty musí zůstat přesně na své hodnotě.
   zešedlý čas u data by vypadal jako součást termínu, přitom se neuplatní
   (ukládá se 00:00/23:59).
 
+**Deváté kolo — hlavní pole formulářů podtržené (a oprava, proč nikdy
+nevypadalo, jak mělo)**:
+
+Systematická kontrola všech tříd použitých na polích našla poslední místo
+se stejnou chybou specificity jako v sedmém kole: **`.form-hero-input`**
+(sdílené hlavní pole formulářů Pracovní pozice, Oddělení, Svátek, Typ
+události, Šablona události) prohrávalo s globálním pravidlem pro pole,
+takže z „hero" podoby zbylo jen tučné písmo — `font-size: 17px`,
+`min-height: 50px` i `padding: 12px 16px` přebíjelo globální pravidlo.
+Celé sjednocení z v0.7.2 se tedy u polí vizuálně nikdy neprojevilo (modré
+karty `.field-group-accent` fungovaly, ty jsou na `<div>`, ne na poli).
+
+Místo pouhé opravy dostalo hero pole rovnou **podtržený vzhled bez boxu**
+(`.modal input.form-hero-input`, `border-bottom` + modré zvýraznění při
+psaní) — stejný jazyk jako název události, jen menší, protože tyhle
+formuláře mají nad polem ještě popisek. Bezrámečkové datum se zobecnilo
+z `.event-form-bare-date` na **`.form-bare-date`** (scope přes `.modal`,
+ne přes tělo jednoho formuláře) a používá ho i formulář svátku.
+
 **Sjednocení napříč appkou** — na žádost „aby všechna podobná modal okna
 v appce měla stejný design" dostaly `.form-hero-field`/`.form-hero-input`
-(hlavní pole zvýrazněné jako "hero") a `.field-group-accent` (modré
-orámování karty) i ostatní jednoduché formuláře v Nastavení, ne jen
-formulář události a svátku:
+(hlavní pole zvýrazněné jako "hero", od devátého kola podtržené — viz
+výše) a `.field-group-accent` (modré orámování karty) i ostatní jednoduché
+formuláře v Nastavení, ne jen formulář události a svátku:
 
 - **Pracovní pozice/Oddělení** — jediné pole (Název) je teď hero pole,
   bez dalšího boxu (žádný jiný obsah k seskupení).

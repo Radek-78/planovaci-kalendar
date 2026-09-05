@@ -3742,11 +3742,31 @@
     gap: 8px;
   }
 
-  .form-hero-input {
+  /* Od osmého kola bez boxu, jen podtržení — stejný jazyk jako název
+     události (.event-form-bare-title-input), jen menší, protože tyhle
+     formuláře mají nad polem ještě popisek.
+
+     Zápis `.modal input.<třída>` je nutný kvůli specificitě: globální
+     pravidlo pro pole má 0-2-1, samotná třída jen 0-1-0. Kvůli tomu se
+     do téhle chvíle neuplatňovala ANI PŮVODNÍ podoba hero pole — pole
+     si přes třídu bralo font-size/min-height/padding běžného pole a
+     "hero" z něj zbylo jen tučné písmo (jediná vlastnost, kterou globální
+     pravidlo nenastavuje). Viz i komentář u .event-form-bare-title-input. */
+  .modal input.form-hero-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
     font-size: 17px;
     font-weight: 700;
-    min-height: 50px;
-    padding: 12px 16px;
+    min-height: auto;
+    padding: 6px 2px;
+  }
+
+  .modal input.form-hero-input:focus {
+    border-bottom-color: var(--lidl-blue);
+    box-shadow: none;
+    outline: none;
   }
 
   /* Název ve formuláři události — bez pozadí a bez boxu, jen podtržení
@@ -3760,7 +3780,7 @@
      přes ni dál bralo bílé pozadí, rámeček a zaoblení určené běžným polím
      a tenhle "bare" vzhled se od svého zavedení vůbec neprojevil. Tenhle
      tvar má stejnou specificitu a stojí v souboru za ním, takže vyhraje.
-     Totéž platí pro .event-form-bare-date níže. */
+     Totéž platí pro .form-bare-date níže. */
   .event-form-bare-title-field {
     gap: 0;
   }
@@ -3814,7 +3834,7 @@
      vazba: "moduly zobrazit jinak než obdélník s kulatými rohy"). Tlačítko
      uvnitř je proto BARE/ploché (.type-picker-trigger.is-pill níže) — druhé
      orámování uvnitř karty by působilo těžce, stejný princip jako
-     .event-form-bare-date uvnitř .event-form-datetime-card.
+     .form-bare-date uvnitř .event-form-datetime-card.
      Na tomhle obalu (ne na .recurrence-picker uvnitř) se přepíná is-hidden
      u Opakování (viz updateRecurrenceUi), ať nadpis nezůstane osiřelý bez
      tlačítka pod sebou. */
@@ -3896,11 +3916,13 @@
 
   /* Datum bez rámečku uvnitř karty — karta sama už má vlastní orámování
      (.field-group-accent), druhé kolo rámečků uvnitř by působilo těžce.
-     Zápis `.event-form-body input.<třída>` je nutný kvůli specificitě, viz
-     podrobný komentář u .event-form-bare-title-input výše — se samotnou
-     třídou pravidlo prohrávalo s globálním pravidlem pro pole a datum se
-     i tak vykreslovalo jako bílý box s rámečkem. */
-  .event-form-body input.event-form-bare-date {
+     Sdílené formulářem události i svátku, proto obecný název (.form-bare-
+     date) a scope přes .modal, ne přes tělo jednoho formuláře.
+     Zápis `.modal input.<třída>` je nutný kvůli specificitě, viz podrobný
+     komentář u .event-form-bare-title-input výše — se samotnou třídou
+     pravidlo prohrávalo s globálním pravidlem pro pole a datum se i tak
+     vykreslovalo jako bílý box s rámečkem. */
+  .modal input.form-bare-date {
     background: transparent;
     border: none;
     color: var(--text);
@@ -3912,7 +3934,7 @@
     width: auto;
   }
 
-  .event-form-body input.event-form-bare-date:focus {
+  .modal input.form-bare-date:focus {
     border-color: transparent;
     box-shadow: none;
     outline: none;

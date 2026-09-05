@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.8.8 - 05.09.2026 19:18
+- v0.8.8: Hlavní pole formulářů podtržené - a oprava, proč nikdy nevypadalo, jak mělo. Systematická kontrola všech tříd použitých na polích našla poslední místo se stejnou chybou jako minule: zvýrazněné hlavní pole ve formulářích Pracovní pozice, Oddělení, Svátek, Typ události a Šablona události prohrávalo s globálním pravidlem pro pole, takže z něj zbylo jen tučné písmo a větší velikost ani odsazení se nikdy neprojevily. Sjednocení vzhledu z v0.7.2 tedy u polí vizuálně nikdy nedoběhlo. Místo pouhé opravy dostalo pole rovnou podtržený vzhled bez rámečku, stejný jazyk jako název události. Datum ve formuláři svátku je nově taky bez rámečku, protože karta kolem něj už jedno orámování má.
+
 ## v0.8.7 - 05.09.2026 19:09
 - v0.8.7: Moduly Typ a Opakování na celou šířku a čas vedle data. Oba moduly mají teď stejnou šířku a dohromady vyplní celou šířku formuláře, šipka pro rozbalení sedí u pravého okraje modulu jako u běžného výběru. Když se modul Opakování schová (u běžné úpravy události), zabere Typ celou šířku sám a nezůstane po něm poloprázdné místo. V kartě Termín se nově u každého data vypisuje i jeho čas, takže se obě strany čtou jako úplný okamžik a text se přepisuje živě při tažení posuvníku. Při zapnutí Celý den se čas u data schová, protože se stejně neuplatní.
 
