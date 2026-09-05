@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.8.6 - 05.09.2026 18:59
+- v0.8.6: Pole Název a Datum konečně bez boxu a Opakování ukazuje zadanou hodnotu. Název je nově jen podtržená čára bez rámečku a bílého pozadí, při psaní se podtržení zvýrazní modrou. Při té příležitosti se ukázalo, proč tenhle vzhled nefungoval už od v0.8.1: globální pravidlo pro formulářová pole má vyšší specificitu než samotná třída, takže pole dál přebíralo rámeček a bílé pozadí. Stejná chyba se týkala i polí s datem v kartě Termín, ta jsou teď taky bez rámečku, takže uvnitř karty nevzniká druhé orámování. Modul Opakování nově vypisuje i zadaný konec série, tedy třeba Každý týden 10x nebo Každý týden do 30.11.2026.
+
 ## v0.8.5 - 05.09.2026 13:09
 - v0.8.5: Bublinky s časem u časové osy se už nepřekrývají - Od zůstala nad dráhou, Do je nově pod ní. Překrývaly se u každé události kratší než zhruba 2,5 hodiny, tedy u většiny schůzek: bublinka je široká asi 58 pixelů, ale hodina zabírá na dráze jen 26. Rozdělením nad a pod dráhu se nemůžou potkat vůbec, ať jsou úchyty jakkoli blízko, a každá zůstává přesně nad nebo pod svým úchytem. Bublinky se navíc u krajních časů 00:00 a 23:45 už nevysunou ven z karty.
 

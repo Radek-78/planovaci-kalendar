@@ -3749,17 +3749,26 @@
     padding: 12px 16px;
   }
 
-  /* Název ve formuláři události — úplně bez rámečku/pozadí, jen velký
-     placeholder text "Bez názvu" (přebírá barvu z --muted, dokud se
-     nezačne psát) — nejstřídmější varianta hero pole v appce, přesně
-     podle zadaného návrhu. */
+  /* Název ve formuláři události — bez pozadí a bez boxu, jen podtržení
+     (velký placeholder "Bez názvu" přebírá barvu z --muted, dokud se
+     nezačne psát).
+
+     POZOR na selektor: musí být `.event-form-body input.<třída>`, ne jen
+     `.<třída>`. Globální pravidlo pro pole
+     (`input:not([type=checkbox]):not([type=radio])`, viz začátek souboru)
+     má specificitu 0-2-1, kdežto samotná třída jen 0-1-0 — pole si proto
+     přes ni dál bralo bílé pozadí, rámeček a zaoblení určené běžným polím
+     a tenhle "bare" vzhled se od svého zavedení vůbec neprojevil. Tenhle
+     tvar má stejnou specificitu a stojí v souboru za ním, takže vyhraje.
+     Totéž platí pro .event-form-bare-date níže. */
   .event-form-bare-title-field {
     gap: 0;
   }
 
-  .event-form-bare-title-input {
+  .event-form-body input.event-form-bare-title-input {
     background: transparent;
     border: none;
+    border-bottom: 1px solid var(--line);
     border-radius: 0;
     font-size: 26px;
     font-weight: 700;
@@ -3772,8 +3781,10 @@
     font-weight: 700;
   }
 
-  .event-form-bare-title-input:focus {
-    border-color: transparent;
+  /* Při psaní se podtržení zvýrazní modrou — jediná zpětná vazba, kterou
+     pole bez boxu může dát (rámeček ani stín tu nejsou). */
+  .event-form-body input.event-form-bare-title-input:focus {
+    border-bottom-color: var(--lidl-blue);
     box-shadow: none;
     outline: none;
   }
@@ -3875,8 +3886,12 @@
   }
 
   /* Datum bez rámečku uvnitř karty — karta sama už má vlastní orámování
-     (.field-group-accent), druhé kolo rámečků uvnitř by působilo těžce. */
-  .event-form-bare-date {
+     (.field-group-accent), druhé kolo rámečků uvnitř by působilo těžce.
+     Zápis `.event-form-body input.<třída>` je nutný kvůli specificitě, viz
+     podrobný komentář u .event-form-bare-title-input výše — se samotnou
+     třídou pravidlo prohrávalo s globálním pravidlem pro pole a datum se
+     i tak vykreslovalo jako bílý box s rámečkem. */
+  .event-form-body input.event-form-bare-date {
     background: transparent;
     border: none;
     color: var(--text);
@@ -3888,7 +3903,7 @@
     width: auto;
   }
 
-  .event-form-bare-date:focus {
+  .event-form-body input.event-form-bare-date:focus {
     border-color: transparent;
     box-shadow: none;
     outline: none;
@@ -4355,6 +4370,10 @@
     min-height: 38px;
     padding: 2px;
     transition: background-color 0.15s;
+    /* Popisek může být delší (frekvence + zadaný konec série, viz
+       updateRecurrenceTriggerLabel) — musí se roztáhnout do šířky, ne
+       zalomit na dva řádky uvnitř tlačítka. */
+    white-space: nowrap;
   }
 
   .recurrence-picker-trigger:hover {

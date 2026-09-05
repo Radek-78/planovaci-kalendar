@@ -1965,11 +1965,22 @@
       const menu = document.querySelector('#eventFormRecurrenceMenu');
 
       // Na rozdíl od Typu je seznam popisků Opakování pevný (viz
-      // setEventFormRecurrenceFreq + updateRecurrenceUi) — stačí ho tu
-      // vypsat jednou při napojení panelu, ne přepočítávat při každé změně.
-      this.sizeTriggerLabelToLongest(document.querySelector('#eventFormRecurrenceTriggerLabel'), [
-        'Neopakovat', 'Každý den', 'Každý týden', 'Každé 2 týdny', 'Každý měsíc', 'Opakující se',
-      ]);
+      // RECURRENCE_LABELS + updateRecurrenceUi) — stačí ho tu vypsat jednou
+      // při napojení panelu, ne přepočítávat při každé změně. Rezervuje se
+      // místo jen na SAMOTNOU frekvenci, ne i na dopsaný konec série
+      // ("· 10×", "· do 30.11.2026"): ten přibude až jako přímý důsledek
+      // toho, co uživatel sám zadal, a tlačítko se jen roztáhne doprava do
+      // prázdna — kdežto rezervovat místo na nejdelší možnou kombinaci by
+      // znamenalo mít modul natrvalo přes dvakrát širší i u "Neopakovat".
+      const freqLabels = Object.keys(this.RECURRENCE_LABELS).map((key) => this.RECURRENCE_LABELS[key]);
+      this.sizeTriggerLabelToLongest(
+        document.querySelector('#eventFormRecurrenceTriggerLabel'), freqLabels.concat(['Opakující se']));
+
+      // Popisek musí ukázat i zadaný konec série hned při psaní, ne až po
+      // zavření panelu — proto 'input', ne 'change'.
+      ['#eventFormRecurrenceCount', '#eventFormRecurrenceUntil'].forEach((selector) => {
+        document.querySelector(selector).addEventListener('input', () => this.updateRecurrenceTriggerLabel());
+      });
 
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1999,15 +2010,42 @@
       document.querySelector('#eventFormRecurrenceMenu').classList.add('is-hidden');
     },
 
-    /** Nastaví vybranou frekvenci opakování — zapíše do skrytého #eventFormRecurrenceFreq, přepíše popisek na pilulce a ukáže/skryje "Počet opakování / Nebo do data". */
+    /** Popisky frekvencí opakování — na jednom místě, ať se stejný seznam nepíše zvlášť pro tlačítko a zvlášť pro výpočet jeho šířky. */
+    RECURRENCE_LABELS: {
+      '': 'Neopakovat',
+      daily: 'Každý den',
+      weekly: 'Každý týden',
+      biweekly: 'Každé 2 týdny',
+      monthly: 'Každý měsíc',
+    },
+
+    /** Nastaví vybranou frekvenci opakování — zapíše do skrytého #eventFormRecurrenceFreq, přepíše popisek na tlačítku a ukáže/skryje "Počet opakování / Nebo do data". */
     setEventFormRecurrenceFreq(freq) {
-      const labels = { '': 'Neopakovat', daily: 'Každý den', weekly: 'Každý týden', biweekly: 'Každé 2 týdny', monthly: 'Každý měsíc' };
       document.querySelector('#eventFormRecurrenceFreq').value = freq;
-      Ui.setText('#eventFormRecurrenceTriggerLabel', labels[freq] || freq);
       document.querySelectorAll('#eventFormRecurrenceFreqOptions .recurrence-picker-option').forEach((btn) => {
         btn.classList.toggle('is-selected', btn.dataset.freq === freq);
       });
       document.querySelector('#eventFormRecurrenceEndFields').classList.toggle('is-hidden', !freq);
+      this.updateRecurrenceTriggerLabel();
+    },
+
+    /**
+     * Popisek na tlačítku Opakování — kromě frekvence ukazuje i konec série,
+     * který uživatel zadal ("Každý týden · 10×", "Každý týden · do 30.11.2026"),
+     * ať je celé nastavení vidět i se zavřeným panelem. Počet opakování má
+     * přednost před datem — stejně jako v submitEventForm, ať popisek
+     * neslibuje něco jiného, než co se doopravdy uloží.
+     */
+    updateRecurrenceTriggerLabel() {
+      const freq = document.querySelector('#eventFormRecurrenceFreq').value;
+      const count = document.querySelector('#eventFormRecurrenceCount').value;
+      const until = document.querySelector('#eventFormRecurrenceUntil').value;
+
+      let label = this.RECURRENCE_LABELS[freq] || freq;
+      if (freq && count) label += ' · ' + count + '×';
+      else if (freq && until) label += ' · do ' + this.formatFullDate(until);
+
+      Ui.setText('#eventFormRecurrenceTriggerLabel', label);
     },
 
     /**
@@ -2026,9 +2064,12 @@
       this.closeRecurrencePicker();
 
       if (!event) {
-        this.setEventFormRecurrenceFreq('');
+        // Konec série se maže PŘED nastavením frekvence — popisek tlačítka
+        // se skládá i z těchhle polí (updateRecurrenceTriggerLabel), takže
+        // opačné pořadí by ho poskládalo ještě z hodnot minulé události.
         document.querySelector('#eventFormRecurrenceCount').value = '';
         document.querySelector('#eventFormRecurrenceUntil').value = '';
+        this.setEventFormRecurrenceFreq('');
       } else if (isRecurringInstance) {
         Ui.setText('#eventFormRecurrenceTriggerLabel', 'Opakující se');
         document.querySelector('input[name="eventFormRecurrenceScopeRadio"][value="single"]').checked = true;

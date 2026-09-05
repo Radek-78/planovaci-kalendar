@@ -915,7 +915,8 @@ zmizelo):
 - **Název** je teď zcela bez rámečku/popisku — vlastní `.event-form-bare-
   title-field`/`.event-form-bare-title-input` (velký, tučný, placeholder
   "Bez názvu"), NE sdílený `.form-hero-*` (ten zůstává pro formulář
-  svátku/oddělení/pozice/typu beze změny).
+  svátku/oddělení/pozice/typu beze změny). (Pozor: až do sedmého kola se
+  tenhle vzhled kvůli specificitě selektoru vůbec neprojevoval — viz níže.)
 - **Typ a Opakování** jsou dvě úzké "pilulky" vedle sebe (`.event-form-
   pills`), ne dva široké boxy. Opakování je nová `.recurrence-picker`
   komponenta — stejný vzor jako `.type-picker` (pilulka + panel,
@@ -1086,6 +1087,35 @@ dělá CSS `clamp()`, ne JS: JS by musel znát šířku dráhy v pixelech, tu
 ale při zavřeném modalu nezná (`getBoundingClientRect` vrací nuly),
 kdežto CSS si ji dosadí až při vykreslení. Úchytu ani výplně se ořez
 netýká — ty musí zůstat přesně na své hodnotě.
+
+**Sedmé kolo — pole bez boxu (oprava specificity) a konec série na tlačítku**:
+
+- **„Bare" vzhled polí se do téhle chvíle vůbec neprojevoval.** Název
+  i data v kartě Termín se dál vykreslovaly jako bílé boxy s rámečkem,
+  přestože `.event-form-bare-title-input`/`.event-form-bare-date` mají
+  `border: none`. Příčina je **specificita**: globální pravidlo pro pole
+  `input:not([type="checkbox"]):not([type="radio"])` má specificitu
+  **0-2-1** (každé `:not()` započítá specificitu svého argumentu), kdežto
+  samotná třída jen **0-1-0** — globální pravidlo tedy vyhrávalo. Oprava:
+  obě pravidla se zapisují jako `.event-form-body input.<třída>`, což je
+  taky 0-2-1 a v souboru stojí až za globálním pravidlem, takže vyhraje.
+  **Při zavádění dalšího „bare" pole se tenhle tvar selektoru musí
+  dodržet**, jinak se změna zase tiše neprojeví.
+- **Název má nově podtržení** (`border-bottom`) místo úplně holého pole —
+  při psaní se podtržení zvýrazní modrou (`:focus`), což je jediná zpětná
+  vazba, kterou pole bez boxu může dát. Data v kartě Termín zůstávají
+  úplně bez rámečku (karta kolem nich už jedno orámování má).
+- **Tlačítko Opakování ukazuje i zadaný konec série** — kromě frekvence
+  i „· 10×", resp. „· do 30.11.2026" (`updateRecurrenceTriggerLabel`,
+  popisky frekvencí nově v jednom sdíleném `RECURRENCE_LABELS`). Skládá se
+  při každé změně obou polí (`input`, ne `change`, ať se to projeví hned
+  při psaní). Počet opakování má přednost před datem — **stejně jako
+  v `submitEventForm`**, ať popisek neslibuje něco jiného, než co se
+  doopravdy uloží. Rezervovaná šířka tlačítka (viz třetí kolo) se počítá
+  jen ze samotných frekvencí, ne z celé kombinace: dopsaný konec série je
+  přímý důsledek toho, co uživatel sám zadal, a tlačítko se jen roztáhne
+  doprava do prázdna — rezervovat místo na nejdelší možnou kombinaci by
+  znamenalo mít modul natrvalo přes dvakrát širší i u „Neopakovat".
 
 **Sjednocení napříč appkou** — na žádost „aby všechna podobná modal okna
 v appce měla stejný design" dostaly `.form-hero-field`/`.form-hero-input`
