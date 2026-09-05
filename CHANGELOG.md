@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.8.10 - 05.09.2026 23:38
+- v0.8.10: Oprava falešně hlášených změn u filiálek s ulicí pojmenovanou po datu. Appka hlásila u Mikulova a Orlové změnu skoro každou noc, přestože se zdroj vůbec nezměnil - ulice 28. října a 17. listopadu totiž Sheets sama automaticky rozpozná jako datum, a appka takovou buňku dosud převáděla na text způsobem, jehož výsledek závisí na jazykové lokalizaci prostředí v danou chvíli. Ta se liší mezi ruční synchronizací z appky a nočním triggerem, takže appka i beze změny zdroje hlásila rozdíl. Teď se datum formátuje vždy stejným, na lokalizaci nezávislým způsobem. Obě filiálky se při první synchronizaci po nasazení ještě jednou nahlásí jako změněné - přechod na nový formát, od další noci už zůstanou beze změny.
+
 ## v0.8.9 - 05.09.2026 23:29
 - v0.8.9: Šablona události má stejný výběr typu a časovou osu jako událost. Formulář šablony v Nastavení měl dosud obyčejný výběr typu bez ikon a dva samostatné časy Od/Do - teď používá stejné komponenty jako formulář události. Obě komponenty byly napevno svázané jen s jedním formulářem, takže musely nejdřív projít zobecněním na dvě nezávislé instance, ne pouhým zkopírováním kódu - u časové osy, která si prošla čtyřmi koly oprav, by druhá kopie stejné logiky znamenala každou budoucí opravu dělat dvakrát.
 

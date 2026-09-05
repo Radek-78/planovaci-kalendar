@@ -780,6 +780,37 @@ firemní adresář):
   zatím jen logují (Stackdriver/Spuštění v editoru) — appka o nich
   uvnitř sebe sama nijak neinformuje, na rozdíl od úspěšné synchronizace.
 
+**Etapa 5 (implementováno)** — oprava falešně hlášených změn u textových
+polí, které Sheets sama převede na datum:
+
+- Nahlášený příznak: appka hlásila u filiálek s ulicí pojmenovanou po
+  datu (např. "28. října" u Mikulova, "17. listopadu" u Orlové) změnu
+  téměř každou noc, přestože se zdrojový soubor nezměnil — v Logu importu
+  šlo vidět položky typu `Ulice „Wed Oct 28 2026 00:00:00 GMT+0100
+  (středoevropský standardní čas)" → „… (Central European Standard
+  Time)"`, tedy stejný okamžik, jen jinak pojmenovaná časová zóna.
+- Příčina: cizí zdrojový systém uloží takovou ulici jako text, ale Sheets
+  při zobrazení/čtení sama rozpozná obsah buňky jako datum a `getValues()`
+  pak místo textu vrátí JS objekt `Date`. `_importCellText_` ho do té
+  doby převáděla přes obyčejné `String(value)` = `Date.prototype.
+  toString()` — a TA je závislá na jazykové lokalizaci V8 runtimu v danou
+  chvíli, která se liší mezi ruční synchronizací z appky a nočním
+  triggerem. Detekce změny (`_storeRowChanges_`) porovnává řetězce prostou
+  nerovností, takže i čistě kosmetický rozdíl v názvu časové zóny
+  vyhodnotila jako skutečnou změnu pole.
+- Oprava: `_importCellText_` teď `Date` hodnotu formátuje přes
+  `Utilities.formatDate(value, TIMEZONE, 'dd.MM.yyyy')` — stejný princip,
+  jaký už dřív používaly `_importCellTime_`/`_importCellDate_` pro
+  sloupce s časem/datem (viz výše), jen jiný cílový formát. Je to
+  formátovač Javy, ne V8/ICU — pro STEJNÉ datum vrátí VŽDY STEJNÝ text
+  bez ohledu na to, v jakém kontextu appka zrovna běží.
+- **Jednorázový důsledek po nasazení**: obě dotčené filiálky mají v
+  `_stores` uloženou starou, ještě lokalizací zatíženou hodnotu `ulice`
+  (z dřívějších synchronizací) — první sync po nasazení tyhle dva řádky
+  ještě jednou nahlásí jako "změněné" (přechod na nový, stabilní formát),
+  od další noci už zůstanou beze změny navždy, dokud se opravdu nezmění
+  zdroj.
+
 ### 9.7 Státní svátky ČR
 
 Svátky jsou **plně editovatelná tabulka** `_holidays` (id/date/name +

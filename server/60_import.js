@@ -90,8 +90,26 @@ const IMPORT_CLOSURE_COLUMNS = [
    ČTENÍ ZDROJOVÉHO SOUBORU
    ══════════════════════════════════════════════════════════════════════════ */
 
-/** Prostý text buňky, ořezaný. `null`/`undefined` → prázdný řetězec. */
+/**
+ * Prostý text buňky, ořezaný. `null`/`undefined` → prázdný řetězec.
+ *
+ * Když Sheets sama automaticky rozpozná obsah textového sloupce jako
+ * datum — typicky u ulic pojmenovaných po datu (např. "28. října",
+ * "17. listopadu"), na to cizí zdrojový systém nemá vliv — vrátí
+ * `getValues()` místo textu JS objekt `Date`. Bez zvláštního ošetření by
+ * se dál použil výchozí `String(date)` (= `Date.prototype.toString()`),
+ * jehož výsledek (`GMT+0100 (středoevropský standardní čas)` vs.
+ * `(Central European Standard Time)`) závisí na jazykové lokalizaci
+ * V8 runtimu v danou chvíli — ta se liší mezi ruční synchronizací
+ * z appky a nočním triggerem, takže appka hlásila „změnu" u filiálky,
+ * i když se ve zdroji nic nezměnilo (nahlášeno, viz historie v
+ * SPECIFIKACE.md). `Utilities.formatDate()` místo toho vrací pro STEJNÉ
+ * datum vždy STEJNÝ text bez ohledu na kontext — je to formátovač Javy,
+ * ne V8/ICU, na lokalizaci prostředí nezávisí. Stejný princip jako
+ * u _importCellTime_/_importCellDate_ níže, jen jiný cílový formát.
+ */
 function _importCellText_(value) {
+  if (value instanceof Date) return Utilities.formatDate(value, TIMEZONE, 'dd.MM.yyyy');
   return String(value === null || value === undefined ? '' : value).trim();
 }
 
