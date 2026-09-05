@@ -1160,6 +1160,54 @@ formuláře mají nad polem ještě popisek. Bezrámečkové datum se zobecnilo
 z `.event-form-bare-date` na **`.form-bare-date`** (scope přes `.modal`,
 ne přes tělo jednoho formuláře) a používá ho i formulář svátku.
 
+**Desáté kolo — zobecnění .type-picker a časové osy, šablona jako
+událost**:
+
+Formulář šablony (Nastavení → Šablony událostí) dostal stejné komponenty
+Typu a Času jako formulář události — dřív obyčejný `<select>` a dva
+`input[type=time]`. Obě komponenty byly do té chvíle napevno svázané
+s id formuláře události (`#eventFormType`, `#eventFormTimeSliderStart`
+apod.), takže musely projít **zobecněním na dvě nezávislé instance**, ne
+prostým zkopírováním — u komponenty, kde první instance prošla čtyřmi
+koly bugfixů (viz páté–šesté kolo výše), by druhá kopie stejné logiky
+znamenala každou budoucí opravu dělat dvakrát.
+
+- **`.type-picker`**: `TYPE_PICKER_IDS.event`/`.template` drží id obou
+  instancí (`trigger`/`menu`/`hidden`/`triggerIcon`/`triggerLabel`).
+  Dřívější `fillEventTypeSelect`/`setEventFormType`/`bindTypePicker` se
+  rozpadly na obecné jádro (`renderTypePickerOptions`,
+  `setTypePickerValue(ids, key)`, `bindTypePickerMenu(ids, beforeOpen)`)
+  + tenké obálky se STEJNÝMI jmény jako dřív pro formulář události
+  (`setEventFormType`, `bindTypePicker`, `openTypePicker`/`closeTypePicker`
+  beze změny signatury) — všechna volání mimo tenhle blok tak zůstala
+  beze změny. `beforeOpen` je nepovinný háček pro vzájemné vyloučení se
+  sousedním panelem (u formuláře události zavírá Opakování) — formulář
+  šablony ho nepotřebuje, žádný sousední panel nemá. Formulář šablony
+  používá **základní** `.type-picker-trigger` (ne `.is-pill` modifikátor
+  z formuláře události) — vypadá jako běžné pole ve dvousloupcovém řádku
+  vedle "Délka trvání (dny)", stejně jako předtím `<select>`.
+- **Dvojitý posuvník**: `TIME_SLIDER_IDS.event`/`.template` (`area`/
+  `fill`/`start`/`end`/`startBadge`/`endBadge`/`startTime`/`endTime`).
+  Všechny funkce (`bindEventTimeSlider`, `syncEventTimeSliderFromInputs`,
+  `setEventTimeValue`, `renderEventTimeSlider`, `eventTimeFromClientX`)
+  berou `ids` jako parametr. Výjimka: čas vedle data (`#eventFormStart/
+  EndDateTime`, osmé kolo) je vlastnost JEN formuláře události — šablona
+  žádné datum nemá. Řeší `ids.onRenderMethod` (nepovinný, jen u instance
+  `event`) — `renderEventTimeSlider` na konci zavolá `this[ids.
+  onRenderMethod](start, end)`, pokud je vyplněný. **Nejde napsat jako
+  přímo vloženou šipku/funkci uvnitř `TIME_SLIDER_IDS`** — to je obyčejná
+  datová vlastnost objektu `App`, ne metoda, takže by šipka při zavolání
+  neměla přístup ke správnému `this` (stejná past s config-objekty jako
+  jinde v appce); zápis jako název metody a dohledání přes
+  `this[ids.onRenderMethod]` uvnitř metody, která `this` už má správně,
+  se jí vyhne.
+- **`sizeTypeMenuWidth(menuSelector, labels)`** dostala navíc explicitní
+  `right: auto` — dřív to zajišťovalo jen CSS (`.is-pill-menu`), ale
+  formulář šablony `.is-pill-menu` nemá (jeho panel má být přes celou
+  šířku pole, ne rozvinutý stranou jako pilulka Typu). Bez toho by se
+  nastavovaná `width` přepočítala proti zděděnému `right:0` a panel by
+  se nerozvinul do zamýšlené šířky.
+
 **Sjednocení napříč appkou** — na žádost „aby všechna podobná modal okna
 v appce měla stejný design" dostaly `.form-hero-field`/`.form-hero-input`
 (hlavní pole zvýrazněné jako "hero", od devátého kola podtržené — viz
@@ -1245,9 +1293,10 @@ jen když appka nějakou šablonu má). Vybraná šablona (`applyEventTemplate`)
 vyplní pole formuláře od AKTUÁLNĚ NASTAVENÉHO data (to appka neměnní) —
 mechanicky stejný princip jako Duplikovat, jen zdroj dat je jiný (uložená
 šablona místo existující události), appka na použitou šablonu neudržuje
-žádnou trvalou vazbu. Formulář šablony v Nastavení používá obyčejný
-`<select>` pro Typ, ne `.type-picker` s ikonami — vidí a používá ho jen
-SUPERADMIN, nestálo za to kvůli němu zobecňovat celou komponentu.
+žádnou trvalou vazbu. Formulář šablony v Nastavení používá od desátého
+kola (viz níže) stejné `.type-picker`/dvojitý posuvník jako formulář
+události — obě komponenty se mezitím zobecnily, takže druhá instance
+znamená jen pár řádků navíc, ne duplicitní kód.
 
 ---
 

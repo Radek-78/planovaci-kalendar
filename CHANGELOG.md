@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.8.9 - 05.09.2026 23:29
+- v0.8.9: Šablona události má stejný výběr typu a časovou osu jako událost. Formulář šablony v Nastavení měl dosud obyčejný výběr typu bez ikon a dva samostatné časy Od/Do - teď používá stejné komponenty jako formulář události. Obě komponenty byly napevno svázané jen s jedním formulářem, takže musely nejdřív projít zobecněním na dvě nezávislé instance, ne pouhým zkopírováním kódu - u časové osy, která si prošla čtyřmi koly oprav, by druhá kopie stejné logiky znamenala každou budoucí opravu dělat dvakrát.
+
 ## v0.8.8 - 05.09.2026 19:18
 - v0.8.8: Hlavní pole formulářů podtržené - a oprava, proč nikdy nevypadalo, jak mělo. Systematická kontrola všech tříd použitých na polích našla poslední místo se stejnou chybou jako minule: zvýrazněné hlavní pole ve formulářích Pracovní pozice, Oddělení, Svátek, Typ události a Šablona události prohrávalo s globálním pravidlem pro pole, takže z něj zbylo jen tučné písmo a větší velikost ani odsazení se nikdy neprojevily. Sjednocení vzhledu z v0.7.2 tedy u polí vizuálně nikdy nedoběhlo. Místo pouhé opravy dostalo pole rovnou podtržený vzhled bez rámečku, stejný jazyk jako název události. Datum ve formuláři svátku je nově taky bez rámečku, protože karta kolem něj už jedno orámování má.
 

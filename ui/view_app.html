@@ -928,9 +928,10 @@
 </dialog>
 
 <!-- ══ Modal: šablona události (nová/upravovaná) ══
-     Typ tu je obyčejný <select> (ne .type-picker s ikonami jako ve
-     formuláři události) — tenhle formulář vidí a používá jen SUPERADMIN
-     v Nastavení, nestojí za to kvůli němu zobecňovat celou komponentu. -->
+     Typ i Čas jsou od devátého kola (SPECIFIKACE.md) stejné komponenty
+     jako ve formuláři události (.type-picker, dvojitý posuvník) — obě
+     jsou zobecněné (viz TYPE_PICKER_IDS/TIME_SLIDER_IDS v JS), takže tu
+     jde jen o druhou instanci se svými id, ne o duplicitní kód. -->
 <dialog class="modal modal-wide modal-grow" id="eventTemplateFormModal">
   <div class="modal-header">
     <span class="modal-icon" id="eventTemplateFormModalIcon"><i class="ph ph-copy" aria-hidden="true"></i></span>
@@ -954,7 +955,15 @@
         <div class="event-form-row">
           <label>
             <span>Typ</span>
-            <select id="eventTemplateFormType"><!-- vykresleno JS --></select>
+            <div class="type-picker" id="eventTemplateFormTypePicker">
+              <button type="button" class="type-picker-trigger" id="eventTemplateFormTypeTrigger" aria-haspopup="true">
+                <span class="type-picker-trigger-icon" id="eventTemplateFormTypeTriggerIcon"><i class="ph ph-chat-circle" aria-hidden="true"></i></span>
+                <span class="type-picker-trigger-label" id="eventTemplateFormTypeTriggerLabel">Běžné</span>
+                <i class="ph ph-caret-down type-picker-caret" aria-hidden="true"></i>
+              </button>
+              <div class="type-picker-menu is-hidden" id="eventTemplateFormTypeMenu"><!-- vykresleno JS --></div>
+            </div>
+            <input type="hidden" id="eventTemplateFormType" value="default">
           </label>
           <label>
             <span>Délka trvání (dny)</span>
@@ -972,16 +981,28 @@
 
       <div class="field-group field-group-accent" id="eventTemplateFormTimeGroup">
         <p class="kicker"><i class="ph ph-clock" aria-hidden="true"></i> Čas</p>
-        <div class="event-form-row">
-          <label>
-            <span>Čas od</span>
-            <input type="time" id="eventTemplateFormStartTime" value="09:00">
-          </label>
-          <label>
-            <span>Čas do</span>
-            <input type="time" id="eventTemplateFormEndTime" value="10:00">
-          </label>
+        <div class="event-time-section">
+          <div class="event-time-slider-wrap">
+            <span class="event-time-badge" id="eventTemplateFormTimeStartBadge"><i class="ph ph-clock" aria-hidden="true"></i><span class="event-time-badge-text">09:00</span></span>
+            <span class="event-time-badge is-below" id="eventTemplateFormTimeEndBadge"><i class="ph ph-clock" aria-hidden="true"></i><span class="event-time-badge-text">10:00</span></span>
+            <div class="event-time-slider" id="eventTemplateFormTimeSliderArea">
+              <div class="event-time-slider-track">
+                <div class="event-time-slider-fill" id="eventTemplateFormTimeSliderFill"></div>
+              </div>
+              <button type="button" class="event-time-thumb" id="eventTemplateFormTimeSliderStart"
+                      role="slider" aria-label="Začátek" aria-valuemin="0" aria-valuemax="1425"
+                      aria-valuenow="540" aria-valuetext="09:00"></button>
+              <button type="button" class="event-time-thumb" id="eventTemplateFormTimeSliderEnd"
+                      role="slider" aria-label="Konec" aria-valuemin="0" aria-valuemax="1425"
+                      aria-valuenow="600" aria-valuetext="10:00"></button>
+            </div>
+          </div>
+          <div class="event-time-slider-labels">
+            <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span>
+          </div>
         </div>
+        <input type="hidden" id="eventTemplateFormStartTime" value="09:00">
+        <input type="hidden" id="eventTemplateFormEndTime" value="10:00">
       </div>
 
       <div class="field-group field-group-accent">
@@ -1277,13 +1298,38 @@
     },
 
     /**
-     * Naplní rozbalovací seznam typu události (.type-picker) přímo z whitelistu
-     * typů ze serveru — vlastní komponenta, ne nativní <select>, protože ten
-     * neumí vedle popisku zobrazit i ikonu typu (viz bindTypePicker). Skutečná
-     * vybraná hodnota žije ve skrytém #eventFormType (setEventFormType).
+     * Id prvků výběru typu — appka má DVĚ nezávislé instance téhle
+     * komponenty (formulář události i formulář šablony, viz deváté kolo
+     * v SPECIFIKACE.md), sdílená JS logika níže proto všude bere `ids`
+     * jako parametr. `hidden` je skryté pole se skutečnou hodnotou (to,
+     * co čte submitEventForm/submitEventTemplateForm), `trigger`/`menu`
+     * tlačítko a panel .type-picker.
      */
-    fillEventTypeSelect() {
-      const menu = document.querySelector('#eventFormTypeMenu');
+    TYPE_PICKER_IDS: {
+      event: {
+        trigger: '#eventFormTypeTrigger',
+        menu: '#eventFormTypeMenu',
+        hidden: '#eventFormType',
+        triggerIcon: '#eventFormTypeTriggerIcon',
+        triggerLabel: '#eventFormTypeTriggerLabel',
+      },
+      template: {
+        trigger: '#eventTemplateFormTypeTrigger',
+        menu: '#eventTemplateFormTypeMenu',
+        hidden: '#eventTemplateFormType',
+        triggerIcon: '#eventTemplateFormTypeTriggerIcon',
+        triggerLabel: '#eventTemplateFormTypeTriggerLabel',
+      },
+    },
+
+    /**
+     * Vykreslí obsah panelu .type-picker přímo z whitelistu typů ze serveru
+     * — vlastní komponenta, ne nativní <select>, protože ten neumí vedle
+     * popisku zobrazit i ikonu typu. Sdílené oběma formuláři, oba používají
+     * stejnou komponentu — jen se liší cílovým panelem (`menuSelector`).
+     */
+    renderTypePickerOptions(menuSelector) {
+      const menu = document.querySelector(menuSelector);
       menu.innerHTML = Object.keys(this.eventTypes).map((key) => {
         const t = this.eventTypes[key];
         return '<button type="button" class="type-picker-option" data-type="' + Ui.escape(key) + '">' +
@@ -1292,18 +1338,26 @@
           '<span class="type-picker-option-label">' + Ui.escape(t.label) + '</span>' +
         '</button>';
       }).join('');
+    },
 
-      // Šířka rozbalovacího panelu dopočítaná na míru nejdelšímu z popisků —
-      // ať se ani ten nejdelší z nich nemusí v panelu zalamovat (zpětná
-      // vazba: "okno zobraz široké, aby se vše zobrazilo neuříznuté
-      // a nezalomené").
-      //
-      // Šířka SAMOTNÉHO tlačítka se naopak dopočítávat nemusí: moduly Typ
-      // a Opakování mají pevnou půlku šířky formuláře (.event-form-pills je
-      // mřížka), takže tlačítko při přepnutí typu nikam neposkočí — dřívější
-      // rezervace místa na nejdelší popisek by dnes byla jen na škodu,
-      // protože by u dlouhého názvu vytlačila obsah ven z karty.
-      this.sizeTypeMenuWidth(Object.keys(this.eventTypes).map((key) => this.eventTypes[key].label));
+    /**
+     * Naplní panel Typu ve formuláři události. Šířka panelu se dopočítává
+     * na míru nejdelšímu z popisků, ať se ani ten nejdelší nemusí v panelu
+     * zalamovat (zpětná vazba: "okno zobraz široké, aby se vše zobrazilo
+     * neuříznuté a nezalomené") — šířka SAMOTNÉHO tlačítka se naopak
+     * dopočítávat nemusí: moduly Typ a Opakování mají pevnou půlku šířky
+     * formuláře (.event-form-pills je mřížka), takže tlačítko při přepnutí
+     * typu nikam neposkočí.
+     */
+    fillEventTypeSelect() {
+      this.renderTypePickerOptions(this.TYPE_PICKER_IDS.event.menu);
+      this.sizeTypeMenuWidth(this.TYPE_PICKER_IDS.event.menu, Object.keys(this.eventTypes).map((key) => this.eventTypes[key].label));
+    },
+
+    /** Totéž pro formulář šablony (viz fillEventTypeSelect) — samostatná panelová instance, stejný typový whitelist. */
+    fillEventTemplateTypeSelect() {
+      this.renderTypePickerOptions(this.TYPE_PICKER_IDS.template.menu);
+      this.sizeTypeMenuWidth(this.TYPE_PICKER_IDS.template.menu, Object.keys(this.eventTypes).map((key) => this.eventTypes[key].label));
     },
 
     /**
@@ -1325,17 +1379,23 @@
     },
 
     /**
-     * Dopočítá šířku panelu #eventFormTypeMenu tak, aby se ani nejdelší
+     * Dopočítá šířku panelu `menuSelector` tak, aby se ani nejdelší
      * z `labels` nemusel v žádném ze dvou sloupců zalamovat. Ikona (26px)
      * + mezera (8px) + text + vodorovný padding tlačítka (2×8px) tvoří
      * jeden sloupec, dva sloupce vedle sebe + mezera mřížky (4px) + padding
-     * panelu (2×8px) dají celkovou šířku panelu.
+     * panelu (2×8px) dají celkovou šířku panelu. `right: auto` navrch,
+     * protože formulář šablony na rozdíl od pilulky Typu nemá
+     * `.is-pill-menu` (tam CSS `right:auto` dává už samo) — bez toho by se
+     * explicitní `width` přepočítalo proti zděděnému `right:0` a panel by
+     * se nerozvinul do zamýšlené šířky.
      */
-    sizeTypeMenuWidth(labels) {
+    sizeTypeMenuWidth(menuSelector, labels) {
       const maxLabelWidth = this.measureMaxTextWidth('type-picker-option-label', labels);
       const columnWidth = 26 + 8 + maxLabelWidth + 16;
       const menuWidth = (columnWidth * 2) + 4 + 16;
-      document.querySelector('#eventFormTypeMenu').style.width = Math.ceil(menuWidth) + 'px';
+      const menu = document.querySelector(menuSelector);
+      menu.style.right = 'auto';
+      menu.style.width = Math.ceil(menuWidth) + 'px';
     },
 
     /**
@@ -1362,58 +1422,103 @@
     },
 
     /**
-     * Nastaví vybraný typ události — zapíše hodnotu do skrytého #eventFormType
-     * (to, co čte submitEventForm) a přepíše ikonu/popisek na tlačítku
-     * .type-picker-trigger i zvýraznění vybrané položky v menu.
+     * Nastaví vybraný typ v jednom z panelů .type-picker (viz TYPE_PICKER_IDS)
+     * — zapíše hodnotu do skrytého pole (`ids.hidden`, to, co čte
+     * submitEventForm/submitEventTemplateForm) a přepíše ikonu/popisek na
+     * tlačítku i zvýraznění vybrané položky v menu.
      */
-    setEventFormType(key) {
+    setTypePickerValue(ids, key) {
       const type = this.eventTypes[key] || this.eventTypes.default;
-      document.querySelector('#eventFormType').value = key;
+      document.querySelector(ids.hidden).value = key;
 
-      const icon = document.querySelector('#eventFormTypeTriggerIcon');
+      const icon = document.querySelector(ids.triggerIcon);
       icon.innerHTML = '<i class="ph ph-' + Ui.escape(type.icon) + '" aria-hidden="true"></i>';
       icon.style.setProperty('--type-color', type.color);
       icon.style.setProperty('--type-bg', type.bgColor);
-      Ui.setText('#eventFormTypeTriggerLabel', type.label);
+      Ui.setText(ids.triggerLabel, type.label);
 
-      document.querySelectorAll('#eventFormTypeMenu .type-picker-option').forEach((btn) => {
+      document.querySelectorAll(ids.menu + ' .type-picker-option').forEach((btn) => {
         btn.classList.toggle('is-selected', btn.dataset.type === key);
       });
     },
 
-    /** Otevírání/zavírání menu typu události — stejný vzor jako bindMonthPicker (klik mimo panel ho zavře). */
-    bindTypePicker() {
-      const btn = document.querySelector('#eventFormTypeTrigger');
-      const menu = document.querySelector('#eventFormTypeMenu');
+    /** Nastaví vybraný typ ve formuláři události (viz setTypePickerValue). */
+    setEventFormType(key) {
+      this.setTypePickerValue(this.TYPE_PICKER_IDS.event, key);
+    },
+
+    /** Totéž pro formulář šablony. */
+    setEventTemplateFormType(key) {
+      this.setTypePickerValue(this.TYPE_PICKER_IDS.template, key);
+    },
+
+    /**
+     * Otevře panel .type-picker daný `ids` — `beforeOpen` je nepovinný háček
+     * pro vzájemné vyloučení se sousedním panelem (formulář události jím
+     * zavírá Opakování, viz openTypePicker; formulář šablony žádný sousední
+     * panel nemá, proto ho nepředává).
+     */
+    openTypePickerMenu(ids, beforeOpen) {
+      if (beforeOpen) beforeOpen();
+      document.querySelector(ids.menu).classList.remove('is-hidden');
+    },
+
+    closeTypePickerMenu(ids) {
+      document.querySelector(ids.menu).classList.add('is-hidden');
+    },
+
+    /**
+     * Otevírání/zavírání panelu .type-picker — sdílený základ pro formulář
+     * události i šablony (obě používají stejnou komponentu, jen s jinými id,
+     * viz TYPE_PICKER_IDS). Stejný vzor jako bindMonthPicker (klik mimo
+     * panel ho zavře).
+     */
+    bindTypePickerMenu(ids, beforeOpen) {
+      const btn = document.querySelector(ids.trigger);
+      const menu = document.querySelector(ids.menu);
 
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        menu.classList.contains('is-hidden') ? this.openTypePicker() : this.closeTypePicker();
+        menu.classList.contains('is-hidden')
+          ? this.openTypePickerMenu(ids, beforeOpen)
+          : this.closeTypePickerMenu(ids);
       });
 
       document.addEventListener('click', (e) => {
         if (!menu.classList.contains('is-hidden') && !menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
-          this.closeTypePicker();
+          this.closeTypePickerMenu(ids);
         }
       });
 
       menu.addEventListener('click', (e) => {
         const opt = e.target.closest('.type-picker-option');
         if (!opt) return;
-        this.setEventFormType(opt.dataset.type);
-        this.closeTypePicker();
+        this.setTypePickerValue(ids, opt.dataset.type);
+        this.closeTypePickerMenu(ids);
       });
     },
 
+    /** Napojí panel Typu ve formuláři události — nikdy neotevřené najednou s Opakováním (sdílejí stejný řádek modulů, otevřená obě by se navzájem překrývala/mátla). */
+    bindTypePicker() {
+      this.bindTypePickerMenu(this.TYPE_PICKER_IDS.event, () => this.closeRecurrencePicker());
+    },
+
+    /** Totéž pro formulář šablony — ten žádný sousední panel nemá, není co zavírat. */
+    bindEventTemplateTypePicker() {
+      this.bindTypePickerMenu(this.TYPE_PICKER_IDS.template);
+    },
+
     openTypePicker() {
-      // Nikdy neotevřené obě menu najednou — Typ a Opakování sdílejí stejný
-      // řádek pilulek, otevřená obě by se navzájem překrývala/mátla.
-      this.closeRecurrencePicker();
-      document.querySelector('#eventFormTypeMenu').classList.remove('is-hidden');
+      this.openTypePickerMenu(this.TYPE_PICKER_IDS.event, () => this.closeRecurrencePicker());
     },
 
     closeTypePicker() {
-      document.querySelector('#eventFormTypeMenu').classList.add('is-hidden');
+      this.closeTypePickerMenu(this.TYPE_PICKER_IDS.event);
+    },
+
+    /** Zavře panel Typu ve formuláři šablony — volat při otevření formuláře, ať nezůstane omylem otevřený z minulého otevření (stejný princip jako closeTypePicker u formuláře události). */
+    closeEventTemplateTypePicker() {
+      this.closeTypePickerMenu(this.TYPE_PICKER_IDS.template);
     },
 
     /**
@@ -1932,7 +2037,7 @@
 
       this.bindTypePicker();
       this.bindRecurrencePicker();
-      this.bindEventTimeSlider();
+      this.bindEventTimeSlider(this.TIME_SLIDER_IDS.event);
     },
 
     /**
@@ -2083,27 +2188,65 @@
     // aby vyčnívala ven z karty.
     TIME_BADGE_HALF: 32,
 
-    /** Přepočítá posuvník podle skutečných hodnot #eventFormStartTime/#eventFormEndTime — volat po každém (i programovém) nastavení času. */
-    syncEventTimeSliderFromInputs() {
-      const start = this.hmToMinutes(document.querySelector('#eventFormStartTime').value);
-      const end = this.hmToMinutes(document.querySelector('#eventFormEndTime').value);
-      this.renderEventTimeSlider(start, end);
+    /**
+     * Id prvků časové osy — appka má DVĚ nezávislé instance stejné
+     * komponenty (formulář události i formulář šablony), sdílená JS logika
+     * níže proto všude bere `ids` jako parametr místo napevno zapsaných id.
+     * `onRenderMethod` je nepovinný háček na doplňkové vykreslení NAD rámec
+     * samotné osy (formulář události jím navíc přepisuje čas vedle data,
+     * viz onEventTimeSliderRendered) — zapsaný jako název metody, ne přímo
+     * jako funkce/šipka: `TIME_SLIDER_IDS` je obyčejná datová vlastnost
+     * objektu `App`, ne metoda, takže by šipka uvnitř neměla při zavolání
+     * přístup k `this` (stejná past jako jinde v appce s konfiguračními
+     * objekty) — vyhledání metody podle jména přes `this[ids.onRenderMethod]`
+     * uvnitř renderEventTimeSlider (ta u volání `this` už správně má) se jí
+     * vyhne.
+     */
+    TIME_SLIDER_IDS: {
+      event: {
+        area: '#eventFormTimeSliderArea',
+        fill: '#eventFormTimeSliderFill',
+        start: '#eventFormTimeSliderStart',
+        end: '#eventFormTimeSliderEnd',
+        startBadge: '#eventFormTimeStartBadge',
+        endBadge: '#eventFormTimeEndBadge',
+        startTime: '#eventFormStartTime',
+        endTime: '#eventFormEndTime',
+        onRenderMethod: 'onEventTimeSliderRendered',
+      },
+      template: {
+        area: '#eventTemplateFormTimeSliderArea',
+        fill: '#eventTemplateFormTimeSliderFill',
+        start: '#eventTemplateFormTimeSliderStart',
+        end: '#eventTemplateFormTimeSliderEnd',
+        startBadge: '#eventTemplateFormTimeStartBadge',
+        endBadge: '#eventTemplateFormTimeEndBadge',
+        startTime: '#eventTemplateFormStartTime',
+        endTime: '#eventTemplateFormEndTime',
+      },
+    },
+
+    /** Přepočítá posuvník podle skutečných hodnot `ids.startTime`/`ids.endTime` — volat po každém (i programovém) nastavení času. */
+    syncEventTimeSliderFromInputs(ids) {
+      const start = this.hmToMinutes(document.querySelector(ids.startTime).value);
+      const end = this.hmToMinutes(document.querySelector(ids.endTime).value);
+      this.renderEventTimeSlider(ids, start, end);
     },
 
     /**
      * Dvojitý posuvník času — dva úchyty jsou obyčejná tlačítka na vlastní
-     * pozici (viz #eventFormTimeSliderArea v HTML), ne <input type=range>:
-     * dva překryté nativní posuvníky si kreslí vlastní stínový DOM přes
-     * celou šířku a vzájemně si úchyty překrývaly. Tažení jede přes pointer
-     * události se setPointerCapture (myš i dotyk jedním kódem, tažení
-     * pokračuje i mimo úchyt), klávesnice zůstává kvůli přístupnosti —
-     * nativní posuvník ji uměl sám, tady si ji musíme obsloužit.
-     * Skutečná hodnota se zapisuje do skrytých #eventFormStartTime/
-     * #eventFormEndTime — na ty se váže submitEventForm beze změny.
+     * pozici (viz `ids.area` v HTML), ne <input type=range>: dva překryté
+     * nativní posuvníky si kreslí vlastní stínový DOM přes celou šířku
+     * a vzájemně si úchyty překrývaly. Tažení jede přes pointer události se
+     * setPointerCapture (myš i dotyk jedním kódem, tažení pokračuje i mimo
+     * úchyt), klávesnice zůstává kvůli přístupnosti — nativní posuvník ji
+     * uměl sám, tady si ji musíme obsloužit. Skutečná hodnota se zapisuje
+     * do skrytých `ids.startTime`/`ids.endTime` — na ty se váže
+     * submitEventForm/submitEventTemplateForm beze změny.
      */
-    bindEventTimeSlider() {
+    bindEventTimeSlider(ids) {
       ['start', 'end'].forEach((which) => {
-        const thumb = document.querySelector(which === 'start' ? '#eventFormTimeSliderStart' : '#eventFormTimeSliderEnd');
+        const thumb = document.querySelector(which === 'start' ? ids.start : ids.end);
 
         thumb.addEventListener('pointerdown', (e) => {
           if (thumb.disabled) return;
@@ -2115,13 +2258,13 @@
         thumb.addEventListener('pointermove', (e) => {
           // Bez zachyceného pointeru jde o pouhé přejetí myší, ne tažení.
           if (!thumb.hasPointerCapture(e.pointerId)) return;
-          this.setEventTimeValue(which, this.eventTimeFromClientX(e.clientX));
+          this.setEventTimeValue(ids, which, this.eventTimeFromClientX(ids, e.clientX));
         });
 
         thumb.addEventListener('keydown', (e) => {
           const step = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 }[e.key];
           const current = this.hmToMinutes(document.querySelector(
-            which === 'start' ? '#eventFormStartTime' : '#eventFormEndTime').value);
+            which === 'start' ? ids.startTime : ids.endTime).value);
 
           let next = null;
           if (step) next = current + (step * this.TIME_SLIDER_STEP);
@@ -2132,7 +2275,7 @@
           if (next === null) return;
 
           e.preventDefault(); // šipky/PageUp jinak rolují obsahem modalu
-          this.setEventTimeValue(which, next);
+          this.setEventTimeValue(ids, which, next);
         });
       });
     },
@@ -2143,8 +2286,8 @@
      * pozici vystředěný, takže jinak by krajní hodnoty 00:00/23:45 vyčnívaly
      * půlkou ven z dráhy. Musí sedět se stejným přepočtem v eventTimeOffset.
      */
-    eventTimeFromClientX(clientX) {
-      const rect = document.querySelector('#eventFormTimeSliderArea').getBoundingClientRect();
+    eventTimeFromClientX(ids, clientX) {
+      const rect = document.querySelector(ids.area).getBoundingClientRect();
       const usable = rect.width - this.TIME_SLIDER_THUMB;
       const ratio = usable > 0 ? (clientX - rect.left - (this.TIME_SLIDER_THUMB / 2)) / usable : 0;
       const minutes = ratio * this.TIME_SLIDER_SCALE;
@@ -2156,9 +2299,9 @@
      * povinný odstup od druhého úchytu (TIME_SLIDER_GAP), uloží do skrytého
      * pole a překreslí osu.
      */
-    setEventTimeValue(which, minutes) {
-      const startField = document.querySelector('#eventFormStartTime');
-      const endField = document.querySelector('#eventFormEndTime');
+    setEventTimeValue(ids, which, minutes) {
+      const startField = document.querySelector(ids.startTime);
+      const endField = document.querySelector(ids.endTime);
       let start = this.hmToMinutes(startField.value);
       let end = this.hmToMinutes(endField.value);
 
@@ -2173,7 +2316,7 @@
 
       startField.value = this.minutesToHm(start);
       endField.value = this.minutesToHm(end);
-      this.renderEventTimeSlider(start, end);
+      this.renderEventTimeSlider(ids, start, end);
     },
 
     /**
@@ -2207,12 +2350,12 @@
     },
 
     /** Posune oba úchyty i bublinky s časem a přebarví vyplněný úsek mezi nimi. */
-    renderEventTimeSlider(startMinutes, endMinutes) {
+    renderEventTimeSlider(ids, startMinutes, endMinutes) {
       const startOffset = this.eventTimeOffset(startMinutes);
       const endOffset = this.eventTimeOffset(endMinutes);
 
-      const startThumb = document.querySelector('#eventFormTimeSliderStart');
-      const endThumb = document.querySelector('#eventFormTimeSliderEnd');
+      const startThumb = document.querySelector(ids.start);
+      const endThumb = document.querySelector(ids.end);
       startThumb.style.left = startOffset;
       endThumb.style.left = endOffset;
 
@@ -2227,19 +2370,22 @@
       // (procenta zmenšená o poměrnou část šířky úchytu), jen bez posunu
       // o půl úchytu, ten se mezi krajními body odečte.
       const spanPct = ((endMinutes - startMinutes) / this.TIME_SLIDER_SCALE) * 100;
-      const fill = document.querySelector('#eventFormTimeSliderFill');
+      const fill = document.querySelector(ids.fill);
       fill.style.left = startOffset;
       fill.style.width = 'calc(' + spanPct + '% - ' + (spanPct / 100 * this.TIME_SLIDER_THUMB) + 'px)';
 
-      const startBadge = document.querySelector('#eventFormTimeStartBadge');
-      const endBadge = document.querySelector('#eventFormTimeEndBadge');
+      const startBadge = document.querySelector(ids.startBadge);
+      const endBadge = document.querySelector(ids.endBadge);
       startBadge.style.left = this.eventBadgeOffset(startOffset);
       endBadge.style.left = this.eventBadgeOffset(endOffset);
       startBadge.querySelector('.event-time-badge-text').textContent = this.minutesToHm(startMinutes);
       endBadge.querySelector('.event-time-badge-text').textContent = this.minutesToHm(endMinutes);
 
-      // Týž čas i vedle data nahoře — bublinky ukazují hodnotu u úchytu
-      // při tažení, tohle je čitelný souhrn celého termínu.
+      if (ids.onRenderMethod) this[ids.onRenderMethod](startMinutes, endMinutes);
+    },
+
+    /** Doplněk k renderEventTimeSlider jen pro formulář události — čas vedle data (viz osmé kolo v SPECIFIKACE.md), formulář šablony datum vůbec nemá. */
+    onEventTimeSliderRendered(startMinutes, endMinutes) {
       Ui.setText('#eventFormStartDateTime', this.minutesToHm(startMinutes));
       Ui.setText('#eventFormEndDateTime', this.minutesToHm(endMinutes));
     },
@@ -2292,7 +2438,7 @@
       }
 
       this.updateEventFormTimeVisibility();
-      this.syncEventTimeSliderFromInputs();
+      this.syncEventTimeSliderFromInputs(this.TIME_SLIDER_IDS.event);
     },
 
     /**
@@ -2337,7 +2483,7 @@
         document.querySelector('#eventFormDescription').value = prefill ? (prefill.description || '') : '';
       }
       this.updateEventFormTimeVisibility();
-      this.syncEventTimeSliderFromInputs();
+      this.syncEventTimeSliderFromInputs(this.TIME_SLIDER_IDS.event);
       this.updateRecurrenceUi(event);
       this.updateEventFormTemplatePicker(!event);
 
@@ -4417,6 +4563,8 @@
         this.submitEventTemplateForm();
       });
       document.querySelector('#eventTemplateFormAllDay').addEventListener('change', () => this.updateEventTemplateFormTimeVisibility());
+      this.bindEventTemplateTypePicker();
+      this.bindEventTimeSlider(this.TIME_SLIDER_IDS.template);
     },
 
     /** Skryje kartu Čas u celodenní šablony — čas pak nedává smysl vyplňovat. */
@@ -4425,23 +4573,16 @@
       document.querySelector('#eventTemplateFormTimeGroup').classList.toggle('is-hidden', allDay);
     },
 
-    /** Naplní <select> Typ ve formuláři šablony — obyčejné <option>, ne .type-picker (viz komentář u eventTemplateFormModal v HTML). */
-    fillEventTemplateTypeSelect() {
-      const select = document.querySelector('#eventTemplateFormType');
-      select.innerHTML = Object.keys(this.eventTypes)
-        .map((key) => '<option value="' + Ui.escape(key) + '">' + Ui.escape(this.eventTypes[key].label) + '</option>')
-        .join('');
-    },
-
     /** Otevře formulář šablony — bez parametru template založí novou, s ním upraví existující. */
     openEventTemplateFormModal(template, originEl) {
+      this.closeEventTemplateTypePicker(); // ať panel Typu nezůstane omylem otevřený z minulého otevření formuláře
       this.fillEventTemplateTypeSelect();
       document.querySelector('#eventTemplateFormModalIcon').innerHTML =
         '<i class="ph ' + (template ? 'ph-pencil-simple' : 'ph-copy') + '" aria-hidden="true"></i>';
       document.querySelector('#eventTemplateFormKicker').textContent = template ? 'Upravit šablonu' : 'Nová šablona';
       document.querySelector('#eventTemplateFormModalTitle').textContent = template ? template.label : 'Přidat šablonu';
       document.querySelector('#eventTemplateFormLabel').value = template ? template.label : '';
-      document.querySelector('#eventTemplateFormType').value = template ? template.type : 'default';
+      this.setEventTemplateFormType(template ? template.type : 'default');
       document.querySelector('#eventTemplateFormAllDay').checked = template ? template.allDay : false;
       document.querySelector('#eventTemplateFormStartTime').value = template ? (template.startTime || '09:00') : '09:00';
       document.querySelector('#eventTemplateFormEndTime').value = template ? (template.endTime || '10:00') : '10:00';
@@ -4449,6 +4590,7 @@
       document.querySelector('#eventTemplateFormDescription').value = template ? (template.description || '') : '';
       document.querySelector('#eventTemplateForm').dataset.editId = template ? template.id : '';
       this.updateEventTemplateFormTimeVisibility();
+      this.syncEventTimeSliderFromInputs(this.TIME_SLIDER_IDS.template);
       document.querySelector('#eventTemplateFormSubmit').innerHTML =
         '<i class="ph ph-check" aria-hidden="true"></i> ' + (template ? 'Uložit' : 'Vytvořit');
 
