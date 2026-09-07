@@ -949,6 +949,17 @@
     white-space: nowrap;
   }
 
+  /* Tichý řádek s verzí appky pod kartou uživatele — schválně nenápadný
+     (nízký kontrast, malé písmo), ať nepůsobí jako další ovládací prvek,
+     jen drobná informace k případnému dotazu "jakou verzi vlastně mám". */
+  .sidebar-version {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 10px;
+    margin: 0;
+    padding: 0 16px 12px;
+    text-align: center;
+  }
+
   .avatar {
     align-items: center;
     background: var(--lidl-yellow);
@@ -3243,9 +3254,18 @@
     justify-content: space-between;
   }
 
+  /* min-width: 0 je nutné, aby se flex položka vůbec směla zmenšit pod
+     svou obsahovou šířku — bez něj by dlouhý název tlačil čas (.day-event-
+     -time) i odznak nových akcí (.day-event-badge, viz níže) mimo řádek
+     místo aby se sám uřízl s výpustkou. */
   .day-event-title-row strong {
     color: var(--text);
+    flex: 1;
     font-size: 14px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .day-event-time {
@@ -3281,9 +3301,28 @@
      jazyk jako .user-action-btn u uživatelů, jen o něco menší. Klik na ně
      má v JS přednost před kliknutím na celou položku (viz bindDayModal). */
   .day-event-actions {
+    align-items: center;
     display: flex;
     flex-shrink: 0;
     gap: 4px;
+  }
+
+  /* Počet nových akcí (úprava/komentář) u téhle konkrétní události — viz
+     apiGetEvents/unseenActionCount na serveru, App.renderDayEventItem.
+     Stejný jazyk jako odznak u zvonečku (.cal-notify-badge), jen menší, ať
+     u obou appka "nová oznámení" čtenář rozezná stejnou vizuální řečí. */
+  .day-event-badge {
+    align-items: center;
+    background: var(--lidl-red);
+    border-radius: 999px;
+    color: var(--white);
+    display: inline-flex;
+    font-size: 10px;
+    font-weight: 700;
+    height: 16px;
+    justify-content: center;
+    min-width: 16px;
+    padding: 0 4px;
   }
 
   .day-event-action {

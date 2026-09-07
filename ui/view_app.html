@@ -61,6 +61,9 @@
         <small id="sidebarUserRole">–</small>
       </span>
     </div>
+    <!-- Tichý řádek pod kartou uživatele — jediné volné místo v sidebaru,
+         které nezasahuje do navigace ani karty uživatele (viz onBootstrap). -->
+    <p class="sidebar-version" id="sidebarVersion" title=""></p>
   </aside>
 
   <main class="main">
@@ -1276,6 +1279,12 @@
         ? (data.user.permission === 'EDITOR' ? 'zápis' : 'jen čtení')
         : null; // ADMIN/SUPERADMIN mají vždy plný zápis — netřeba zvlášť vypisovat.
       Ui.setText('#sidebarUserRole', permissionLabel ? roleLabel + ' · ' + permissionLabel : roleLabel);
+
+      // Tichá informace o verzi — jen malý řádek pod kartou uživatele,
+      // nikam jinam do stávajícího vzhledu nezasahuje (viz kicker požadavek
+      // "kam ho umístíme, aby se nenarušil aktuální vzhled").
+      Ui.setText('#sidebarVersion', data.version || '');
+      document.querySelector('#sidebarVersion').title = data.releaseDate ? 'Vydáno ' + data.releaseDate : '';
 
       // Položky menu, na které uživatel nemá právo, se v sidebaru vůbec
       // nezobrazí — server o právu už rozhodl, klient jen skrývá odkaz na
@@ -2622,13 +2631,21 @@
       });
     },
 
-    /** Úprava existující události — bere ji z už načtených dat (this.currentEvents), stejně jako openEventModal. */
+    /**
+     * Úprava existující události — bere ji z už načtených dat
+     * (this.currentEvents), stejně jako openEventModal. Volá se i přímo
+     * z tužky v seznamu dne, BEZ otevření detailu (viz bindDayModal) — proto
+     * recordEventView tady znovu, ne jen v openEventModal: formulář ukáže
+     * aktuální stav události stejně jako detail, uživatel ho tak „viděl"
+     * i bez otevření detailu, ať odznak nových akcí zůstane odškrtnutý.
+     */
     openEditEventModal(eventId, originEl) {
       const event = this.currentEvents.find((e) => e.id === eventId);
       if (!event) {
         Ui.toast('Událost nebyla nalezena.', 'error');
         return;
       }
+      this.recordEventView(eventId);
       this.openEventFormModal(event, null, originEl);
     },
 
@@ -5698,13 +5715,19 @@
      * Jedna položka v seznamu událostí dne — klikatelná, otevře detail té
      * události. Tužka/koš se zobrazí, jen když ji smí uživatel spravovat
      * (viz canManageEvent) — žádná mrtvá ikona, kterou by server stejně
-     * odmítl.
+     * odmítl. Odznak s počtem nových akcí (viz event.unseenActionCount ze
+     * serveru, apiGetEvents) se zobrazí vedle nich, jen když je nenulový —
+     * otevřením detailu (openEventModal → recordEventView) zmizí sám, při
+     * další návštěvě appka pošle 0.
      */
     renderDayEventItem(event) {
       const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a', bgColor: '#eef0f3' };
 
       const actions = this.canManageEvent(event)
         ? '<span class="day-event-actions">' +
+            (event.unseenActionCount > 0
+              ? '<span class="day-event-badge" title="Nové akce u této události">' + event.unseenActionCount + '</span>'
+              : '') +
             '<button type="button" class="day-event-action is-edit" data-action="edit" data-event-id="' + Ui.escape(event.id) + '" title="Upravit" aria-label="Upravit událost">' +
               '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>' +
             '<button type="button" class="day-event-action is-danger" data-action="delete" data-event-id="' + Ui.escape(event.id) + '" title="Smazat" aria-label="Smazat událost">' +

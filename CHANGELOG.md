@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.9.6 - 07.09.2026 08:09
+- v0.9.6: Odznak nových akcí přímo u události a verze appky v sidebaru. Vedle Upravit/Smazat v seznamu dne appka teď ukazuje počet nových akcí (úprava, nový nebo smazaný komentář) u té konkrétní události - založení jde jen do zvonečku, na čerstvě vzniklém řádku by odznak neměl smysl. Odškrtne se otevřením detailu, stejně jako odpovídající oznámení ve zvonečku, a taky přímým otevřením formuláře úpravy přes tužku. Název události se teď u dlouhých názvů zkracuje výpustkou, ať s novým odznakem zůstane řádek přehledný. Verze appky je nově vidět jako tichý řádek pod kartou přihlášeného uživatele v levém panelu - datum vydání ukáže najetí myší.
+
 ## v0.9.5 - 07.09.2026 08:03
 - v0.9.5: Oprava kliknutí na oznámení o smazané události a nová volba Zobrazit všechna oznámení. Kliknutí na smazanou událost dřív vždy skončilo chybovou hláškou, protože appka se snažila otevřít detail události, která už neexistuje - teď appka jen zaznamená, že jsi oznámení viděl, a položka zmizí ze seznamu, okno oznámení přitom zůstane otevřené, ať jde postupně odkliknout víc smazaných událostí za sebou. Nová volba nad seznamem oznámení zobrazí i ta už viděná - už viděné položky appka vizuálně ztlumí, ať je jasné, co je nové. Přepínač se při každém dalším otevření zvonečku vrátí na výchozí zobrazení jen nových.
 

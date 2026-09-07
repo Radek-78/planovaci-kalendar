@@ -373,7 +373,7 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiMarkNotificationsSeen()` | `calendar_read` | — | — (posune `notifications_seen_at` uživatele na teď — jen oznámení BEZ vazby na událost, viz 9.4) |
 | `apiRecordEventView(payload)` | `calendar_read` | `{ eventId }` | — (upsert do `_event_views` — kdy přihlášený naposledy viděl tuhle událost, viz 9.4) |
 | `apiGetAllNotifications()` | `calendar_read` | — | úplná historie oznámení (ne jen neviděná), každá položka s `unseen` — pro "Zobrazit všechna oznámení" v `#notifyModal` (viz 9.4) |
-| `apiGetEvents(payload)` | `calendar_read` | `{ startDate, endDate }`, obě `YYYY-MM-DD` | pole událostí protínajících rozsah, včetně `recurrenceId` (viz 9.9) |
+| `apiGetEvents(payload)` | `calendar_read` | `{ startDate, endDate }`, obě `YYYY-MM-DD` | pole událostí protínajících rozsah, včetně `recurrenceId` (viz 9.9) a `unseenActionCount` (viz 9.4) |
 | `apiSaveEvent(payload)` | `calendar_write` | s `id` = úprava (+ `scope: 'single'\|'following'` u výskytu ze série, viz 9.9), bez `id` = nová (+ `recurrence: { freq, count } \| { freq, until }` založí celou sérii) | `{ id }` prvního/upraveného výskytu |
 | `apiDeleteEvent(payload)` | `calendar_write` | `{ id, scope: 'single'\|'following' }` — scope jen u výskytu ze série | — |
 | `apiGetEventTemplates()` | `calendar_write` | — | šablony událostí, řazené podle názvu — čtení smí kdokoli s právem zápisu, správa (níže) jen SUPERADMIN |
@@ -440,6 +440,18 @@ mřížce chyběla. Podmínka: `start <= to && end >= from`.
 | **Filiálky** | čtecí přehled filiálek (import dat, viz 9.6), detail na klik na řádek |
 | **LC** | čtecí přehled logistických center (import dat, viz 9.6), editace čísla/zkratky |
 | **Nastavení** | záložky: Oddělení, Pracovní pozice, Typy událostí (viz 9.5), Šablony událostí (viz 9.9), Import dat (viz 9.6), Státní svátky ČR (viz 9.7) |
+
+**Verze appky v sidebaru** — `#sidebarVersion`, tichý řádek pod kartou
+přihlášeného uživatele (`.sidebar-user`), zapisuje ho `onBootstrap` z
+`data.version`/`data.releaseDate` (`CONFIG.version`, ta samá hodnota, co
+`tools/release.ps1` zapisuje do `AAA_VERZE.html`/`CHANGELOG.md`). Šlo o
+žádost „kam umístit verzi appky, ať se nenaruší vzhled" — sidebar dole je
+jediné volné místo, které nezasahuje do navigace ani karty uživatele;
+schválně nízký kontrast (`rgba(255,255,255,0.3)`), ať nepůsobí jako další
+ovládací prvek. Datum vydání jde vidět v `title` atributu (najetí myší).
+Existoval už dřív podobný `#appFooterVersion`, ale jen na obrazovce „Bez
+přístupu" — normální přihlášený uživatel se tam nikdy nedostane, takže
+verzi fakticky nikde neviděl.
 
 ### 9.2 Kalendář
 
@@ -586,6 +598,19 @@ co si uživatel zvolil naposledy. Kliknutí na položku v tomhle zobrazení se
 chová stejně jako v běžném (viz „Text a proklik" výše) — u `event.delete`
 se `unseen` jen přepne na `false` (položka zůstává vidět, dál v historii),
 u ostatních otevře detail.
+
+**Odznak nových akcí přímo u události** — kromě zvonečku appka ukazuje
+počet neviděných akcí i vedle Upravit/Smazat v seznamu dne
+(`.day-event-badge`, `App.renderDayEventItem`). Server ho počítá v
+`apiGetEvents` (`_unseenActionCountsByEvent_`, sdílí `_notificationRows_`
+se zvonečkem — stejná definice „neviděné" přes `_event_views`), takže
+appka nepotřebuje žádné volání navíc. Záměrně bez `event.create` —
+založení jde jen do zvonečku, odznak na chipu/řádku, který v tu chvíli
+teprve vzniká, by nedával smysl. Odškrtne se stejným mechanismem jako
+zvoneček: skutečným otevřením detailu (`recordEventView`) — a protože
+tužka v seznamu dne umí otevřít rovnou formulář úpravy BEZ detailu (viz
+`bindDayModal`), volá `recordEventView` i `App.openEditEventModal` samo,
+ne jen `openEventModal`.
 
 **Ruční ověření** — `90_tools.js` obsahuje (na žádost, po smazání všech
 dřívějších `TOOLS_` nástrojů) jedinou funkci `TOOLS_vytvorTestovaciOznameni`:

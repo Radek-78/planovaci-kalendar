@@ -549,7 +549,7 @@ function _addMonthsToIsoDate_(isoDate, months) {
  * @param {Object} payload  { startDate, endDate } — obě RRRR-MM-DD
  */
 function apiGetEvents(payload) {
-  return guard_(PERM_KEYS.CALENDAR_READ, () => {
+  return guard_(PERM_KEYS.CALENDAR_READ, (user) => {
     const data = payload || {};
     const from = cleanDateOnly_(data.startDate, 'Od');
     const to = cleanDateOnly_(data.endDate, 'Do');
@@ -557,6 +557,7 @@ function apiGetEvents(payload) {
 
     const nameCache = {};
     const eventTypes = _eventTypesMap_();
+    const unseenCounts = _unseenActionCountsByEvent_(user);
 
     return dbGetAll_(SHEETS.EVENTS)
       .filter((row) => {
@@ -582,9 +583,38 @@ function apiGetEvents(payload) {
         // klient podle toho pozná, že má u úpravy/smazání nabídnout volbu
         // „jen tuto" / „tuto a všechny následující" (viz openEventFormModal).
         recurrenceId: String(row.recurrence_id || ''),
+        // Počet NEVIDĚNÝCH akcí (úprava, nový/smazaný komentář) u téhle
+        // konkrétní události — viz _unseenActionCountsByEvent_. Vykresluje
+        // se jako číslo vedle Upravit/Smazat v seznamu dne
+        // (App.renderDayEventItem); skutečným otevřením detailu
+        // (recordEventView) zmizí stejně jako odpovídající oznámení ve
+        // zvonečku — obojí čte tutéž _event_views.
+        unseenActionCount: unseenCounts[String(row.id)] || 0,
       }))
       .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
   });
+}
+
+/**
+ * Pro KAŽDOU událost spočítá, kolik má NEVIDĚNÝCH akcí — úprava, nový nebo
+ * smazaný komentář. Založení události se záměrně NEPOČÍTÁ (viz
+ * apiGetEvents/unseenActionCount): to jde jen do zvonečku, odznak na
+ * chipu/řádku, který v tu chvíli teprve vzniká, nemá smysl.
+ *
+ * Sdílí `_notificationRows_` s _computeNotifications_/apiGetAllNotifications
+ * (stejná definice „neviděné" přes _event_views) — jen jinak seskupené,
+ * podle entity_id místo řazení v čase.
+ */
+function _unseenActionCountsByEvent_(user) {
+  const counts = {};
+  _notificationRows_(user).forEach((x) => {
+    if (!x.unseen) return;
+    if (x.row.action === 'event.create') return;
+    if (NOTIFY_ACTIONS_EVENT_SCOPED.indexOf(String(x.row.action)) === -1) return;
+    const id = String(x.row.entity_id || '');
+    if (id) counts[id] = (counts[id] || 0) + 1;
+  });
+  return counts;
 }
 
 /**
