@@ -373,6 +373,7 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiMarkNotificationsSeen()` | `calendar_read` | — | — (posune `notifications_seen_at` uživatele na teď — jen oznámení BEZ vazby na událost, viz 9.4) |
 | `apiRecordEventView(payload)` | `calendar_read` | `{ eventId }` | — (upsert do `_event_views` — kdy přihlášený naposledy viděl tuhle událost, viz 9.4) |
 | `apiGetAllNotifications()` | `calendar_read` | — | úplná historie oznámení (ne jen neviděná), každá položka s `unseen` — pro "Zobrazit všechna oznámení" v `#notifyModal` (viz 9.4) |
+| `apiPoll(payload)` | `calendar_read` | `{ startDate, endDate }`, obě `YYYY-MM-DD` | `{ events, notifications }` — tichý refresh na pozadí, jednou za minutu (viz 9.2) |
 | `apiGetEvents(payload)` | `calendar_read` | `{ startDate, endDate }`, obě `YYYY-MM-DD` | pole událostí protínajících rozsah, včetně `recurrenceId` (viz 9.9) a `unseenActionCount` (viz 9.4) |
 | `apiSaveEvent(payload)` | `calendar_write` | s `id` = úprava (+ `scope: 'single'\|'following'` u výskytu ze série, viz 9.9), bez `id` = nová (+ `recurrence: { freq, count } \| { freq, until }` založí celou sérii) | `{ id }` prvního/upraveného výskytu |
 | `apiDeleteEvent(payload)` | `calendar_write` | `{ id, scope: 'single'\|'following' }` — scope jen u výskytu ze série | — |
@@ -470,6 +471,36 @@ v `PMS_Style.html`, s prefixem `cal-`:
 **Panel detailu dne** je nová část: po kliku na den se otevře seznam všech
 událostí toho dne seřazený podle času, s tlačítky pro editaci a smazání
 u těch, na které má uživatel právo.
+
+**Tichý refresh na pozadí** — appka jednou za minutu (`App.poll`, spouští
+`App.startPolling` po prvním vykreslení kalendáře, viz `onBootstrap`)
+zavolá nový endpoint `apiPoll` a tiše aktualizuje mřížku i odznak
+oznámení, ať uživatel vidí, co udělali kolegové, bez ručního obnovení
+stránky. Apps Script web app nemá WebSocket ani Server-Sent Events —
+pravidelné dotazování (`setInterval`) je jediná reálná cesta.
+
+- **`apiPoll(payload)`** vrací v JEDNOM volání `{ events, notifications }`
+  — sdílí logiku s `apiGetEvents` (přes novou `_eventsInRange_`, obě jen
+  volají tuhle jednu funkci) a s `_computeNotifications_`, ať se stejná
+  logika nepíše dvakrát jen kvůli tichému refreshi.
+- Klient přepočítá STEJNÝ rozsah, který má zrovna vykreslený
+  (`this.calGridStart`, +41 dní), a výsledek vloží přes `renderEvents` —
+  ta jen PŘEKRESLÍ CHIPY přes už existující kostru dní (viz komentář u
+  `renderEvents`), nebourá celou mřížku jako `renderCalendar()`. Bezpečné
+  volat i s otevřeným modalem (žádný modal na `#calGrid` nesahá, leží nad
+  ním) — nijak nenaruší rozdělanou práci v otevřeném formuláři, ten čte
+  hodnoty přímo z polí, ne z `this.currentEvents`.
+- **Pauza na neaktivní záložce** (`visibilitychange`) — dotazování se
+  zastaví, když uživatel appku nesleduje (netřeba zbytečně zatěžovat
+  Sheets), a při návratu do popředí appka rovnou jednou dotáhne čerstvý
+  stav, místo aby čekala až na další celou minutu.
+- Tichý neúspěch (`catch` bez akce) — chybu z pozadí appka uživateli
+  nehlásí, další tik za minutu to zkusí znovu.
+- Appka běží jako "Execute as me" (viz appsscript.json) — každé volání
+  `apiPoll` (i od kolegy, ne jen od přihlášeného) čerpá osobní kvótu
+  Apps Scriptu VLASTNÍKA skriptu. Při 6 uživatelích a minutovém intervalu
+  jde i v nejhorším případě (všichni najednou aktivní) o zanedbatelnou
+  zátěž pro Workspace účet.
 
 ### 9.3 Stavy, na které se nesmí zapomenout
 

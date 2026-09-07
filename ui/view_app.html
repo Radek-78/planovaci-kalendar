@@ -1237,6 +1237,9 @@
     notifyShowingAll: false,
     notifyAllItems: null,
 
+    /** Časovač tichého refreshe na pozadí (viz poll/startPolling) — `null`, když zrovna neběží (záložka na pozadí). */
+    pollTimer: null,
+
     /** Smí uživatel upravit/smazat i CIZÍ událost (ADMIN/SUPERADMIN)? Ze serveru, viz canManageForeignEvents_. */
     canManageForeignEvents: false,
 
@@ -1324,6 +1327,7 @@
       if (canManageUsers) this.bindUserForm();
       if (canManageSettings) this.bindSettings();
       this.renderCalendar();
+      this.startPolling();
 
       document.querySelector('#appShell').classList.remove('is-hidden');
     },
@@ -5482,6 +5486,62 @@
       Ui.call('apiGetEvents', { startDate: fromIso, endDate: toIso }, { silent: true })
         .then((events) => this.renderEvents(events, monthFirst, monthLast))
         .catch((error) => Ui.toast('Události se nepodařilo načíst: ' + error.message, 'error'));
+    },
+
+    /**
+     * Tichý refresh na pozadí — appka jím zjistí, co udělali JINÍ uživatelé,
+     * bez ručního obnovení stránky (viz startPolling, volá se jednou za
+     * minutu). Přepočítá se stejný rozsah, který má appka zrovna
+     * vykreslený (this.calGridStart), a jedním voláním dotáhne čerstvé
+     * události i stav oznámení (apiPoll na serveru — sdílí logiku
+     * s apiGetEvents/_computeNotifications_, jen v jednom požadavku).
+     *
+     * `renderEvents` přepíše jen chipy PŘES UŽ VYKRESLENOU mřížku (viz
+     * komentář tam) — na rozdíl od renderCalendar() nebourá kostru dní,
+     * takže je bezpečné volat ho takhle opakovaně na pozadí, i když má
+     * uživatel zrovna otevřený nějaký modal (ten leží nad mřížkou, žádný
+     * modal na `#calGrid` nesahá).
+     *
+     * Tichý neúspěch (catch bez akce) — chybu z pozadí není důvod uživateli
+     * hlásit, další tik za minutu to zkusí znovu.
+     */
+    poll() {
+      if (document.hidden || !this.calGridStart) return;
+
+      const gridEnd = new Date(
+        this.calGridStart.getFullYear(), this.calGridStart.getMonth(), this.calGridStart.getDate() + 41);
+      const monthFirst = new Date(this.calDate.getFullYear(), this.calDate.getMonth(), 1);
+      const monthLast = new Date(this.calDate.getFullYear(), this.calDate.getMonth() + 1, 0);
+
+      Ui.call('apiPoll', { startDate: this.isoDate(this.calGridStart), endDate: this.isoDate(gridEnd) }, { silent: true })
+        .then((data) => {
+          this.renderEvents(data.events, monthFirst, monthLast);
+          this.notifications = data.notifications;
+          this.renderNotifyBadge();
+        })
+        .catch(() => {});
+    },
+
+    /**
+     * Zapne tiché dotazování na pozadí (viz poll výše) — jednou za minutu,
+     * dokud je appka otevřená a záložka aktivní. Na neaktivní záložce se
+     * dotazování zastaví (netřeba appku zatěžovat, když se stejně nikdo
+     * nedívá) a při návratu do popředí appka rovnou jednou dotáhne čerstvý
+     * stav, místo aby čekala na další celou minutu.
+     */
+    startPolling() {
+      const POLL_INTERVAL_MS = 60000;
+      this.pollTimer = setInterval(() => this.poll(), POLL_INTERVAL_MS);
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          clearInterval(this.pollTimer);
+          this.pollTimer = null;
+        } else if (!this.pollTimer) {
+          this.poll();
+          this.pollTimer = setInterval(() => this.poll(), POLL_INTERVAL_MS);
+        }
+      });
     },
 
     /**

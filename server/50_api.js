@@ -554,44 +554,73 @@ function apiGetEvents(payload) {
     const from = cleanDateOnly_(data.startDate, 'Od');
     const to = cleanDateOnly_(data.endDate, 'Do');
     if (from > to) throw userError_('Rozsah dat je neplatný.');
+    return _eventsInRange_(user, from, to);
+  });
+}
 
-    const nameCache = {};
-    const eventTypes = _eventTypesMap_();
-    const unseenCounts = _unseenActionCountsByEvent_(user);
+/**
+ * Sdílené jádro pro apiGetEvents i apiPoll (viz níže) — ať se stejná
+ * logika nepíše na dvou místech. `from`/`to` už musí být ověřené
+ * `cleanDateOnly_` (RRRR-MM-DD).
+ */
+function _eventsInRange_(user, from, to) {
+  const nameCache = {};
+  const eventTypes = _eventTypesMap_();
+  const unseenCounts = _unseenActionCountsByEvent_(user);
 
-    return dbGetAll_(SHEETS.EVENTS)
-      .filter((row) => {
-        const start = String(row.start).slice(0, 10);
-        const end = String(row.end).slice(0, 10);
-        return start <= to && end >= from;
-      })
-      .map((row) => ({
-        id: String(row.id),
-        start: String(row.start),
-        end: String(row.end),
-        allDay: toBool_(row.all_day),
-        // Neplatný/starý typ v datech (např. mezitím smazaný v Nastavení)
-        // se nezobrazí rozbitě — spadne do "default", který nejde smazat
-        // (viz apiDeleteEventType) a existuje tak vždycky.
-        type: eventTypes[row.type] ? String(row.type) : 'default',
-        title: String(row.title || ''),
-        description: String(row.description || ''),
-        ownerEmail: String(row.owner_email || ''),
-        ownerName: _resolveUserName_(row.owner_email, nameCache),
-        // Prázdné u jednorázové události, jinak sdílené napříč výskyty
-        // jedné opakující se série (viz DB_SCHEMA.events v 20_db.js) —
-        // klient podle toho pozná, že má u úpravy/smazání nabídnout volbu
-        // „jen tuto" / „tuto a všechny následující" (viz openEventFormModal).
-        recurrenceId: String(row.recurrence_id || ''),
-        // Počet NEVIDĚNÝCH akcí (úprava, nový/smazaný komentář) u téhle
-        // konkrétní události — viz _unseenActionCountsByEvent_. Vykresluje
-        // se jako číslo vedle Upravit/Smazat v seznamu dne
-        // (App.renderDayEventItem); skutečným otevřením detailu
-        // (recordEventView) zmizí stejně jako odpovídající oznámení ve
-        // zvonečku — obojí čte tutéž _event_views.
-        unseenActionCount: unseenCounts[String(row.id)] || 0,
-      }))
-      .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+  return dbGetAll_(SHEETS.EVENTS)
+    .filter((row) => {
+      const start = String(row.start).slice(0, 10);
+      const end = String(row.end).slice(0, 10);
+      return start <= to && end >= from;
+    })
+    .map((row) => ({
+      id: String(row.id),
+      start: String(row.start),
+      end: String(row.end),
+      allDay: toBool_(row.all_day),
+      // Neplatný/starý typ v datech (např. mezitím smazaný v Nastavení)
+      // se nezobrazí rozbitě — spadne do "default", který nejde smazat
+      // (viz apiDeleteEventType) a existuje tak vždycky.
+      type: eventTypes[row.type] ? String(row.type) : 'default',
+      title: String(row.title || ''),
+      description: String(row.description || ''),
+      ownerEmail: String(row.owner_email || ''),
+      ownerName: _resolveUserName_(row.owner_email, nameCache),
+      // Prázdné u jednorázové události, jinak sdílené napříč výskyty
+      // jedné opakující se série (viz DB_SCHEMA.events v 20_db.js) —
+      // klient podle toho pozná, že má u úpravy/smazání nabídnout volbu
+      // „jen tuto" / „tuto a všechny následující" (viz openEventFormModal).
+      recurrenceId: String(row.recurrence_id || ''),
+      // Počet NEVIDĚNÝCH akcí (úprava, nový/smazaný komentář) u téhle
+      // konkrétní události — viz _unseenActionCountsByEvent_. Vykresluje
+      // se jako odznak vedle Upravit/Smazat v chipu i v seznamu dne
+      // (App.renderChip/renderDayEventItem); skutečným otevřením detailu
+      // (recordEventView) zmizí stejně jako odpovídající oznámení ve
+      // zvonečku — obojí čte tutéž _event_views.
+      unseenActionCount: unseenCounts[String(row.id)] || 0,
+    }))
+    .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+}
+
+/**
+ * Tichý refresh na pozadí (viz App.poll/startPolling na klientovi) —
+ * appka ho volá periodicky (jednou za minutu), ať uvidí změny od jiných
+ * uživatelů bez ručního obnovení stránky. Vrací v JEDNOM volání totéž,
+ * co appka umí spočítat i zvlášť (apiGetEvents + oznámení) — ať tichý
+ * refresh nestojí dva samostatné požadavky na server.
+ */
+function apiPoll(payload) {
+  return guard_(PERM_KEYS.CALENDAR_READ, (user) => {
+    const data = payload || {};
+    const from = cleanDateOnly_(data.startDate, 'Od');
+    const to = cleanDateOnly_(data.endDate, 'Do');
+    if (from > to) throw userError_('Rozsah dat je neplatný.');
+
+    return {
+      events: _eventsInRange_(user, from, to),
+      notifications: _computeNotifications_(user),
+    };
   });
 }
 

@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.10.0 - 07.09.2026 11:43
+- v0.10.0: Tichý refresh na pozadí - jednou za minutu appka sama zjistí, co udělali kolegové, bez ručního obnovení stránky. Nový endpoint apiPoll vrací v jednom volání čerstvé události pro zobrazený rozsah i stav oznámení, appka jím tiše přepíše chipy v mřížce a odznak u zvonečku. Nebourá přitom celou mřížku, jen překreslí chipy přes už vykreslenou kostru dní, takže je to bezpečné i s otevřeným modalem. Na neaktivní záložce se dotazování zastaví a při návratu do popředí appka rovnou dotáhne čerstvý stav, místo aby čekala na další celou minutu.
+
 ## v0.9.9 - 07.09.2026 08:30
 - v0.9.9: Hranatější odznak a rychlé odškrtnutí oznámení bez otevírání události. Odznak počtu nových akcí je nově čtvereček s malým zaoblením rohů místo kolečka, jak na chipu v mřížce, tak v seznamu dne. U každého oznámení ve zvonečku, které se vztahuje k události, navíc přibyla ikona zaškrtnutí - kliknutím na ni appka zaznamená, že jsi oznámení viděl, přesně jako by ses do dané události podíval, ale bez otevírání jejího detailu. Okno oznámení se přitom nezavírá, jde tak postupně odklikat víc položek za sebou. Ikona se zobrazí jen u skutečně nových oznámení, ne u těch už viděných v zobrazení Zobrazit všechna oznámení.
 
