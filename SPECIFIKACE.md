@@ -125,9 +125,14 @@ je čistě pro přehlednost člověka.
 
 ```js
 const DB_SCHEMA = {
+  // notifications_seen_at (kurzor oznámení, viz 9.4) a last_login_at
+  // (skutečné poslední přihlášení) — dřív jedno pole last_visit_at, dvě
+  // různé věci rozdělené od 8. kola. last_login_at je AŽ NA KONCI pole
+  // (nový sloupec u tabulky, která už měla data — viz kritické pravidlo
+  // u DB_SCHEMA v 20_db.js, nikdy nevkládat doprostřed).
   '_users':     ['id','email','firstName','lastName','role','permission','active',
-                 'created_at','created_by','updated_at','last_visit_at',
-                 'location','department','position'],
+                 'created_at','created_by','updated_at','notifications_seen_at',
+                 'location','department','position','last_login_at'],
   '_settings':  ['key','value','updated_at','updated_by'],
   '_audit_log': ['timestamp','user','action','detail','entity_id'],
   // recurrence_id (viz kapitola 9.9) — prázdné u jednorázové události,
@@ -137,6 +142,10 @@ const DB_SCHEMA = {
   'events':     ['id','start','end','all_day','type','title','description',
                  'owner_email','recurrence_id','created_at','created_by','updated_at','updated_by'],
   'event_comments': ['id','event_id','author_email','text','created_at'],
+  // Kdy který uživatel naposledy VIDĚL kterou událost (viz kapitola 9.4) —
+  // id je deterministické event_id + '::' + email (upsert). Mnohem
+  // častěji zapisovaná tabulka než ostatní, proto bez created_at/created_by.
+  '_event_views': ['id','event_id','user_email','last_seen_at'],
   // Nastavení (viz kapitola 9.5) — všechno spravované v appce, ne v kódu.
   '_departments': ['id','name','created_at','created_by','updated_at','updated_by'],
   '_positions':   ['id','name','created_at','created_by','updated_at','updated_by'],
@@ -363,8 +372,9 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 
 | Endpoint | Guard | Vstup | Výstup |
 |---|---|---|---|
-| `apiGetBootstrap()` | `calendar_read` | — | uživatel, jeho práva, nastavení, typy událostí, oznámení (viz 9.4) — ČISTÉ ČTENÍ, `last_visit_at` neposouvá |
-| `apiMarkNotificationsSeen()` | `calendar_read` | — | — (posune `last_visit_at` uživatele na teď, viz 9.4) |
+| `apiGetBootstrap()` | `calendar_read` | — | uživatel, jeho práva, nastavení, typy událostí, oznámení (viz 9.4) — zapíše `last_login_at` na teď, jinak ČISTÉ ČTENÍ (oznámení samotná nic neposouvají) |
+| `apiMarkNotificationsSeen()` | `calendar_read` | — | — (posune `notifications_seen_at` uživatele na teď — jen oznámení BEZ vazby na událost, viz 9.4) |
+| `apiRecordEventView(payload)` | `calendar_read` | `{ eventId }` | — (upsert do `_event_views` — kdy přihlášený naposledy viděl tuhle událost, viz 9.4) |
 | `apiGetEvents(payload)` | `calendar_read` | `{ startDate, endDate }`, obě `YYYY-MM-DD` | pole událostí protínajících rozsah, včetně `recurrenceId` (viz 9.9) |
 | `apiSaveEvent(payload)` | `calendar_write` | s `id` = úprava (+ `scope: 'single'\|'following'` u výskytu ze série, viz 9.9), bez `id` = nová (+ `recurrence: { freq, count } \| { freq, until }` založí celou sérii) | `{ id }` prvního/upraveného výskytu |
 | `apiDeleteEvent(payload)` | `calendar_write` | `{ id, scope: 'single'\|'following' }` — scope jen u výskytu ze série | — |
@@ -466,31 +476,56 @@ ukáže, jen když je od poslední návštěvy něco nového; klik otevře modal
 který vypíše, co přesně. Každá položka má ikonu/barvu/kicker podle typu
 akce (`App.NOTIFY_TYPE_META`) a je oddělená od dalších spodní linkou.
 
-**Zdroj dat** — žádná nová tabulka. Využívá se, co appka už měla:
+**Zdroj dat:**
 
 - `_audit_log` — každý zápis/smazání do něj už zapisuje `audit_()`
   (kdo, kdy, jaká akce, popis).
-- `_users.last_visit_at` — kdy byl uživatel v appce naposled.
+- `_users.notifications_seen_at` — kdy uživatel naposledy otevřel zvoneček
+  (jen pro akce BEZ vazby na konkrétní událost, viz níže).
+- `_event_views` — kdy který uživatel naposledy VIDĚL kterou událost (jen
+  pro akce VÁZANÉ na konkrétní událost, viz níže). Nová tabulka od druhého
+  kola přepracování (viz dále v téhle kapitole).
 
 **Kdy se co počítá** (`apiGetBootstrap` → `_computeNotifications_`, ČISTÉ
-ČTENÍ, žádný zápis):
+ČTENÍ, žádný zápis) — dva mechanismy podle toho, čeho se akce z
+`NOTIFY_ACTIONS` týká:
 
-1. Přečte se `last_visit_at` (prázdné u úplně první návštěvy se bere jako
-   „teď" — nikdo nedostane nálož oznámení o celé historii appky).
-2. Spočítají se řádky `_audit_log` novější než `last_visit_at`, s akcí
-   z whitelistu `NOTIFY_ACTIONS` (`event.create/update/delete`,
-   `comment.create/delete`, `import.sync` — správa uživatelů se do
-   oznámení nepočítá) a od NĚKOHO JINÉHO, než je přihlášený (vlastní změny
-   si nikdo nemusí připomínat). Omezeno na `LIMITS.NOTIFY_MAX_ITEMS`
-   posledních.
+1. **Akce vázaná na konkrétní událost** (`NOTIFY_ACTIONS_EVENT_SCOPED`:
+   `event.create/update/delete`, `comment.create/delete`) — hlásí se, jen
+   pokud je novější než to, kdy přihlášený uživatel TU KONKRÉTNÍ událost
+   naposledy viděl (`_event_views`, viz níže). Bez záznamu (nikdy
+   neviděl) se bere jako neviděná. Pojistka pro úplně nového uživatele:
+   nic staršího než datum založení jeho účtu (`_users.created_at`) se
+   nehlásí — appka existovala dřív, než on.
+2. **Zbytek** (dnes jen `import.sync` — netýká se žádné konkrétní
+   události) — hlásí se, jen pokud je novější než
+   `notifications_seen_at` (prázdné u úplně první návštěvy se bere jako
+   „teď", ze stejného důvodu jako výše).
 
-**Kdy se `last_visit_at` posouvá** — teprve `apiMarkNotificationsSeen`,
-kterou klient zavolá přesně v okamžiku, kdy uživatel OTEVŘE `#notifyModal`
-(viz `App.openNotifyModal`). Dřív se posouval už v bootstrapu, při každém
-otevření appky bez ohledu na to, jestli si oznámení vůbec všiml — kdo appku
-jen otevřel a zase zavřel, o ně nenávratně přišel. Teď čekají, dokud je
-uživatel doopravdy neuvidí. Odznak se po úspěšném zavolání hned schová na
-klientovi (`unseenCount = 0`), bez čekání na další bootstrap.
+Obojí navíc vždy vynechá akce od SAMOTNÉHO přihlášeného (vlastní změny si
+nikdo nemusí připomínat) a omezí se na `LIMITS.NOTIFY_MAX_ITEMS` posledních.
+
+**Kdy se která polovina "odškrtne":**
+
+- `notifications_seen_at` posouvá `apiMarkNotificationsSeen`, kterou
+  klient zavolá při OTEVŘENÍ `#notifyModal` (`App.openNotifyModal`) — ale
+  jen když v seznamu je aspoň jedno oznámení BEZ vazby na událost, jinak
+  zbytečné volání navíc. Odznak se po úspěchu sníží jen o tyhle položky,
+  ne na nulu — položky vázané na událost zůstávají.
+- `_event_views` posouvá `apiRecordEventView`, kterou appka volá na
+  pozadí PŘI KAŽDÉM OTEVŘENÍ DETAILU UDÁLOSTI (`App.openEventModal` →
+  `App.recordEventView`, jak proklikem z oznámení, tak kliknutím na chip
+  v mřížce — obojí vede přes tuhle jednu funkci). Klient si navíc v rámci
+  jedné session pamatuje, které id už poslal (`eventViewsSentThisSession`),
+  ať opakované prohlížení stejné události zbytečně nezatěžuje server.
+  Odškrtnutí položky ze seznamu (`App.clearNotificationsForEvent`) appka
+  neprovede až přes bootstrap, ale hned lokálně, pro okamžitou reakci.
+
+**Dřívější chování** (do sedmého kola): jediné pole `last_visit_at` řídilo
+úplně všechno a posouvalo se jen kliknutím na zvoneček — hrubší, appka
+neuměla rozlišit "viděl tuhle KONKRÉTNÍ událost" od "byl v appce vůbec".
+Kliknutí na zvoneček tak dřív umlčelo i oznámení k události, kterou
+uživatel ve skutečnosti nikdy neotevřel, jen ji viděl v seznamu.
 
 **Text a proklik** — `detail` (uložený v `_audit_log`) je hotová česká věta
 BEZ technického ID — server ho tam nikdy nedává, i kdyby se hodilo (např.
@@ -512,9 +547,18 @@ Appka to pozná podle `action`, ne podle entity_id (`App.renderNotifyItem`/
 zvyklosti) je jediný formát v celé appce, kdekoli se datum zobrazuje spolu
 s časem (oznámení, rozsah vícedenní události…) — na klientovi
 `App.formatDateTime`/`formatFullDate`, na serveru `formatDateTimeCz_`
-(do textu `detail`). Časová razítka v `_audit_log`/`last_visit_at` jsou
-MÍSTNÍ čas (`nowLocalIso_`), ne UTC (`nowIso_`) — jinak by se vůči tomuto
-formátu zobrazovala posunutá o rozdíl Europe/Prague od UTC.
+(do textu `detail`). Časová razítka v `_audit_log`/`notifications_seen_at`/
+`_event_views.last_seen_at`/`last_login_at` jsou MÍSTNÍ čas (`nowLocalIso_`),
+ne UTC (`nowIso_`) — jinak by se vůči tomuto formátu zobrazovala posunutá
+o rozdíl Europe/Prague od UTC.
+
+**`_users.last_login_at`** — samostatné pole, skutečné "poslední
+přihlášení" (na rozdíl od `notifications_seen_at` výše zapisované při
+KAŽDÉM otevření appky, `apiGetBootstrap`). Čistě informační, neřídí
+žádnou logiku oznámení — appka ho zatím nikde nezobrazuje (jen v listu
+`_users`), do 8. kola oboje žilo v jednom poli `last_visit_at`, což
+matlo: jmenovalo se to jako "poslední návštěva", ale ve skutečnosti to
+byl jen kurzor oznámení posouvaný kliknutím na zvoneček.
 
 ### 9.5 Nastavení
 

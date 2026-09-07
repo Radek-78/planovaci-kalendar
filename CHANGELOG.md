@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.9.0 - 07.09.2026 07:10
+- v0.9.0: Přesnější oznámení - podle toho, co jsi doopravdy viděl, ne podle toho, kdy jsi appku otevřel. last_visit_at je rozdělený na dvě oddělená pole: last_login_at je skutečné poslední přihlášení, zapisuje se při každém otevření appky. notifications_seen_at zůstává jen pro oznámení bez vazby na konkrétní událost, třeba import dat filiálek. U oznámení k události - úprava, nový komentář - appka nově pamatuje, kdy jsi TU KONKRÉTNÍ událost naposledy otevřel, a hlásí jen to, co se stalo POTÉ. Otevřením detailu události se tak její oznámení odškrtne samo, bez nutnosti kliknout na zvoneček. Kliknutí na zvoneček už neumlčí oznámení k události, kterou jsi ve skutečnosti ještě neviděl.
+
 ## v0.8.10 - 05.09.2026 23:38
 - v0.8.10: Oprava falešně hlášených změn u filiálek s ulicí pojmenovanou po datu. Appka hlásila u Mikulova a Orlové změnu skoro každou noc, přestože se zdroj vůbec nezměnil - ulice 28. října a 17. listopadu totiž Sheets sama automaticky rozpozná jako datum, a appka takovou buňku dosud převáděla na text způsobem, jehož výsledek závisí na jazykové lokalizaci prostředí v danou chvíli. Ta se liší mezi ruční synchronizací z appky a nočním triggerem, takže appka i beze změny zdroje hlásila rozdíl. Teď se datum formátuje vždy stejným, na lokalizaci nezávislým způsobem. Obě filiálky se při první synchronizaci po nasazení ještě jednou nahlásí jako změněné - přechod na nový formát, od další noci už zůstanou beze změny.
 

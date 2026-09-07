@@ -1174,6 +1174,9 @@
     /** Šablony událostí — pro nabídku "Šablona" ve formuláři nové události (viz applyEventTemplate) i pro správu v Nastavení. */
     eventTemplatesCache: [],
 
+    /** Id událostí, u kterých appka v TÉTO session appky už odeslala apiRecordEventView (viz recordEventView) — ať opakované prohlížení stejné události zbytečně nezatěžuje server. */
+    eventViewsSentThisSession: new Set(),
+
     /** Poslední nalezené soubory při hledání v Import dat (viz apiSearchImportFiles/renderImportResults). */
     importFiles: [],
 
@@ -1784,17 +1787,17 @@
     },
 
     /**
-     * Otevřením modalu appka bere oznámení za VIDĚNÁ — pošle
-     * apiMarkNotificationsSeen, který na serveru posune last_visit_at.
-     * Předtím appka jen ukazovala odznak podle stavu z bootstrapu a
-     * last_visit_at se posouval automaticky při každém otevření appky —
-     * kdo si zvoneček nevšiml, o oznámení nenávratně přišel. Teď čekají,
-     * dokud je uživatel doopravdy neuvidí (otevře tenhle modal).
+     * Otevřením modalu appka bere za VIDĚNÁ jen oznámení BEZ vazby na
+     * konkrétní událost (dnes import.sync) — pošle apiMarkNotificationsSeen,
+     * který na serveru posune notifications_seen_at. Oznámení vázaná na
+     * událost (entityId) tímhle NEZMIZÍ — ty appka bere za viděné, až
+     * uživatel doopravdy otevře TU KONKRÉTNÍ událost (viz openEventModal/
+     * recordEventView), samotné otevření seznamu nestačí. Kdyby stačilo,
+     * "viděl jsem to" by appka tvrdila o něčem, na co uživatel jen koukl
+     * v seznamu, aniž by si to doopravdy otevřel.
      *
-     * Odznak se hned schová (unseenCount na 0) — už není co avizovat, i
-     * kdyby appka zůstala otevřená dál. Tichý neúspěch (silent) — nezdaří-li
-     * se zápis, uživatel si oznámení příště jen prohlédne znovu, nic se
-     * nerozbije.
+     * Tichý neúspěch (silent) — nezdaří-li se zápis, uživatel si oznámení
+     * příště jen prohlédne znovu, nic se nerozbije.
      */
     openNotifyModal(originEl) {
       this.renderNotifyList();
@@ -1802,10 +1805,13 @@
       this.setModalOrigin(dialog, originEl);
       Ui.openModal(dialog);
 
-      if (this.notifications.unseenCount > 0) {
+      const hasUnboundNotifications = this.notifications.items.some((n) => n.action === 'import.sync');
+      if (hasUnboundNotifications) {
         Ui.call('apiMarkNotificationsSeen', null, { silent: true })
           .then(() => {
-            this.notifications.unseenCount = 0;
+            const before = this.notifications.items.length;
+            this.notifications.items = this.notifications.items.filter((n) => n.action !== 'import.sync');
+            this.notifications.unseenCount = Math.max(0, this.notifications.unseenCount - (before - this.notifications.items.length));
             this.renderNotifyBadge();
           })
           .catch(() => {});
@@ -5637,6 +5643,7 @@
       if (!event) return; // mezitím zmizela z načteného rozsahu (např. změna měsíce)
 
       this.hideChipTooltip();
+      this.recordEventView(eventId);
 
       const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a', bgColor: '#eef0f3' };
 
@@ -5687,6 +5694,44 @@
 
       this.setModalOrigin(dialog, originEl);
       Ui.openModal(dialog);
+    },
+
+    /**
+     * Zaznamená, že přihlášený uživatel právě viděl tuhle událost — appka
+     * to používá k přesnému vyhodnocení oznámení (viz apiRecordEventView na
+     * serveru, _computeNotifications_): nová úprava/komentář k události se
+     * ohlásí jen tomu, kdo ji v tu chvíli ještě neviděl PO té změně, ne
+     * komukoliv, kdo appku prostě jen měl otevřenou.
+     *
+     * Na pozadí, bez čekání na odpověď (silent) a beze změny UI při chybě
+     * (catch → nic) — nikdy nesmí zpomalit ani jinak ovlivnit otevření
+     * detailu, který si uživatel právě prohlíží. V rámci jednoho otevření
+     * appky se pro tutéž událost posílá jen jednou (eventViewsSentThisSession)
+     * — opakované prohlížení stejné události v jedné session zbytečně
+     * nezatěžuje server.
+     */
+    recordEventView(eventId) {
+      if (this.eventViewsSentThisSession.has(eventId)) return;
+      this.eventViewsSentThisSession.add(eventId);
+      Ui.call('apiRecordEventView', { eventId: eventId }, { silent: true }).catch(() => {});
+      this.clearNotificationsForEvent(eventId);
+    },
+
+    /**
+     * Po skutečném zobrazení události (viz recordEventView) odstraní její
+     * případná oznámení z už načteného seznamu a přepočítá odznak — server
+     * by je stejně při dalším apiGetBootstrap už nevrátil (viz _event_views
+     * na serveru), tohle appce jen ušetří čekání na příští otevření, ať
+     * odznak zmizí hned.
+     */
+    clearNotificationsForEvent(eventId) {
+      const before = this.notifications.items.length;
+      this.notifications.items = this.notifications.items.filter((n) => n.entityId !== eventId);
+      const removed = before - this.notifications.items.length;
+      if (removed > 0) {
+        this.notifications.unseenCount = Math.max(0, this.notifications.unseenCount - removed);
+        this.renderNotifyBadge();
+      }
     },
 
     /** Spočítá z umístění klikaného prvku, odkud má modal vizuálně "vyjet". */

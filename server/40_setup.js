@@ -193,7 +193,7 @@ function setupInitialize(payload) {
         role: ROLES.SUPERADMIN,
         permission: PERMISSIONS.EDITOR,
         active: true,
-        last_visit_at: '',
+        notifications_seen_at: '',
       });
 
       // 10) Základní nastavení aplikace.

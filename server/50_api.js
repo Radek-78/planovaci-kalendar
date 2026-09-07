@@ -25,6 +25,13 @@ function apiGetBootstrap() {
   return guard_(PERM_KEYS.CALENDAR_READ, (user) => {
     const settings = settingsAll_();
 
+    // Skutečné "poslední přihlášení" — na rozdíl od notifications_seen_at
+    // (ten se posouvá až kliknutím na zvoneček, viz _computeNotifications_/
+    // apiMarkNotificationsSeen) se tohle zapisuje při KAŽDÉM otevření
+    // appky bez výjimky. Čistě informační údaj (kdo appku vůbec používá),
+    // neřídí žádnou logiku oznámení.
+    dbUpdate_(SHEETS.USERS, user.id, { last_login_at: nowLocalIso_() });
+
     return {
       user: publicUser_(user),
       permissions: {
@@ -43,9 +50,8 @@ function apiGetBootstrap() {
         holidaysEnabled: settings.holidaysEnabled,
       },
       eventTypes: _eventTypesMap_(),
-      // Co je nového od poslední návštěvy — viz _computeNotifications_.
-      // Jen ČTENÍ — last_visit_at se posouvá až explicitně kliknutím na
-      // zvoneček (apiMarkNotificationsSeen), ne tady, viz komentář tam.
+      // Co je nového — viz _computeNotifications_. Jen ČTENÍ, nic tu
+      // neposouvá ani notifications_seen_at, ani _event_views.
       notifications: _computeNotifications_(user),
       // Jen pro nápovědu při vyplňování formuláře (automatické doplnění
       // uživatelského jména) — skutečná kontrola domény je vždy na serveru
@@ -58,33 +64,70 @@ function apiGetBootstrap() {
 }
 
 /**
- * Spočítá oznámení pro přihlášeného uživatele — všechno z auditního logu
- * (`_audit_log`), co se stalo PO jeho posledním `last_visit_at`, kromě
- * jeho vlastních akcí (svoje změny si nikdo nepotřebuje připomínat), a jen
- * akce z whitelistu NOTIFY_ACTIONS (správa uživatelů se do oznámení
- * záměrně nepočítá, viz 00_config.js).
+ * Mapa `event_id → kdy ho `email` naposledy viděl` z `_event_views` — pro
+ * _computeNotifications_. Zapisuje se přes apiRecordEventView, viz tam.
+ */
+function _eventViewsMap_(email) {
+  const map = {};
+  dbGetAll_(SHEETS.EVENT_VIEWS)
+    .filter((r) => cleanEmail_(r.user_email) === email)
+    .forEach((r) => { map[String(r.event_id)] = String(r.last_seen_at); });
+  return map;
+}
+
+/**
+ * Spočítá oznámení pro přihlášeného uživatele ze whitelistu NOTIFY_ACTIONS
+ * (00_config.js), kromě jeho vlastních akcí (svoje změny si nikdo
+ * nepotřebuje připomínat). ČISTÉ ČTENÍ — nic tu neposouvá.
  *
- * ČISTÉ ČTENÍ — `last_visit_at` NEMĚNÍ (na rozdíl od dřívější verze). Dřív
- * se posouval už tady, při každém otevření appky, bez ohledu na to, jestli
- * si uživatel oznámení vůbec všiml — kdo appku jen otevřel a zase zavřel,
- * o nich nenávratně přišel. Teď se posouvá až explicitním kliknutím na
- * zvoneček (viz apiMarkNotificationsSeen), takže oznámení čekají, dokud
- * je uživatel opravdu neuvidí.
+ * Dva různé mechanismy podle toho, čeho se akce týká (viz
+ * NOTIFY_ACTIONS_EVENT_SCOPED):
  *
- * Prázdný last_visit_at (úplně první návštěva nového uživatele) se bere
- * jako „teď" — nedostane tak nálož oznámení o celé historii appky před sebou.
+ * 1) Akce vázaná na KONKRÉTNÍ událost (vytvoření/úprava/smazání události,
+ *    nový/smazaný komentář) — posuzuje se proti tomu, kdy uživatel TU
+ *    KONKRÉTNÍ událost naposledy viděl (`_event_views`, viz
+ *    _eventViewsMap_/apiRecordEventView). Úprava, kterou sis mezitím
+ *    prohlédl (třeba proklikem, ne jen kliknutím na zvoneček), se přestane
+ *    hlásit sama od sebe; úprava události, kterou jsi ještě neotevřel, se
+ *    hlásí bez ohledu na to, jak dávno se stala.
+ *
+ *    `accountCreatedAt` je tu jako POJISTKA jen pro tenhle typ akcí: bez
+ *    ní by úplně nový uživatel (žádný řádek v _event_views) dostal
+ *    jednorázově nálož oznámení o CELÉ historii appky u každé události,
+ *    kterou ještě neotevřel — appka existovala dřív, než on. Jde o
+ *    VLASTNÍ, jednou danou hranici (datum založení účtu), ne o
+ *    notifications_seen_at — ten se dál posouvá kliknutím na zvoneček
+ *    a nesmí tuhle logiku ovlivnit (jinak by kliknutí na zvoneček znovu
+ *    umlčelo i oznámení k událostem, které uživatel doopravdy ještě
+ *    neviděl — přesně to mělo tohle přepracování odstranit).
+ *
+ * 2) Zbytek (dnes jen `import.sync` — netýká se žádné konkrétní události,
+ *    entity_id ukazuje na řádek `_import_log`) se dál posuzuje proti
+ *    `notifications_seen_at` (apiMarkNotificationsSeen), stejně jako dřív
+ *    fungovalo VŠECHNO. Prázdný `notifications_seen_at` (úplně první
+ *    návštěva) se bere jako „teď" — ze stejného důvodu jako výše.
  */
 function _computeNotifications_(user) {
   const row = dbFindById_(SHEETS.USERS, user.id);
+  const accountCreatedAt = row && row.created_at ? String(row.created_at) : '';
   // MÍSTNÍ čas (ne nowIso_/UTC) — _audit_log.timestamp je taky v místním
   // čase (viz audit_() v 10_util.js), jinak by textové porovnání o řádek
   // níž bylo posunuté o časový rozdíl Europe/Prague od UTC.
-  const previousVisit = row && row.last_visit_at ? String(row.last_visit_at) : nowLocalIso_();
+  const notificationsSeenAt = row && row.notifications_seen_at ? String(row.notifications_seen_at) : nowLocalIso_();
+
+  const eventViews = _eventViewsMap_(user.email);
 
   const matching = dbGetAll_(SHEETS.AUDIT)
     .filter((r) => NOTIFY_ACTIONS.indexOf(String(r.action)) !== -1)
-    .filter((r) => String(r.timestamp) > previousVisit)
     .filter((r) => cleanEmail_(r.user) !== user.email)
+    .filter((r) => {
+      if (NOTIFY_ACTIONS_EVENT_SCOPED.indexOf(String(r.action)) === -1) {
+        return String(r.timestamp) > notificationsSeenAt;
+      }
+      if (accountCreatedAt && String(r.timestamp) <= accountCreatedAt) return false;
+      const seenAt = eventViews[String(r.entity_id)];
+      return !seenAt || String(r.timestamp) > seenAt;
+    })
     .sort((a, b) => (a.timestamp < b.timestamp ? 1 : a.timestamp > b.timestamp ? -1 : 0)); // nejnovější nahoře
 
   const nameCache = {};
@@ -103,15 +146,53 @@ function _computeNotifications_(user) {
 }
 
 /**
- * Označí oznámení za viděná — posune `last_visit_at` přihlášeného
- * uživatele na teď. Volá se z klienta přesně v okamžiku, kdy uživatel
- * OTEVŘE modal se zvonečkem (#notifyModal), ne při každém otevření appky
- * (viz _computeNotifications_) — teprve tehdy appka ví, že si oznámení
- * doopravdy prohlédl, ne jen že appku má puštěnou.
+ * Označí NEVÁZANÁ oznámení (dnes jen import.sync) za viděná — posune
+ * `notifications_seen_at` přihlášeného uživatele na teď. Volá se z
+ * klienta při otevření modalu se zvonečkem (#notifyModal). Oznámení
+ * vázaná na konkrétní událost tohle NEOVLIVNÍ — ty se odškrtnou až
+ * skutečným otevřením té události (viz apiRecordEventView), ne pouhým
+ * otevřením seznamu oznámení.
  */
 function apiMarkNotificationsSeen() {
   return guard_(PERM_KEYS.CALENDAR_READ, (user) => {
-    dbUpdate_(SHEETS.USERS, user.id, { last_visit_at: nowLocalIso_() });
+    dbUpdate_(SHEETS.USERS, user.id, { notifications_seen_at: nowLocalIso_() });
+    return null;
+  });
+}
+
+/**
+ * Upsert do `_event_views` — `id` je deterministické `event_id + '::' +
+ * email`, takže dvě volání pro stejnou dvojici vždy trefí stejný řádek.
+ * Volá se mnohem častěji než běžné zápisy dat (při každém otevření
+ * detailu události, viz apiRecordEventView), proto žádné created_at/
+ * created_by navíc — jen to nejnutnější.
+ */
+function _recordEventView_(eventId, email) {
+  const id = eventId + '::' + email;
+  const now = nowLocalIso_();
+  const existing = dbFindById_(SHEETS.EVENT_VIEWS, id);
+  if (existing) {
+    dbUpdate_(SHEETS.EVENT_VIEWS, id, { last_seen_at: now });
+  } else {
+    dbInsert_(SHEETS.EVENT_VIEWS, { id: id, event_id: eventId, user_email: email, last_seen_at: now });
+  }
+}
+
+/**
+ * Zapíše, že přihlášený uživatel právě viděl danou událost — appka to
+ * volá na pozadí při KAŽDÉM otevření jejího detailu (viz openEventModal/
+ * recordEventView na klientovi). Používá to _computeNotifications_ (viz
+ * tam) k přesnému rozlišení „tohle uživatel ještě neviděl" místo hrubého
+ * „cokoliv od poslední návštěvy zvonečku".
+ *
+ * Jen CALENDAR_READ — kdo smí číst kalendář, smí appce říct, co si v něm
+ * prohlédl. Žádná validace existence události: i kdyby mezitím zmizela,
+ * osiřelý řádek v _event_views nikomu nevadí.
+ */
+function apiRecordEventView(payload) {
+  return guard_(PERM_KEYS.CALENDAR_READ, (user) => {
+    const eventId = cleanText_(payload && payload.eventId, 'ID události', 200, true);
+    _recordEventView_(eventId, user.email);
     return null;
   });
 }
@@ -692,7 +773,7 @@ function apiSaveUser(payload) {
       record = dbUpdate_(SHEETS.USERS, id, fields);
       audit_('user.update', 'Upraven uživatel ' + email + ' (role ' + role + ')');
     } else {
-      record = dbInsert_(SHEETS.USERS, Object.assign({ active: true, last_visit_at: '' }, fields));
+      record = dbInsert_(SHEETS.USERS, Object.assign({ active: true, notifications_seen_at: '' }, fields));
       audit_('user.create', 'Vytvořen uživatel ' + email + ' (role ' + role + ')');
     }
 

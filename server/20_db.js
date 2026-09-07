@@ -18,11 +18,32 @@
  * listy a sloupce doplní a NIKDY nic nemaže, takže funguje i jako migrace.
  *
  * Pořadí sloupců je závazné — odpovídá pořadí v listu.
+ *
+ * KRITICKÉ PRAVIDLO PRO ROZŠIŘOVÁNÍ: nový sloupec u tabulky, která už má
+ * data, se smí PŘIDAT JEN NA KONEC pole. dbGetAll_/dbRecordToRow_ čtou
+ * i zapisují hodnoty ČISTĚ PODLE POZICE v tomhle poli, ne podle textu
+ * v hlavičce listu — dbEnsureSchema_ při neshodě hlaviček přepíše jen
+ * POPISKY v řádku 1, existující data v listu nijak neposune. Vložení
+ * nového sloupce doprostřed pole (ne na konec) proto u řádků zapsaných
+ * PŘED touhle změnou natrvalo posune všechny sloupce ZA místem vložení
+ * na špatnou pozici — appka je pak čte pod jiným, špatným názvem, potichu,
+ * bez chyby. Přesně tohle se stalo `events.recurrence_id` (vložen mezi
+ * `owner_email` a `created_at`) — u událostí založených před touhle
+ * změnou appka `recurrence_id` čte hodnotu, která je ve skutečnosti
+ * `created_at`, `created_at` čte skutečné `created_by` atd. Oprava
+ * (přesun dat do správných sloupců, ne jen schématu) čeká na provedení.
  */
 const DB_SCHEMA = {
   _users: [
     'id', 'email', 'firstName', 'lastName', 'role', 'permission', 'active',
-    'created_at', 'created_by', 'updated_at', 'last_visit_at',
+    'created_at', 'created_by', 'updated_at',
+    // notifications_seen_at (dřív last_visit_at — přejmenováno beze změny
+    // POZICE, viz apiMarkNotificationsSeen) řídí jen oznámení BEZ vazby na
+    // konkrétní událost (dnes import.sync) — posouvá se až kliknutím na
+    // zvoneček. last_login_at je oproti tomu skutečné "poslední přihlášení"
+    // (apiGetBootstrap ho zapisuje při KAŽDÉM otevření appky) — dvě různé
+    // věci, které dřív obě žily v jednom poli, viz historie v SPECIFIKACE.md.
+    'notifications_seen_at',
     // Organizační údaje (viz apiSaveUser). Oddělení/Pozice se vybírají ze
     // seznamu spravovaného v Nastavení (_departments/_positions), uložená
     // hodnota je ale pořád jen text — žádná cizí klíč vazba, smazání
@@ -31,6 +52,9 @@ const DB_SCHEMA = {
     // Umístění se později nahradí výběrem z importovaného seznamu
     // logistických center, zatím je to volný text.
     'location', 'department', 'position',
+    // Nový sloupec, proto AŽ NA KONCI (viz kritické pravidlo výše) — starší
+    // řádky ho prostě mají prázdný, dokud se dotyčný příště nepřihlásí.
+    'last_login_at',
   ],
   _settings: ['key', 'value', 'updated_at', 'updated_by'],
   // entity_id = id záznamu, ke kterému se akce vztahuje (u komentářů id
@@ -48,6 +72,16 @@ const DB_SCHEMA = {
     'owner_email', 'recurrence_id', 'created_at', 'created_by', 'updated_at', 'updated_by',
   ],
   event_comments: ['id', 'event_id', 'author_email', 'text', 'created_at'],
+  // Kdy který uživatel naposledy VIDĚL kterou událost — zapisuje appka na
+  // pozadí při každém otevření detailu (viz openEventModal/recordEventView
+  // na klientovi, apiRecordEventView/_recordEventView_ na serveru). `id`
+  // je deterministické `event_id + '::' + user_email` (upsert vždy trefí
+  // stejný řádek), takže žádné created_at/created_by navíc — je to
+  // mnohem častěji zapisovaná tabulka než ostatní, drží se proto co
+  // nejmenší. Používá ji _computeNotifications_ k přesnému rozhodnutí
+  // "viděl už tenhle uživatel TUHLE událost PO téhle změně" místo
+  // hrubého "cokoliv od poslední návštěvy" (viz historie v SPECIFIKACE.md).
+  _event_views: ['id', 'event_id', 'user_email', 'last_seen_at'],
   // Pracovní pozice pro výběr ve formuláři uživatele (Nastavení) — jen
   // název, žádné vazby na ostatní tabulky (viz apiSavePosition/apiDeletePosition).
   _positions: ['id', 'name', 'created_at', 'created_by', 'updated_at', 'updated_by'],
@@ -125,6 +159,7 @@ const DB_SCHEMA = {
     'id', 'label', 'type', 'all_day', 'start_time', 'end_time', 'duration_days', 'description',
     'created_at', 'created_by', 'updated_at', 'updated_by',
   ],
+  _event_views: ['last_seen_at'],
 };
 
 /**
@@ -139,7 +174,7 @@ const DB_SCHEMA = {
  * schématu, takže platí i pro řádky, které teprve vzniknou.
  */
 const TEXT_COLUMNS = {
-  _users: ['created_at', 'updated_at', 'last_visit_at'],
+  _users: ['created_at', 'updated_at', 'notifications_seen_at', 'last_login_at'],
   _settings: ['updated_at'],
   _audit_log: ['timestamp'],
   events: ['start', 'end', 'created_at', 'updated_at'],

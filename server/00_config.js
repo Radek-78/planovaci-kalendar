@@ -30,8 +30,8 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.8.10',
-  releaseDate: '5.9.2026',
+  version: 'v0.9.0',
+  releaseDate: '7.9.2026',
 
   /**
    * Font, kterým se formátují listy databáze. Musí to být PŘESNÝ název tak,
@@ -108,6 +108,7 @@ const SHEETS = {
   IMPORT_LOG: '_import_log',
   HOLIDAYS: '_holidays',
   EVENT_TEMPLATES: '_event_templates',
+  EVENT_VIEWS: '_event_views',
 };
 
 /**
@@ -132,6 +133,18 @@ const PERM_KEYS = {
  * na Log importu místo na událost (viz App.renderNotifyItem).
  */
 const NOTIFY_ACTIONS = ['event.create', 'event.update', 'event.delete', 'comment.create', 'comment.delete', 'import.sync'];
+
+/**
+ * Podmnožina NOTIFY_ACTIONS, které se vztahují ke KONKRÉTNÍ události
+ * (`entity_id` je id té události, ne něčeho jiného) — pro tyhle appka
+ * vyhodnocuje "viděl už uživatel tuhle událost PO tomhle zásahu" přes
+ * `_event_views` (viz _computeNotifications_/apiRecordEventView
+ * v 50_api.js), ne přes obecné `notifications_seen_at`. Zbytek
+ * NOTIFY_ACTIONS (dnes jen `import.sync` — entity_id tam ukazuje na
+ * řádek `_import_log`, ne na událost) na `_event_views` navázat nejde
+ * a dál se posuzuje jen podle `notifications_seen_at`.
+ */
+const NOTIFY_ACTIONS_EVENT_SCOPED = ['event.create', 'event.update', 'event.delete', 'comment.create', 'comment.delete'];
 
 /**
  * Typy událostí — od v0.1.33 plně spravované v Nastavení (list `_event_types`
@@ -227,7 +240,7 @@ const LIMITS = {
    * zůstává zatím čistě volný text bez seznamu.
    */
   ORG_FIELD_MAX: 60,
-  /** Nejvíc oznámení, které apiGetBootstrap vrátí najednou — pojistka proti obřímu seznamu (např. hodně starý last_visit_at). */
+  /** Nejvíc oznámení, které apiGetBootstrap vrátí najednou — pojistka proti obřímu seznamu (např. hodně starý notifications_seen_at). */
   NOTIFY_MAX_ITEMS: 30,
   /** Název pracovní pozice (Nastavení). */
   POSITION_NAME_MAX: 60,

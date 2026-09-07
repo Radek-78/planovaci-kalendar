@@ -341,10 +341,17 @@ function TOOLS_vlozOznamovaciTestData() {
  * v prohlížeči.
  *
  * Trik: všechny testovací akce se zapíšou jako OSTATNÍ uživatelé (nikdy
- * jako ty — currentEmail_()), a tvůj vlastní `last_visit_at` se hned potom
- * ručně posune pár dní do minulosti. Appka tak po tvém přihlášení uvidí
- * "od poslední návštěvy proběhlo tohle" přesně, jako by se to fakt stalo
- * bez tebe — přestože jsi to spustil ty sám, jen z editoru, ne z webu.
+ * jako ty — currentEmail_()). Appka tak po tvém přihlášení uvidí "tohle
+ * jsi ještě neviděl" přesně, jako by se to fakt stalo bez tebe — přestože
+ * jsi to spustil ty sám, jen z editoru, ne z webu.
+ *
+ * Backdatování `notifications_seen_at` tu zůstává jen jako pojistka pro
+ * budoucí testovací scénáře BEZ vazby na konkrétní událost (dnes žádný
+ * takový _toolsSeedNotifyBatch_ negeneruje) — samotné testovací události/
+ * komentáře/úpravy níže appka ukáže jako nové i bez něj: jsou to nové
+ * řádky, které TY (ten, kdo se pak přihlásí) v `_event_views` ještě
+ * nemáš, takže je uvidíš jako neviděné bez ohledu na `notifications_seen_at`
+ * (viz _computeNotifications_ v 50_api.js).
  *
  * Podmínka: TY sám musíš být v `_users` (appka by tě jinak stejně nepustila
  * dovnitř) a musí tam být aspoň jeden DALŠÍ uživatel.
@@ -380,14 +387,14 @@ function TOOLS_simulujOznameniProMe() {
 
   const pastVisit = new Date();
   pastVisit.setDate(pastVisit.getDate() - 3);
-  // Utilities.formatDate (místní čas), ne toISOString() (UTC) — last_visit_at
-  // se porovnává s _audit_log.timestamp, který je taky v místním čase
-  // (viz audit_()/_toolsAuditAs_ výše), jinak by porovnání bylo o časový
+  // Utilities.formatDate (místní čas), ne toISOString() (UTC) — porovnává
+  // se s _audit_log.timestamp, který je taky v místním čase (viz
+  // audit_()/_toolsAuditAs_ výše), jinak by porovnání bylo o časový
   // rozdíl Europe/Prague od UTC mimo.
-  dbUpdate_(SHEETS.USERS, myRow.id, { last_visit_at: Utilities.formatDate(pastVisit, TIMEZONE, "yyyy-MM-dd'T'HH:mm") });
+  dbUpdate_(SHEETS.USERS, myRow.id, { notifications_seen_at: Utilities.formatDate(pastVisit, TIMEZONE, "yyyy-MM-dd'T'HH:mm") });
 
   console.log('---');
-  console.log('Tvůj last_visit_at (' + me + ') je nastavený 3 dny do minulosti.');
+  console.log('Tvůj notifications_seen_at (' + me + ') je nastavený 3 dny do minulosti (viz komentář výše — u testovacích událostí to ale ani nebylo nutné).');
   console.log('Teď otevři appku POD SVÝM účtem a zkontroluj zvoneček — měl by ukázat vše výše jako nové.');
 }
 
