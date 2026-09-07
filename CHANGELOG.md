@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.9.7 - 07.09.2026 08:16
+- v0.9.7: Testovací nástroj rozšířený pro ověření odznaku počtu akcí u události. TOOLS_vytvorTestovaciOznameni teď zakládá čtyři testovací události místo dvou: krátký název se třemi komentáři pro odznak 3, záměrně dlouhý název se dvěma úpravami pro odznak 2 a zároveň test zkracování dlouhého názvu v seznamu dne, krátký název s jednou úpravou pro odznak 1, a jedna založená a hned smazaná pro test oznámení o smazání ve zvonečku.
+
 ## v0.9.6 - 07.09.2026 08:09
 - v0.9.6: Odznak nových akcí přímo u události a verze appky v sidebaru. Vedle Upravit/Smazat v seznamu dne appka teď ukazuje počet nových akcí (úprava, nový nebo smazaný komentář) u té konkrétní události - založení jde jen do zvonečku, na čerstvě vzniklém řádku by odznak neměl smysl. Odškrtne se otevřením detailu, stejně jako odpovídající oznámení ve zvonečku, a taky přímým otevřením formuláře úpravy přes tužku. Název události se teď u dlouhých názvů zkracuje výpustkou, ať s novým odznakem zůstane řádek přehledný. Verze appky je nově vidět jako tichý řádek pod kartou přihlášeného uživatele v levém panelu - datum vydání ukáže najetí myší.
 

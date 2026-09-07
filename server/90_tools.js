@@ -14,9 +14,11 @@
 
 /**
  * Vloží sadu testovacích akcí OD JINÉHO uživatele, ať jde v appce rovnou
- * ověřit oznámení (zvoneček) — konkrétně nový způsob vyhodnocení přes
- * `_event_views` (viz `_computeNotifications_` v 50_api.js): oznámení
- * k události zmizí až jejím skutečným otevřením, ne kliknutím na zvoneček.
+ * ověřit oznámení (zvoneček) i odznak počtu nových akcí u jednotlivých
+ * událostí (`.day-event-badge` v seznamu dne — viz `unseenActionCount`
+ * v `apiGetEvents`, 50_api.js) — obojí čte stejnou `_event_views`, takže
+ * oznámení k události zmizí až jejím skutečným otevřením, ne kliknutím
+ * na zvoneček.
  *
  * Trik: Apps Script vždy spouští skript jako TEBE (currentEmail_()) —
  * přihlásit se fyzicky pod cizím účtem nejde. Testovací řádky se proto
@@ -25,12 +27,13 @@
  * nastavenými na DRUHÉHO uživatele z `_users`. Appka je po tvém přihlášení
  * uvidí přesně tak, jako by je fakt udělal někdo jiný.
  *
- * Vytvoří čtyři akce, které dohromady pokryjí všechny typy oznámení
- * vázané na konkrétní událost (`NOTIFY_ACTIONS_EVENT_SCOPED` v 00_config.js):
- *   1) nová událost,
- *   2) komentář k ní,
- *   3) další nová událost, hned upravená (test event.update),
- *   4) další nová událost, hned smazaná (test event.delete).
+ * Vytvoří čtyři události pokrývající různé zobrazení odznaku:
+ *   1) krátký název, TŘI komentáře → odznak "3",
+ *   2) záměrně dlouhý název, DVĚ úpravy → odznak "2" + test zkracování
+ *      názvu v seznamu dne (viz .day-event-title-row strong v CSS),
+ *   3) krátký název, jedna úprava → odznak "1",
+ *   4) založená a hned smazaná — test oznámení o smazání ve zvonečku
+ *      (žádný odznak, událost už neexistuje).
  *
  * Podmínka: v `_users` musí být kromě tebe aspoň jeden další uživatel.
  * Bezpečné spustit i opakovaně — každé spuštění jen přidá další sadu
@@ -58,59 +61,63 @@ function TOOLS_vytvorTestovaciOznameni() {
   const tomorrow = Utilities.formatDate(new Date(new Date(today + 'T00:00').getTime() + 86400000), TIMEZONE, 'yyyy-MM-dd');
   const now = nowLocalIso_();
 
-  // 1) Nová událost.
-  const created = {
-    id: uuid_(), start: tomorrow + 'T10:00', end: tomorrow + 'T11:00', all_day: false,
-    type: 'meeting', title: 'Testovací schůzka', description: 'Vytvořeno nástrojem TOOLS_vytvorTestovaciOznameni.',
-    owner_email: other, recurrence_id: '', created_at: now, created_by: other, updated_at: now, updated_by: '',
-  };
-  dbAppend_(SHEETS.EVENTS, created);
-  dbAppend_(SHEETS.AUDIT, {
-    timestamp: now, user: other, action: 'event.create',
-    detail: 'Vytvořena událost „Testovací schůzka" (' + formatDateTimeCz_(created.start) + ' – ' + formatDateTimeCz_(created.end) + ')',
-    entity_id: created.id,
-  });
-  console.log('1) Vytvořena událost „Testovací schůzka" (id=' + created.id + ')');
+  /** Založí testovací událost jako `other` a rovnou zaloguje event.create. */
+  function createTestEvent(title, startTime, endTime, type) {
+    const record = {
+      id: uuid_(), start: tomorrow + 'T' + startTime, end: tomorrow + 'T' + endTime, all_day: false,
+      type: type, title: title, description: 'Vytvořeno nástrojem TOOLS_vytvorTestovaciOznameni.',
+      owner_email: other, recurrence_id: '', created_at: now, created_by: other, updated_at: now, updated_by: '',
+    };
+    dbAppend_(SHEETS.EVENTS, record);
+    dbAppend_(SHEETS.AUDIT, {
+      timestamp: now, user: other, action: 'event.create',
+      detail: 'Vytvořena událost „' + title + '" (' + formatDateTimeCz_(record.start) + ' – ' + formatDateTimeCz_(record.end) + ')',
+      entity_id: record.id,
+    });
+    return record;
+  }
 
-  // 2) Komentář k ní.
-  const comment = { id: uuid_(), event_id: created.id, author_email: other, text: 'Můžeš se prosím připojit?', created_at: now };
-  dbAppend_(SHEETS.EVENT_COMMENTS, comment);
-  dbAppend_(SHEETS.AUDIT, {
-    timestamp: now, user: other, action: 'comment.create',
-    detail: 'Nový komentář k události „Testovací schůzka": ' + comment.text,
-    entity_id: created.id,
+  // 1) Krátký název, tři komentáře — test odznaku s vyšším číslem (3).
+  const commented = createTestEvent('Testovací schůzka', '10:00', '11:00', 'meeting');
+  ['Můžeš se prosím připojit?', 'Přidávám bod k agendě.', 'Potvrzuji účast.'].forEach((text) => {
+    dbAppend_(SHEETS.EVENT_COMMENTS, { id: uuid_(), event_id: commented.id, author_email: other, text: text, created_at: now });
+    dbAppend_(SHEETS.AUDIT, {
+      timestamp: now, user: other, action: 'comment.create',
+      detail: 'Nový komentář k události „Testovací schůzka": ' + text,
+      entity_id: commented.id,
+    });
   });
-  console.log('2) Přidán komentář k „Testovací schůzce"');
+  console.log('1) „Testovací schůzka" — 3 komentáře (id=' + commented.id + ')');
 
-  // 3) Další nová událost, hned upravená — test event.update.
-  const edited = {
-    id: uuid_(), start: tomorrow + 'T14:00', end: tomorrow + 'T14:30', all_day: false,
-    type: 'default', title: 'Testovací konzultace', description: '',
-    owner_email: other, recurrence_id: '', created_at: now, created_by: other, updated_at: now, updated_by: '',
-  };
-  dbAppend_(SHEETS.EVENTS, edited);
-  dbAppend_(SHEETS.AUDIT, {
-    timestamp: now, user: other, action: 'event.create',
-    detail: 'Vytvořena událost „Testovací konzultace" (' + formatDateTimeCz_(edited.start) + ' – ' + formatDateTimeCz_(edited.end) + ')',
-    entity_id: edited.id,
+  // 2) Záměrně dlouhý název, dvě úpravy — test odznaku (2) SOUČASNĚ se
+  //    zkracováním dlouhého názvu v seznamu dne.
+  const longTitled = createTestEvent(
+    'Testovací konzultace s opravdu hodně dlouhým názvem, který se do řádku určitě nevejde',
+    '13:00', '13:30', 'default');
+  ['Upraveno — změna místa konání.', 'Upraveno — posunutý čas.'].forEach((desc) => {
+    dbUpdate_(SHEETS.EVENTS, longTitled.id, { description: desc, updated_by: other });
+    dbAppend_(SHEETS.AUDIT, {
+      timestamp: now, user: other, action: 'event.update',
+      detail: 'Upravena událost „' + longTitled.title + '"',
+      entity_id: longTitled.id,
+    });
   });
-  dbUpdate_(SHEETS.EVENTS, edited.id, { description: 'Upraveno — změna místa konání.', updated_by: other });
+  console.log('2) Dlouhý název — 2 úpravy (id=' + longTitled.id + ')');
+
+  // 3) Krátký název, jedna úprava — test odznaku s nejběžnější hodnotou (1).
+  const editedOnce = createTestEvent('Testovací kontrola', '15:00', '15:30', 'important');
+  dbUpdate_(SHEETS.EVENTS, editedOnce.id, { description: 'Upraveno — doplněný popis.', updated_by: other });
   dbAppend_(SHEETS.AUDIT, {
     timestamp: now, user: other, action: 'event.update',
-    detail: 'Upravena událost „Testovací konzultace"',
-    entity_id: edited.id,
+    detail: 'Upravena událost „Testovací kontrola"',
+    entity_id: editedOnce.id,
   });
-  console.log('3) Založena a hned upravena událost „Testovací konzultace" (id=' + edited.id + ')');
+  console.log('3) „Testovací kontrola" — 1 úprava (id=' + editedOnce.id + ')');
 
-  // 4) Další nová událost, hned smazaná — test event.delete. Vlastní create
-  //    se do auditu záměrně nezapisuje (stejný princip jako u reálného
-  //    smazání — apiDeleteEvent taky loguje jen samotné smazání).
-  const deleted = {
-    id: uuid_(), start: tomorrow + 'T16:00', end: tomorrow + 'T16:30', all_day: false,
-    type: 'default', title: 'Zrušená testovací schůzka', description: '',
-    owner_email: other, recurrence_id: '', created_at: now, created_by: other, updated_at: now, updated_by: '',
-  };
-  dbAppend_(SHEETS.EVENTS, deleted);
+  // 4) Založená a hned smazaná — test oznámení o smazání ve zvonečku.
+  //    Vlastní create se do auditu záměrně nezapisuje (stejný princip jako
+  //    u reálného smazání — apiDeleteEvent taky loguje jen samotné smazání).
+  const deleted = createTestEvent('Zrušená testovací schůzka', '17:00', '17:30', 'default');
   dbDelete_(SHEETS.EVENTS, deleted.id);
   dbAppend_(SHEETS.AUDIT, {
     timestamp: now, user: other, action: 'event.delete',
@@ -120,8 +127,7 @@ function TOOLS_vytvorTestovaciOznameni() {
   console.log('4) Založena a hned smazána „Zrušená testovací schůzka"');
 
   console.log('---');
-  console.log('Hotovo. Otevři appku pod ' + me + ' a zkontroluj zvoneček — mělo by se objevit všech ' +
-    'pět akcí výše (u „Testovací konzultace" dvě samostatné, vytvoření i úprava). Klik na položku ' +
-    'otevře danou událost a TÍM oznámení k ní zmizí — u „Zrušené testovací schůzky" žádný klik nejde, ' +
-    'ta v seznamu zůstane jako čistě informační záznam o smazání.');
+  console.log('Hotovo. Otevři appku pod ' + me + ', zkontroluj zvoneček a v seznamu zítřejšího dne odznaky ' +
+    'vedle Upravit/Smazat: „Testovací schůzka" 3, dlouhý název 2 (a zkrácený výpustkou), „Testovací ' +
+    'kontrola" 1. Klik na oznámení/otevření události odznak i položku ve zvonečku odškrtne.');
 }
