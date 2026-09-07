@@ -600,16 +600,26 @@ se `unseen` jen přepne na `false` (položka zůstává vidět, dál v historii)
 u ostatních otevře detail.
 
 **Odznak nových akcí přímo u události** — kromě zvonečku appka ukazuje
-počet neviděných akcí i vedle Upravit/Smazat v seznamu dne
-(`.day-event-badge`, `App.renderDayEventItem`). Server ho počítá v
+počet neviděných akcí i přímo v mřížce kalendáře, na samotném chipu
+(`.cal-chip-badge`, `App.renderChip`), a stejně tak v seznamu dne
+(`.day-event-badge`, `App.renderDayEventItem`) — obojí vedle tužky/koše,
+ve společném pravému okraji přitisknutém shluku (`.cal-chip-actions`/
+`.day-event-actions`, `margin-left: auto`). Server ho počítá v
 `apiGetEvents` (`_unseenActionCountsByEvent_`, sdílí `_notificationRows_`
 se zvonečkem — stejná definice „neviděné" přes `_event_views`), takže
 appka nepotřebuje žádné volání navíc. Záměrně bez `event.create` —
 založení jde jen do zvonečku, odznak na chipu/řádku, který v tu chvíli
-teprve vzniká, by nedával smysl. Odškrtne se stejným mechanismem jako
-zvoneček: skutečným otevřením detailu (`recordEventView`) — a protože
-tužka v seznamu dne umí otevřít rovnou formulář úpravy BEZ detailu (viz
-`bindDayModal`), volá `recordEventView` i `App.openEditEventModal` samo,
+teprve vzniká, by nedával smysl.
+
+Odznak NA ROZDÍL od samotné tužky/koše NEZÁVISÍ na `canManageEvent` —
+zobrazí se každému, kdo tu událost vidí, i když ji sám spravovat nesmí
+(jen ji čte). „Je tu něco nového" je užitečné vědět bez ohledu na
+oprávnění, tužka/koš pak zůstávají gatované na `canManageEvent` jako dřív.
+
+Odškrtne se stejným mechanismem jako zvoneček: skutečným otevřením
+detailu (`recordEventView`) — a protože tužka v seznamu dne (i v chipu)
+umí otevřít rovnou formulář úpravy BEZ detailu (viz `bindDayModal`/
+`bindCalendar`), volá `recordEventView` i `App.openEditEventModal` samo,
 ne jen `openEventModal`.
 
 **Ruční ověření** — `90_tools.js` obsahuje (na žádost, po smazání všech

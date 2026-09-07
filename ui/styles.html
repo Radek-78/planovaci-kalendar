@@ -2912,10 +2912,31 @@
      nebo chip široký (vícedenní událost s krátkým názvem by jinak
      nechala ikony viset hned za textem, ne u okraje). */
   .cal-chip-actions {
+    align-items: center;
     display: flex;
     flex-shrink: 0;
     gap: 2px;
     margin-left: auto;
+  }
+
+  /* Počet nových akcí (viz event.unseenActionCount, apiGetEvents na
+     serveru) — stejný jazyk jako .day-event-badge/.cal-notify-badge, jen
+     ještě o kousek menší, ať se vejde do 20px vysoké dráhy chipu (viz
+     CAL_LANE_ROW v JS). flex-shrink: 0 jako u ikony/akcí vedle — jediné,
+     co se smí v přeplněném chipu zmenšit/uříznout, je název (.cal-chip-title). */
+  .cal-chip-badge {
+    align-items: center;
+    background: var(--lidl-red);
+    border-radius: 999px;
+    color: var(--white);
+    display: inline-flex;
+    flex-shrink: 0;
+    font-size: 8px;
+    font-weight: 700;
+    height: 13px;
+    justify-content: center;
+    min-width: 13px;
+    padding: 0 2px;
   }
 
   .cal-chip-action {

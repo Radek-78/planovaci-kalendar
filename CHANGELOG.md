@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.9.8 - 07.09.2026 08:22
+- v0.9.8: Odznak nových akcí i přímo na chipu v mřížce kalendáře, ne jen v seznamu dne. Předchozí verze zobrazovala číslo jen po rozkliknutí dne - teď je vidět rovnou v měsíční mřížce, vedle tužky a koše na samotném chipu. Odznak navíc nově nezávisí na tom, jestli uživatel danou událost smí upravovat - je tu něco nového je užitečné vědět i pro toho, kdo má kalendář jen ke čtení, tužka a koš samotné zůstávají viditelné jen pro správce události jako dosud.
+
 ## v0.9.7 - 07.09.2026 08:16
 - v0.9.7: Testovací nástroj rozšířený pro ověření odznaku počtu akcí u události. TOOLS_vytvorTestovaciOznameni teď zakládá čtyři testovací události místo dvou: krátký název se třemi komentáři pro odznak 3, záměrně dlouhý název se dvěma úpravami pro odznak 2 a zároveň test zkracování dlouhého názvu v seznamu dne, krátký název s jednou úpravou pro odznak 1, a jedna založená a hned smazaná pro test oznámení o smazání ve zvonečku.
 

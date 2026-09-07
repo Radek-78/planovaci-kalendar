@@ -5607,14 +5607,22 @@
       const rightEdge = '<span class="cal-chip-edge' + (continuesRight ? ' is-active' : '') + '">' +
         (continuesRight ? '<i class="ph ph-caret-right" aria-hidden="true"></i>' : '') + '</span>';
 
-      const actions = this.canManageEvent(event)
-        ? '<span class="cal-chip-actions">' +
-            '<button type="button" class="cal-chip-action is-edit" data-action="edit" data-event-id="' + Ui.escape(event.id) + '" title="Upravit" aria-label="Upravit událost">' +
-              '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>' +
-            '<button type="button" class="cal-chip-action is-danger" data-action="delete" data-event-id="' + Ui.escape(event.id) + '" title="Smazat" aria-label="Smazat událost">' +
-              '<i class="ph ph-trash" aria-hidden="true"></i></button>' +
-          '</span>'
+      // Odznak nových akcí (viz event.unseenActionCount, apiGetEvents na
+      // serveru) NEZÁVISÍ na canManageEvent níže — "je tu něco nového" je
+      // užitečné vědět i pro toho, kdo tu událost sám upravit nesmí (jen
+      // ČTE kalendář), ne jen pro jejího správce. Sdílí .cal-chip-actions
+      // s tužkou/košem (stejný cluster přitisknutý k pravému okraji, viz
+      // margin-left:auto v CSS), i když jsou k dispozici třeba jen ony.
+      const badge = event.unseenActionCount > 0
+        ? '<span class="cal-chip-badge" title="Nové akce u této události">' + event.unseenActionCount + '</span>'
         : '';
+      const actionButtons = this.canManageEvent(event)
+        ? '<button type="button" class="cal-chip-action is-edit" data-action="edit" data-event-id="' + Ui.escape(event.id) + '" title="Upravit" aria-label="Upravit událost">' +
+            '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>' +
+          '<button type="button" class="cal-chip-action is-danger" data-action="delete" data-event-id="' + Ui.escape(event.id) + '" title="Smazat" aria-label="Smazat událost">' +
+            '<i class="ph ph-trash" aria-hidden="true"></i></button>'
+        : '';
+      const actions = (badge || actionButtons) ? '<span class="cal-chip-actions">' + badge + actionButtons + '</span>' : '';
 
       const cls = 'cal-chip' + (continuesLeft ? ' is-continue-left' : '') + (continuesRight ? ' is-continue-right' : '');
 
@@ -5716,24 +5724,24 @@
      * události. Tužka/koš se zobrazí, jen když ji smí uživatel spravovat
      * (viz canManageEvent) — žádná mrtvá ikona, kterou by server stejně
      * odmítl. Odznak s počtem nových akcí (viz event.unseenActionCount ze
-     * serveru, apiGetEvents) se zobrazí vedle nich, jen když je nenulový —
-     * otevřením detailu (openEventModal → recordEventView) zmizí sám, při
-     * další návštěvě appka pošle 0.
+     * serveru, apiGetEvents) NA canManageEvent nezávisí — "je tu něco
+     * nového" je užitečné vědět i pro toho, kdo tu událost sám upravit
+     * nesmí. Otevřením detailu (openEventModal → recordEventView) zmizí
+     * sám, při další návštěvě appka pošle 0.
      */
     renderDayEventItem(event) {
       const type = this.eventTypes[event.type] || { label: event.type, icon: 'calendar-blank', color: '#5e6e8a', bgColor: '#eef0f3' };
 
-      const actions = this.canManageEvent(event)
-        ? '<span class="day-event-actions">' +
-            (event.unseenActionCount > 0
-              ? '<span class="day-event-badge" title="Nové akce u této události">' + event.unseenActionCount + '</span>'
-              : '') +
-            '<button type="button" class="day-event-action is-edit" data-action="edit" data-event-id="' + Ui.escape(event.id) + '" title="Upravit" aria-label="Upravit událost">' +
-              '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>' +
-            '<button type="button" class="day-event-action is-danger" data-action="delete" data-event-id="' + Ui.escape(event.id) + '" title="Smazat" aria-label="Smazat událost">' +
-              '<i class="ph ph-trash" aria-hidden="true"></i></button>' +
-          '</span>'
+      const badge = event.unseenActionCount > 0
+        ? '<span class="day-event-badge" title="Nové akce u této události">' + event.unseenActionCount + '</span>'
         : '';
+      const actionButtons = this.canManageEvent(event)
+        ? '<button type="button" class="day-event-action is-edit" data-action="edit" data-event-id="' + Ui.escape(event.id) + '" title="Upravit" aria-label="Upravit událost">' +
+            '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>' +
+          '<button type="button" class="day-event-action is-danger" data-action="delete" data-event-id="' + Ui.escape(event.id) + '" title="Smazat" aria-label="Smazat událost">' +
+            '<i class="ph ph-trash" aria-hidden="true"></i></button>'
+        : '';
+      const actions = (badge || actionButtons) ? '<span class="day-event-actions">' + badge + actionButtons + '</span>' : '';
 
       return '<div class="day-event-item" data-event-id="' + Ui.escape(event.id) + '">' +
         '<span class="day-event-icon" style="--chip-color:' + Ui.escape(type.color) + '; --chip-bg:' + Ui.escape(type.bgColor) + '">' +
