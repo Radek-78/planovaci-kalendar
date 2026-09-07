@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.9.1 - 07.09.2026 07:22
+- v0.9.1: Nástroj na opravu posunutých dat u starších událostí. Minule jsem objevil, že vložení sloupce recurrence_id doprostřed schématu tabulky events, ne na konec, posunulo data u událostí založených před verzí 0.8.0 - appka u nich četla created_at místo recurrence_id, created_by místo created_at a tak dál, takže se u ve skutečnosti jednorázových událostí zobrazovalo Opakující se. Přidán jednorázový ruční nástroj TOOLS_opravPosunutaDataUdalosti ve správcovském souboru nástrojů - najde postižené řádky podle tvaru hodnoty v recurrence_id, který by tam nikdy neměl být, a přesune sloupce zpátky na správné místo. Bezpečné spustit i opakovaně. Nutné spustit ručně z editoru Apps Scriptu po nasazení.
+
 ## v0.9.0 - 07.09.2026 07:10
 - v0.9.0: Přesnější oznámení - podle toho, co jsi doopravdy viděl, ne podle toho, kdy jsi appku otevřel. last_visit_at je rozdělený na dvě oddělená pole: last_login_at je skutečné poslední přihlášení, zapisuje se při každém otevření appky. notifications_seen_at zůstává jen pro oznámení bez vazby na konkrétní událost, třeba import dat filiálek. U oznámení k události - úprava, nový komentář - appka nově pamatuje, kdy jsi TU KONKRÉTNÍ událost naposledy otevřel, a hlásí jen to, co se stalo POTÉ. Otevřením detailu události se tak její oznámení odškrtne samo, bez nutnosti kliknout na zvoneček. Kliknutí na zvoneček už neumlčí oznámení k události, kterou jsi ve skutečnosti ještě neviděl.
 

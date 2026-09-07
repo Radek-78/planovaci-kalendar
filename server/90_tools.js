@@ -478,6 +478,84 @@ function TOOLS_dosaditBarvyTypuUdalosti() {
 }
 
 /**
+ * Jednorázová oprava POSUNUTÝCH DAT ve `events` — u řádků založených PŘED
+ * v0.8.0 appka dnes čte špatné sloupce (viz kritický komentář u DB_SCHEMA
+ * v 20_db.js a historie ve SPECIFIKACE.md, kapitola 9.9). `recurrence_id`
+ * se do schématu vložil DOPROSTŘED (mezi owner_email a created_at), ne na
+ * konec — dbGetAll_/dbRecordToRow_ ale čtou/zapisují čistě podle POZICE,
+ * ne podle textu v hlavičce, takže u starších řádků appka dnes čte:
+ *
+ *   recurrence_id ← skutečné created_at
+ *   created_at    ← skutečné created_by
+ *   created_by    ← skutečné updated_at
+ *   updated_at    ← skutečné updated_by
+ *   updated_by    ← nic (u starých řádků ten sloupec fyzicky neexistoval)
+ *
+ * Reálný dopad: appka u takové (ve skutečnosti jednorázové) události
+ * zobrazuje "Opakující se" a nabízí volbu rozsahu úpravy/smazání, protože
+ * recurrence_id vychází jako neprázdný (obsahuje starý časový údaj místo
+ * prázdného řetězce).
+ *
+ * DETEKCE: skutečná recurrence_id je buď prázdná, nebo UUID (z uuid_(),
+ * tvar „xxxxxxxx-xxxx-…") — nikdy nevypadá jako výstup nowIso_()
+ * („RRRR-MM-DDTHH:mm:ss.sssZ"). Cokoliv, co tomuhle tvaru odpovídá, je
+ * jednoznačně posunutý řádek, ne skutečná opakující se událost.
+ *
+ * OPRAVA: pro každý postižený řádek posune čtveřici polí o jednu pozici
+ * doleva (viz mapování výše) a recurrence_id vynuluje. Zapisuje se PŘÍMO
+ * do listu (ne přes dbUpdate_) — ten záměrně chrání created_at/created_by/
+ * updated_at před přepsáním při běžné úpravě (viz dbUpdate_ v 20_db.js),
+ * což je přesně to, co tahle oprava potřebuje změnit.
+ *
+ * Bezpečné spustit i opakovaně — po opravě už recurrence_id detekčnímu
+ * vzoru neodpovídá, druhé spuštění nenajde nic k opravě.
+ */
+function TOOLS_opravPosunutaDataUdalosti() {
+  const isoWithMillisZ = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+  withLock_(() => {
+    // Čerstvé čtení POD zámkem, ne z cache před ním — ať _row (fyzický
+    // řádek v listu, viz dbGetAll_) sedí i kdyby mezitím někdo jiný
+    // smazal/přidal jinou událost a čísla řádků se posunula.
+    dbInvalidate_(SHEETS.EVENTS);
+    const rows = dbGetAll_(SHEETS.EVENTS);
+    const affected = rows.filter((r) => isoWithMillisZ.test(String(r.recurrence_id || '')));
+
+    if (!affected.length) {
+      console.log('Žádný posunutý řádek nenalezen — nic k opravě (buď oprava už proběhla, nebo appka žádnou postiženou událost nemá).');
+      return;
+    }
+
+    console.log('Nalezeno posunutých řádků: ' + affected.length + '. Opravuji…');
+    const sheet = dbSheet_(SHEETS.EVENTS);
+    const headers = DB_SCHEMA[SHEETS.EVENTS];
+
+    affected.forEach((r) => {
+      const fixed = Object.assign({}, r, {
+        recurrence_id: '',
+        created_at: String(r.recurrence_id),
+        created_by: String(r.created_at),
+        updated_at: String(r.created_by),
+        updated_by: String(r.updated_at || ''),
+      });
+      delete fixed._row;
+
+      sheet.getRange(r._row, 1, 1, headers.length).setValues([dbRecordToRow_(SHEETS.EVENTS, fixed)]);
+
+      console.log(
+        'Opraveno id=' + r.id + ' „' + r.title + '" — created_at=' + fixed.created_at +
+        ', created_by=' + fixed.created_by + ', updated_at=' + fixed.updated_at +
+        ', updated_by=' + (fixed.updated_by || '(prázdné)') + ', recurrence_id vynulováno.'
+      );
+    });
+
+    dbInvalidate_(SHEETS.EVENTS);
+    console.log('---');
+    console.log('Hotovo — opraveno řádků: ' + affected.length + '. Zkontroluj v appce, že dotčené události už nenabízí "Opakující se".');
+  });
+}
+
+/**
  * Založí denní časovaný trigger pro automatickou synchronizaci dat
  * filiálek — mezi 6:00 a 7:00, zdrojový soubor se sám aktualizuje mezi
  * 4-5h, hodina je rezerva. Ruční záloha z editoru — appka od verze

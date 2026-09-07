@@ -29,9 +29,10 @@
  * na špatnou pozici — appka je pak čte pod jiným, špatným názvem, potichu,
  * bez chyby. Přesně tohle se stalo `events.recurrence_id` (vložen mezi
  * `owner_email` a `created_at`) — u událostí založených před touhle
- * změnou appka `recurrence_id` čte hodnotu, která je ve skutečnosti
- * `created_at`, `created_at` čte skutečné `created_by` atd. Oprava
- * (přesun dat do správných sloupců, ne jen schématu) čeká na provedení.
+ * změnou appka `recurrence_id` čtela hodnotu, která byla ve skutečnosti
+ * `created_at`, `created_at` skutečné `created_by` atd. OPRAVENO —
+ * viz `TOOLS_opravPosunutaDataUdalosti` v 90_tools.js (jednorázový
+ * ruční nástroj, bezpečný spustit i opakovaně).
  */
 const DB_SCHEMA = {
   _users: [

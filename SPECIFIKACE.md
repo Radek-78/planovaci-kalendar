@@ -1314,6 +1314,20 @@ vůbec nemusely měnit, přibyl jen sloupec `events.recurrence_id`
 (prázdný u jednorázové události, jinak sdílené UUID napříč všemi výskyty
 jedné série).
 
+**Nahlášená a opravená chyba** — `recurrence_id` se do `DB_SCHEMA.events`
+přidal DOPROSTŘED (mezi `owner_email` a `created_at`), ne na konec. Protože
+appka čte/zapisuje sloupce čistě podle POZICE, ne podle textu v hlavičce
+(viz kritický komentář u `DB_SCHEMA` v `20_db.js`), u událostí založených
+PŘED touhle změnou appka od v0.8.0 do opravy níže četla `recurrence_id`
+jako hodnotu, která byla ve skutečnosti `created_at` — takže se u starších
+(ve skutečnosti jednorázových) událostí zobrazovalo "Opakující se" a
+nabízela volba rozsahu úpravy/smazání. **Opraveno** jednorázovým ručním
+nástrojem `TOOLS_opravPosunutaDataUdalosti` (90_tools.js) — detekuje
+postižené řádky podle tvaru `recurrence_id` (vypadá jako výstup
+`nowIso_()`, ne jako UUID ani prázdný řetězec, což skutečná hodnota nikdy
+není) a posune čtveřici polí `created_at/created_by/updated_at/updated_by`
+zpátky na správnou pozici. Bezpečné spustit i opakovaně.
+
 - **Založení** — formulář nové události má v kartě Termín pole
   "Opakování" (Neopakovat / Každý den / Každý týden / Každé 2 týdny /
   Každý měsíc) a při vybrané frekvenci navíc "Počet opakování" NEBO
