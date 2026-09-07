@@ -25,9 +25,8 @@
  * konfiguraci (`_settings.importFolderId`/`importSearchTerm`) a spouští
  * STEJNOU sdílenou logiku jako ruční tlačítko (`_importPerformSync_`,
  * `_importFindFiles_`) — jen bez uživatelské session (žádný guard_, běží
- * mimo web request). Trigger se zakládá/ruší ručně z editoru Apps Scriptu
- * přes `TOOLS_nastavDenniSynchronizaci`/`TOOLS_zrusDenniSynchronizaci`
- * (viz 90_tools.js), appka ho sama nezakládá.
+ * mimo web request). Trigger se zakládá/ruší přímo v appce (Nastavení →
+ * Import dat → „Automatická noční synchronizace", `apiSetImportTrigger`).
  *
  * Sloupce se hledají podle PŘESNÉHO textu hlavičky v řádku 1, ne podle
  * pozice — cizí systém sloupce časem může přeuspořádat, appka na tom nesmí
@@ -389,7 +388,8 @@ function apiSyncImportFile(payload) {
 
 /**
  * Noční automatická synchronizace — volá ji časovaný trigger založený
- * ručně přes TOOLS_nastavDenniSynchronizaci (90_tools.js, 6:00-7:00).
+ * přímo v appce (Nastavení → Import dat → „Automatická noční
+ * synchronizace", výchozí 6:00-7:00, viz apiSetImportTrigger).
  * Navazuje na naposledy odsouhlasenou konfiguraci (`_settings.
  * importFolderId`/`importSearchTerm`, viz apiSyncImportFile) — dokud
  * SUPERADMIN aspoň jednou ručně nesynchronizuje v appce, trigger nemá
@@ -440,16 +440,13 @@ function _importRunScheduledSync_() {
 /* ══════════════════════════════════════════════════════════════════════════
    TRIGGER — zapnutí/vypnutí a hodina nočního běhu
 
-   Zakládat/rušet trigger z appky jde bezpečně stejně jako z editoru — appka
-   běží jako "Execute as me" (viz appsscript.json), takže webový požadavek
-   od SUPERADMINa má STEJNÁ oprávnění ScriptApp jako ruční spuštění
-   TOOLS_ funkce vlastníkem (obojí ve skutečnosti běží pod účtem vlastníka
-   skriptu). `TOOLS_nastavDenniSynchronizaci`/`TOOLS_zrusDenniSynchronizaci`
-   v 90_tools.js zůstávají jako ruční záloha z editoru, volají STEJNOU
-   funkci níže, ať trigger logika existuje jen jednou.
+   Appka zakládá/ruší trigger bezpečně přímo z webového rozhraní — běží
+   jako "Execute as me" (viz appsscript.json), takže webový požadavek od
+   SUPERADMINa má STEJNÁ oprávnění ScriptApp jako ruční spuštění z editoru
+   (obojí ve skutečnosti běží pod účtem vlastníka skriptu).
    ══════════════════════════════════════════════════════════════════════════ */
 
-/** Název handler funkce triggeru — na jednom místě, ať se nikdy nerozejde mezi appkou a TOOLS_ funkcemi. */
+/** Název handler funkce triggeru — na jednom místě, ať appka na něj vždy odkazuje stejně. */
 const IMPORT_TRIGGER_HANDLER = '_importRunScheduledSync_';
 
 /**

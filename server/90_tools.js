@@ -8,618 +8,120 @@
  * ten, kdo má přístup přímo ke skriptu, tedy vlastník.
  *
  * Proto tu NENÍ guard_: ochranou je samotný přístup do editoru. Kdyby šly
- * volat z prohlížeče, byl by reset inicializace dostupný komukoliv, kdo umí
- * otevřít konzoli.
+ * volat z prohlížeče, byl by přístup k testovacím datům dostupný komukoliv,
+ * kdo umí otevřít konzoli.
  */
 
 /**
- * Vypíše, kde skript leží a kde je jeho databáze.
- * První věc, kterou spustit, když něco nesedí.
+ * Vloží sadu testovacích akcí OD JINÉHO uživatele, ať jde v appce rovnou
+ * ověřit oznámení (zvoneček) — konkrétně nový způsob vyhodnocení přes
+ * `_event_views` (viz `_computeNotifications_` v 50_api.js): oznámení
+ * k události zmizí až jejím skutečným otevřením, ne kliknutím na zvoneček.
+ *
+ * Trik: Apps Script vždy spouští skript jako TEBE (currentEmail_()) —
+ * přihlásit se fyzicky pod cizím účtem nejde. Testovací řádky se proto
+ * zapisují napřímo (`dbAppend_`, ne `dbInsert_` — ten by `owner_email`/
+ * `created_by`/`user` vždy vynutil na currentEmail_()) s hodnotami
+ * nastavenými na DRUHÉHO uživatele z `_users`. Appka je po tvém přihlášení
+ * uvidí přesně tak, jako by je fakt udělal někdo jiný.
+ *
+ * Vytvoří čtyři akce, které dohromady pokryjí všechny typy oznámení
+ * vázané na konkrétní událost (`NOTIFY_ACTIONS_EVENT_SCOPED` v 00_config.js):
+ *   1) nová událost,
+ *   2) komentář k ní,
+ *   3) další nová událost, hned upravená (test event.update),
+ *   4) další nová událost, hned smazaná (test event.delete).
+ *
+ * Podmínka: v `_users` musí být kromě tebe aspoň jeden další uživatel.
+ * Bezpečné spustit i opakovaně — každé spuštění jen přidá další sadu
+ * testovacích dat, nic nepřepíše ani nesmaže.
  */
-function TOOLS_kdeJeSkript() {
-  const folder = scriptFolder_();
-  const dbId = PropertiesService.getScriptProperties().getProperty(PROPS.DB_ID);
-
-  console.log('Složka skriptu: ' + (folder ? folder.getName() : 'kořen Disku'));
-  console.log('URL složky:     ' + (folder ? folder.getUrl() : '—'));
-  console.log('ID databáze:    ' + (dbId || 'zatím nevznikla (aplikace není inicializována)'));
-
-  if (dbId) {
-    try {
-      const spreadsheet = SpreadsheetApp.openById(dbId);
-      console.log('Název databáze: ' + spreadsheet.getName());
-      console.log('URL databáze:   ' + spreadsheet.getUrl());
-      console.log('Listy:          ' + spreadsheet.getSheets().map((s) => s.getName()).join(', '));
-    } catch (e) {
-      console.log('Databázi podle uloženého ID NELZE otevřít: ' + e);
-    }
-  }
-}
-
-/**
- * Odpojí databázi od skriptu — při dalším otevření aplikace se spustí wizard.
- *
- * Spreadsheet v Drive ZŮSTÁVÁ nedotčený, jen se na něj skript přestane
- * odkazovat. Data se tedy neztratí; pokud se má aplikace vrátit k původní
- * databázi, stačí ID vrátit zpět do Script Properties.
- */
-function TOOLS_resetInicializace() {
-  const properties = PropertiesService.getScriptProperties();
-  const dbId = properties.getProperty(PROPS.DB_ID);
-
-  properties.deleteProperty(PROPS.DB_ID);
-  properties.deleteProperty(PROPS.SETUP_AT);
-  dbHandle_ = null;
-  dbCache_ = {};
-
-  console.log('Inicializace zrušena. Při dalším otevření aplikace se spustí wizard.');
-  console.log('Původní databáze ZŮSTÁVÁ v Drive, ID bylo: ' + (dbId || '—'));
-}
-
-/**
- * Přeformátuje všechny listy databáze firemním fontem (CONFIG.sheetFont).
- *
- * K čemu je to dobré: setFontFamily() neexistující název fontu tiše ignoruje.
- * Kdyby se název netrefil, listy zůstanou v Arialu — po opravě CONFIG.sheetFont
- * stačí spustit tuto funkci a databázi není nutné zakládat znovu.
- */
-function TOOLS_prefontujDb() {
-  const spreadsheet = dbSpreadsheet_();
-  const sheets = spreadsheet.getSheets();
-
-  sheets.forEach((sheet) => {
-    applySheetFont_(sheet);
-    console.log('Přeformátován list: ' + sheet.getName());
-  });
-
-  console.log('Hotovo — ' + sheets.length + ' listů nastaveno na font „' + CONFIG.sheetFont + '".');
-  console.log('Zkontroluj v tabulce, že se font opravdu projevil; pokud ne, název fontu nesouhlasí.');
-}
-
-/**
- * Doplní chybějící listy a sloupce podle DB_SCHEMA.
- * Spouští se po rozšíření schématu — nic nemaže, jen doplňuje.
- */
-function TOOLS_zkontrolujSchema() {
-  const spreadsheet = dbSpreadsheet_();
-  dbEnsureSchema_(spreadsheet);
-
-  console.log('Schéma zkontrolováno. Listy v databázi: ' +
-    spreadsheet.getSheets().map((s) => s.getName()).join(', '));
-}
-
-/**
- * Vloží sadu testovacích událostí pro ruční ověření kalendáře — pokrývá
- * všechny stavy, které mřížka umí zobrazit: událost v minulosti, událost
- * přesahující přes hranici měsíce, dnešek, celodenní i časovou událost,
- * vícedenní událost (časovou i celodenní) a všech sedm typů.
- *
- * Data jsou napevno u víkendu 1.–2. 9. 2026 (dnešek v době psaní) — pokud
- * se spouští později, dny už nebudou sedět na "dnešek", ale mřížka zůstane
- * použitelná k prohlédnutí chipů a modalu.
- *
- * POZOR: spustit jen JEDNOU. Opětovné spuštění vytvoří duplicity — testovací
- * řádky jde smazat ručně přímo v listu `events`.
- */
-function TOOLS_vlozTestovaciUdalosti() {
-  const events = [
-    {
-      start: '2026-08-28T14:00', end: '2026-08-28T15:00', all_day: false, type: 'default',
-      title: 'Týdenní report', description: 'Shrnutí uplynulého týdne.',
-    },
-    {
-      start: '2026-08-31T00:00', end: '2026-09-01T23:59', all_day: true, type: 'trip',
-      title: 'Přesun do Ostravy', description: 'Přesah přes hranici měsíce — test spojitého chipu.',
-    },
-    {
-      start: '2026-09-02T09:00', end: '2026-09-02T09:30', all_day: false, type: 'meeting',
-      title: 'Denní standup', description: '',
-    },
-    {
-      start: '2026-09-03T00:00', end: '2026-09-03T23:59', all_day: true, type: 'homeoffice',
-      title: 'Home office', description: '',
-    },
-    {
-      start: '2026-09-07T08:00', end: '2026-09-09T17:00', all_day: false, type: 'trip',
-      title: 'Školení Praha', description: 'Vícedenní časová událost — test značky pokračování.',
-    },
-    {
-      start: '2026-09-15T11:30', end: '2026-09-15T12:00', all_day: false, type: 'deadline',
-      title: 'Odevzdání reportu', description: '',
-    },
-    {
-      start: '2026-09-18T00:00', end: '2026-09-18T23:59', all_day: true, type: 'party',
-      title: 'Teambuilding', description: 'Celodenní akce.',
-    },
-    {
-      start: '2026-09-22T10:00', end: '2026-09-22T11:00', all_day: false, type: 'important',
-      title: 'Kontrola kvality', description: '',
-    },
-  ];
-
-  _toolsInsertEvents_(events);
-}
-
-/**
- * Přidá čtyři události do JEDNOHO dne (2. 9. 2026, spolu s „Denní standup"
- * z TOOLS_vlozTestovaciUdalosti dohromady čtyři) — pro ruční ověření, jak
- * mřížka zvládne víc událostí v jedné buňce (chip „+N" nad limit) a jak
- * vypadá modal detailu dne s delším seznamem.
- *
- * POZOR: spustit jen JEDNOU, ze stejného důvodu jako TOOLS_vlozTestovaciUdalosti.
- */
-function TOOLS_vlozDalsiUdalostiTentyzDen() {
-  _toolsInsertEvents_([
-    {
-      start: '2026-09-02T11:00', end: '2026-09-02T11:15', all_day: false, type: 'default',
-      title: 'Rychlá konzultace', description: '',
-    },
-    {
-      start: '2026-09-02T13:00', end: '2026-09-02T13:30', all_day: false, type: 'important',
-      title: 'Předání dokumentů', description: '',
-    },
-    {
-      start: '2026-09-02T15:00', end: '2026-09-02T16:00', all_day: false, type: 'meeting',
-      title: 'Call s klientem', description: 'Test více událostí v jednom dni.',
-    },
-  ]);
-}
-
-/** Společný zápis testovacích událostí pro TOOLS_vloz* funkce výše. */
-function _toolsInsertEvents_(events) {
-  const ownerEmail = currentEmail_() || 'test@example.com';
-  events.forEach((event) => {
-    dbInsert_(SHEETS.EVENTS, Object.assign({}, event, { owner_email: ownerEmail }));
-    console.log('Vloženo: ' + event.title + ' (' + event.start + ' – ' + event.end + ')');
-  });
-
-  console.log('Hotovo — vloženo ' + events.length + ' testovacích událostí jako ' + ownerEmail + '.');
-}
-
-/**
- * Zapíše řádek do `_audit_log` s LIBOVOLNÝM autorem — na rozdíl od audit_()
- * v 10_util.js (ta bere autora vždy z currentEmail_(), tedy z toho, kdo
- * skript zrovna pouští). Jen pro seedovací nástroje níže, kde je potřeba
- * simulovat akce různých uživatelů, ne jen jednoho (toho, kdo je spustil
- * z editoru).
- *
- * `timestamp` MÍSTNÍM časem (nowLocalIso_, ne nowIso_) — stejně jako
- * audit_() v 10_util.js, ať se s ostrými audit řádky dobře řadí a porovnává.
- * `detail` bez ID (viz audit_()); odkaz na konkrétní záznam nese `entityId`.
- */
-function _toolsAuditAs_(actorEmail, action, detail, entityId) {
-  dbAppend_(SHEETS.AUDIT, {
-    timestamp: nowLocalIso_(),
-    user: actorEmail,
-    action: action,
-    detail: detail,
-    entity_id: entityId ? String(entityId) : '',
-  });
-}
-
-/**
- * Zapíše řádek do `events`/`event_comments` PŘÍMO přes dbAppend_ (ne přes
- * dbInsert_), ať jde nastavit created_by/owner_email/author_email na
- * libovolného uživatele — dbInsert_ by ho jinak vždy vynutil na
- * currentEmail_(). Doplní jen id/created_at/updated_at, pokud je `record`
- * sám neobsahuje; zbytek (owner_email, created_by…) si musí zavolání
- * doplnit samo.
- */
-function _toolsInsertAs_(table, record) {
-  const now = nowLocalIso_();
-  const complete = Object.assign({ id: uuid_(), created_at: now, updated_at: now }, record);
-  dbAppend_(table, complete);
-  return complete;
-}
-
-/** Přičte dny k datu RRRR-MM-DD, vrátí zase RRRR-MM-DD. Pomůcka pro TOOLS_ níže. */
-function _toolsAddDays_(dateIso, days) {
-  const d = new Date(dateIso + 'T00:00');
-  d.setDate(d.getDate() + days);
-  return Utilities.formatDate(d, TIMEZONE, 'yyyy-MM-dd');
-}
-
-/**
- * Vygeneruje dávku testovacích dat pro ověření Oznámení — nové události,
- * komentáře k nim od jiného uživatele, úpravu jedné události a smazání
- * jiné. `actorPool` je seznam e-mailů, mezi kterými se akce rozdělují —
- * volající (TOOLS_vlozOznamovaciTestData / TOOLS_simulujOznameniProMe)
- * rozhoduje, jestli tam patří úplně všichni, nebo někdo záměrně chybí
- * (typicky ten, kdo skript pouští — viz TOOLS_simulujOznameniProMe).
- * Sdílené oběma nástroji, ať se stejná logika nepíše na dvou místech.
- */
-function _toolsSeedNotifyBatch_(actorPool) {
-  const today = todayIso_();
-  const pick = (i) => actorPool[i % actorPool.length];
-
-  // 1) Nové události od různých uživatelů, blízko dneška, ať jsou hned
-  //    vidět v aktuálně zobrazeném měsíci mřížky.
-  const plan = [
-    { offsetDays: 1, start: '10:00', end: '11:00', allDay: false, type: 'meeting', title: 'Plánovací schůzka týmu' },
-    { offsetDays: 2, start: '09:00', end: '10:00', allDay: false, type: 'trip', title: 'Cesta za zákazníkem' },
-    { offsetDays: 3, start: '00:00', end: '23:59', allDay: true, type: 'homeoffice', title: 'Home office' },
-    { offsetDays: -1, start: '14:00', end: '15:00', allDay: false, type: 'default', title: 'Proběhlá konzultace' },
-  ];
-
-  const created = [];
-  plan.forEach((p, i) => {
-    const date = _toolsAddDays_(today, p.offsetDays);
-    const owner = pick(i);
-    const start = date + 'T' + p.start;
-    const end = date + 'T' + p.end;
-
-    const record = _toolsInsertAs_(SHEETS.EVENTS, {
-      start: start, end: end, all_day: p.allDay, type: p.type, title: p.title,
-      description: 'Testovací událost pro ověření systému Oznámení.',
-      owner_email: owner, created_by: owner, updated_by: owner,
-    });
-    created.push({ id: record.id, title: p.title, owner: owner });
-    _toolsAuditAs_(owner, 'event.create',
-      'Vytvořena událost „' + p.title + '" (' + formatDateTimeCz_(start) + ' – ' + formatDateTimeCz_(end) + ')',
-      record.id);
-    console.log('Vytvořena událost „' + p.title + '" jako ' + owner);
-  });
-
-  // 2) Komentáře k prvním dvěma událostem — vždy od JINÉHO uživatele, než
-  //    je jejich vlastník.
-  created.slice(0, 2).forEach((ev) => {
-    const commenter = actorPool.find((u) => u !== ev.owner) || actorPool[0];
-    const text = 'Díky za info, počítám s tím.';
-    const comment = _toolsInsertAs_(SHEETS.EVENT_COMMENTS, {
-      event_id: ev.id, author_email: commenter, text: text,
-    });
-    _toolsAuditAs_(commenter, 'comment.create', 'Nový komentář k události „' + ev.title + '": ' + text, ev.id);
-    console.log('Přidán komentář k „' + ev.title + '" jako ' + commenter + ' (id=' + comment.id + ')');
-  });
-
-  // 3) Úprava první vytvořené události — jiným uživatelem, než je vlastník.
-  if (created.length) {
-    const target = created[0];
-    const editor = actorPool.find((u) => u !== target.owner) || actorPool[0];
-    dbUpdate_(SHEETS.EVENTS, target.id, {
-      description: 'Upraveno — změna místa konání.',
-      updated_by: editor,
-    });
-    _toolsAuditAs_(editor, 'event.update', 'Upravena událost „' + target.title + '"', target.id);
-    console.log('Upravena událost „' + target.title + '" jako ' + editor);
-  }
-
-  // 4) Smazání — vlastní zahazovací událost, ať vznikne SKUTEČNÝ create+delete
-  //    pár (ne osamocený audit řádek bez odpovídajících dat v events).
-  const throwawayOwner = pick(4);
-  const throwaway = _toolsInsertAs_(SHEETS.EVENTS, {
-    start: today + 'T16:00', end: today + 'T16:30', all_day: false, type: 'default',
-    title: 'Zrušená schůzka', description: '',
-    owner_email: throwawayOwner, created_by: throwawayOwner, updated_by: throwawayOwner,
-  });
-  const deleter = actorPool.find((u) => u !== throwawayOwner) || actorPool[0];
-  dbDelete_(SHEETS.EVENTS, throwaway.id);
-  _toolsAuditAs_(deleter, 'event.delete', 'Smazána událost „Zrušená schůzka"', throwaway.id);
-  console.log('Smazána zkušební událost „Zrušená schůzka" jako ' + deleter);
-
-  console.log('Hotovo — vytvořeno ' + created.length + ' událostí, 2 komentáře, 1 úprava, 1 smazání.');
-}
-
-/**
- * Vygeneruje testovací data od RŮZNÝCH uživatelů (viz _toolsSeedNotifyBatch_)
- * — pro ruční ověření systému Oznámení, POKUD se máš jak přihlásit do appky
- * pod aspoň jedním z nich. Když ne (běžný případ — appka pouští jen účet,
- * pod kterým jsi zrovna v prohlížeči), použij TOOLS_simulujOznameniProMe
- * níže, ta totéž nasimuluje pro TEBE, bez přepínání účtů.
- *
- * Použije REÁLNÉ uživatele z `_users` — musí jich tam už pár být založených
- * přes appku (role/oprávnění se neřeší, jen e-mail). S míň než dvěma nemá
- * test oznámení smysl (nebylo by koho označit za "někoho jiného").
- *
- * POZOR: spustit jen JEDNOU, jinak vzniknou duplicity (stejně jako
- * u TOOLS_vlozTestovaciUdalosti). Testovací řádky jde smazat ručně přímo
- * v listech `events`, `event_comments` a `_audit_log`.
- */
-function TOOLS_vlozOznamovaciTestData() {
-  const users = dbGetAll_(SHEETS.USERS)
-    .map((u) => cleanEmail_(u.email))
-    .filter(Boolean);
-
-  if (users.length < 2) {
-    console.log('V _users je jen ' + users.length + ' uživatel(ů) — pro test oznámení jich potřebuješ ' +
-      'aspoň 2. Nejdřív založ uživatele v sekci Uživatelé v appce.');
-    return;
-  }
-  console.log('Nalezení uživatelé (' + users.length + '): ' + users.join(', '));
-
-  _toolsSeedNotifyBatch_(users);
-
-  console.log('---');
-  console.log('Teď se přihlas do appky pod některým z uživatelů výše a zkontroluj zvoneček s oznámeními ' +
-    '(uvidíš jen akce OSTATNÍCH, ne svoje vlastní).');
-}
-
-/**
- * To samé jako TOOLS_vlozOznamovaciTestData, ale simulované pro TEBE —
- * pro případ (běžný), že se do appky fyzicky nedá přihlásit pod cizím
- * účtem, protože Apps Script vždy pustí jen toho, kdo je zrovna přihlášený
- * v prohlížeči.
- *
- * Trik: všechny testovací akce se zapíšou jako OSTATNÍ uživatelé (nikdy
- * jako ty — currentEmail_()). Appka tak po tvém přihlášení uvidí "tohle
- * jsi ještě neviděl" přesně, jako by se to fakt stalo bez tebe — přestože
- * jsi to spustil ty sám, jen z editoru, ne z webu.
- *
- * Backdatování `notifications_seen_at` tu zůstává jen jako pojistka pro
- * budoucí testovací scénáře BEZ vazby na konkrétní událost (dnes žádný
- * takový _toolsSeedNotifyBatch_ negeneruje) — samotné testovací události/
- * komentáře/úpravy níže appka ukáže jako nové i bez něj: jsou to nové
- * řádky, které TY (ten, kdo se pak přihlásí) v `_event_views` ještě
- * nemáš, takže je uvidíš jako neviděné bez ohledu na `notifications_seen_at`
- * (viz _computeNotifications_ v 50_api.js).
- *
- * Podmínka: TY sám musíš být v `_users` (appka by tě jinak stejně nepustila
- * dovnitř) a musí tam být aspoň jeden DALŠÍ uživatel.
- *
- * POZOR: spustit jen JEDNOU ze stejného důvodu jako výše.
- */
-function TOOLS_simulujOznameniProMe() {
+function TOOLS_vytvorTestovaciOznameni() {
   const me = currentEmail_();
   if (!me) {
     console.log('Nepodařilo se zjistit e-mail toho, kdo skript pouští (currentEmail_() je prázdné).');
     return;
   }
 
-  const myRow = dbFindBy_(SHEETS.USERS, 'email', me);
-  if (!myRow) {
-    console.log('Účet ' + me + ' není v _users — appka by ho tak jako tak nepustila dovnitř. ' +
-      'Nejdřív si musíš sám sobě založit uživatele v sekci Uživatelé.');
-    return;
-  }
-
-  const others = dbGetAll_(SHEETS.USERS)
+  const other = dbGetAll_(SHEETS.USERS)
     .map((u) => cleanEmail_(u.email))
-    .filter((email) => email && email !== me);
+    .find((email) => email && email !== me);
 
-  if (others.length < 1) {
-    console.log('V _users kromě tebe (' + me + ') nikdo jiný není — není co simulovat. ' +
-      'Nejdřív založ aspoň jednoho dalšího uživatele.');
+  if (!other) {
+    console.log('V _users kromě tebe (' + me + ') není žádný další uživatel — není, za koho testovací ' +
+      'akce vytvořit. Nejdřív založ v appce aspoň jednoho dalšího uživatele.');
     return;
   }
-  console.log('Ty (' + me + ') se do simulace NEPOČÍTÁŠ. Simuluju akce: ' + others.join(', '));
+  console.log('Testovací akce vzniknou jako „' + other + '".');
 
-  _toolsSeedNotifyBatch_(others);
+  const today = todayIso_();
+  const tomorrow = Utilities.formatDate(new Date(new Date(today + 'T00:00').getTime() + 86400000), TIMEZONE, 'yyyy-MM-dd');
+  const now = nowLocalIso_();
 
-  const pastVisit = new Date();
-  pastVisit.setDate(pastVisit.getDate() - 3);
-  // Utilities.formatDate (místní čas), ne toISOString() (UTC) — porovnává
-  // se s _audit_log.timestamp, který je taky v místním čase (viz
-  // audit_()/_toolsAuditAs_ výše), jinak by porovnání bylo o časový
-  // rozdíl Europe/Prague od UTC mimo.
-  dbUpdate_(SHEETS.USERS, myRow.id, { notifications_seen_at: Utilities.formatDate(pastVisit, TIMEZONE, "yyyy-MM-dd'T'HH:mm") });
+  // 1) Nová událost.
+  const created = {
+    id: uuid_(), start: tomorrow + 'T10:00', end: tomorrow + 'T11:00', all_day: false,
+    type: 'meeting', title: 'Testovací schůzka', description: 'Vytvořeno nástrojem TOOLS_vytvorTestovaciOznameni.',
+    owner_email: other, recurrence_id: '', created_at: now, created_by: other, updated_at: now, updated_by: '',
+  };
+  dbAppend_(SHEETS.EVENTS, created);
+  dbAppend_(SHEETS.AUDIT, {
+    timestamp: now, user: other, action: 'event.create',
+    detail: 'Vytvořena událost „Testovací schůzka" (' + formatDateTimeCz_(created.start) + ' – ' + formatDateTimeCz_(created.end) + ')',
+    entity_id: created.id,
+  });
+  console.log('1) Vytvořena událost „Testovací schůzka" (id=' + created.id + ')');
+
+  // 2) Komentář k ní.
+  const comment = { id: uuid_(), event_id: created.id, author_email: other, text: 'Můžeš se prosím připojit?', created_at: now };
+  dbAppend_(SHEETS.EVENT_COMMENTS, comment);
+  dbAppend_(SHEETS.AUDIT, {
+    timestamp: now, user: other, action: 'comment.create',
+    detail: 'Nový komentář k události „Testovací schůzka": ' + comment.text,
+    entity_id: created.id,
+  });
+  console.log('2) Přidán komentář k „Testovací schůzce"');
+
+  // 3) Další nová událost, hned upravená — test event.update.
+  const edited = {
+    id: uuid_(), start: tomorrow + 'T14:00', end: tomorrow + 'T14:30', all_day: false,
+    type: 'default', title: 'Testovací konzultace', description: '',
+    owner_email: other, recurrence_id: '', created_at: now, created_by: other, updated_at: now, updated_by: '',
+  };
+  dbAppend_(SHEETS.EVENTS, edited);
+  dbAppend_(SHEETS.AUDIT, {
+    timestamp: now, user: other, action: 'event.create',
+    detail: 'Vytvořena událost „Testovací konzultace" (' + formatDateTimeCz_(edited.start) + ' – ' + formatDateTimeCz_(edited.end) + ')',
+    entity_id: edited.id,
+  });
+  dbUpdate_(SHEETS.EVENTS, edited.id, { description: 'Upraveno — změna místa konání.', updated_by: other });
+  dbAppend_(SHEETS.AUDIT, {
+    timestamp: now, user: other, action: 'event.update',
+    detail: 'Upravena událost „Testovací konzultace"',
+    entity_id: edited.id,
+  });
+  console.log('3) Založena a hned upravena událost „Testovací konzultace" (id=' + edited.id + ')');
+
+  // 4) Další nová událost, hned smazaná — test event.delete. Vlastní create
+  //    se do auditu záměrně nezapisuje (stejný princip jako u reálného
+  //    smazání — apiDeleteEvent taky loguje jen samotné smazání).
+  const deleted = {
+    id: uuid_(), start: tomorrow + 'T16:00', end: tomorrow + 'T16:30', all_day: false,
+    type: 'default', title: 'Zrušená testovací schůzka', description: '',
+    owner_email: other, recurrence_id: '', created_at: now, created_by: other, updated_at: now, updated_by: '',
+  };
+  dbAppend_(SHEETS.EVENTS, deleted);
+  dbDelete_(SHEETS.EVENTS, deleted.id);
+  dbAppend_(SHEETS.AUDIT, {
+    timestamp: now, user: other, action: 'event.delete',
+    detail: 'Smazána událost „Zrušená testovací schůzka"',
+    entity_id: deleted.id,
+  });
+  console.log('4) Založena a hned smazána „Zrušená testovací schůzka"');
 
   console.log('---');
-  console.log('Tvůj notifications_seen_at (' + me + ') je nastavený 3 dny do minulosti (viz komentář výše — u testovacích událostí to ale ani nebylo nutné).');
-  console.log('Teď otevři appku POD SVÝM účtem a zkontroluj zvoneček — měl by ukázat vše výše jako nové.');
-}
-
-/**
- * DIAGNOSTIKA: vypíše syrová data z listu `events` přesně tak, jak je čte
- * server (dbGetAll_), a u každého řádku ukáže, jestli by prošel stejným
- * filtrem, jaký používá apiGetEvents pro aktuálně zobrazený měsíc.
- *
- * Použití: spustit, pak Zobrazit → Log (nebo Ctrl+Enter) a celý výstup
- * zkopírovat zpět do konverzace. Nejdůležitější je sloupec "typeof start" —
- * pokud ukáže "object" místo "string", Sheets si datum tiše převedl na
- * typ Date navzdory textovému formátu sloupce a to je příčina problému.
- *
- * Dočasný nástroj — po vyřešení problému ho lze z projektu smazat.
- */
-/**
- * Diagnostika `_event_views` — list má mít 4 sloupce (id/event_id/
- * user_email/last_seen_at, viz DB_SCHEMA v 20_db.js), nahlášeno ale jako
- * jediný sloupec `last_seen_at`. Statickou kontrolou kódu (schéma, zápisová
- * cesta v dbInsert_/dbRecordToRow_) se chyba nenašla — tenhle nástroj
- * porovná, co si RUNTIME (kód, který skutečně běží PRÁVĚ TEĎ v tomhle
- * projektu) myslí, že má list mít, s tím, co v listu doopravdy je.
- *
- * Spustit VŽDY z editoru (Spustit → vybrat funkci) — na rozdíl od
- * nasazené web appky editor vždy spouští aktuálně uloženou verzi kódu
- * (HEAD), takže výsledek nezávisí na tom, jestli má appka aktuální
- * nasazení.
- */
-function TOOLS_diagnostikaEventViews() {
-  console.log('DB_SCHEMA._event_views (co si RUNTIME myslí, že má list mít): ' +
-    JSON.stringify(DB_SCHEMA[SHEETS.EVENT_VIEWS]));
-  console.log('SHEETS.EVENT_VIEWS (název listu): ' + JSON.stringify(SHEETS.EVENT_VIEWS));
-
-  const spreadsheet = dbSpreadsheet_();
-  const sheet = spreadsheet.getSheetByName(SHEETS.EVENT_VIEWS);
-
-  if (!sheet) {
-    console.log('List „' + SHEETS.EVENT_VIEWS + '" v databázi vůbec neexistuje.');
-    return;
-  }
-
-  console.log('List nalezen. getLastColumn()=' + sheet.getLastColumn() + ', getMaxColumns()=' + sheet.getMaxColumns() +
-    ', getLastRow()=' + sheet.getLastRow() + ', getMaxRows()=' + sheet.getMaxRows());
-
-  const width = Math.max(sheet.getLastColumn(), 1);
-  const headerRow = sheet.getRange(1, 1, 1, width).getValues()[0];
-  console.log('Skutečný obsah řádku 1 (hlavička), sloupce 1–' + width + ': ' + JSON.stringify(headerRow));
-
-  if (sheet.getLastRow() >= 2) {
-    const dataRow = sheet.getRange(2, 1, 1, width).getValues()[0];
-    console.log('Skutečný obsah řádku 2 (první data), sloupce 1–' + width + ': ' + JSON.stringify(dataRow));
-  }
-
-  console.log('---');
-  console.log('Pokud DB_SCHEMA._event_views výše má 4 položky, ale skutečný obsah řádku 1 má jen 1 — ' +
-    'chyba je v tom, JAK appka do listu zapisuje (dbEnsureSchema_/dbInsert_), ne ve schématu samotném.');
-  console.log('Pokud DB_SCHEMA._event_views výše má jen 1 položku — nasazený kód v tomhle projektu ' +
-    'neodpovídá tomu, co je v repozitáři (clasp push se nepropsal celý, nebo se díváš do jiného projektu).');
-}
-
-function TOOLS_diagnostikaUdalosti() {
-  const rows = dbGetAll_(SHEETS.EVENTS);
-  console.log('Počet řádků v events (bez hlavičky, bez prázdných řádků): ' + rows.length);
-
-  if (!rows.length) {
-    console.log('List events je z pohledu serveru PRÁZDNÝ — dbGetAll_ nenašel žádný řádek.');
-    console.log('Zkontroluj přes TOOLS_kdeJeSkript, jestli je DB_SPREADSHEET_ID stejný ' +
-      'spreadsheet, do kterého ses díval ručně.');
-    return;
-  }
-
-  const today = new Date();
-  const monthFirst = new Date(today.getFullYear(), today.getMonth(), 1);
-  const monthLast = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  const monthFirstIso = Utilities.formatDate(monthFirst, TIMEZONE, 'yyyy-MM-dd');
-  const monthLastIso = Utilities.formatDate(monthLast, TIMEZONE, 'yyyy-MM-dd');
-  console.log('Aktuální měsíc (pro test filtru): ' + monthFirstIso + ' – ' + monthLastIso);
-  console.log('---');
-
-  rows.forEach((row) => {
-    const startDateOnly = String(row.start).slice(0, 10);
-    const endDateOnly = String(row.end).slice(0, 10);
-    const passesFilter = startDateOnly <= monthLastIso && endDateOnly >= monthFirstIso;
-
-    console.log(
-      'id=' + row.id +
-      ' | title="' + row.title + '"' +
-      ' | typeof start=' + (typeof row.start) + ' hodnota=' + JSON.stringify(row.start) +
-      ' | typeof end=' + (typeof row.end) + ' hodnota=' + JSON.stringify(row.end) +
-      ' | start.slice(0,10)=' + startDateOnly +
-      ' | end.slice(0,10)=' + endDateOnly +
-      ' | type=' + row.type +
-      ' | typeof all_day=' + (typeof row.all_day) + ' hodnota=' + JSON.stringify(row.all_day) +
-      ' | prošlo by filtrem pro tento měsíc: ' + (passesFilter ? 'ANO' : 'NE')
-    );
-  });
-}
-
-/**
- * Jednorázová oprava barev u výchozích typů událostí (`_event_types`)
- * v ŽIVÉ databázi. Sloupec `bg_color` přibyl do schématu později než
- * appka poprvé naseje tabulku (viz `_ensureEventTypesSeeded_` v 50_api.js)
- * — self-healing schéma (`dbEnsureSchema_`) doplní chybějící sloupec, ale
- * NEVYPLNÍ hodnoty u řádků, které v tabulce už byly, takže appka spuštěná
- * ještě před rozdělením na dvě barvy může mít u výchozích typů prázdnou
- * nebo neladící barvu podkladu, dokud se ručně nedosadí.
- *
- * Bezpečné spustit i opakovaně — přepíše `color`/`bg_color` jen u řádků,
- * jejichž ID odpovídá některému z DEFAULT_EVENT_TYPES (00_config.js).
- * Vlastní typy přidané v appce (Nastavení → Typy událostí) nechá beze
- * změny, ty svoje barvy dostaly rovnou při vytvoření.
- */
-function TOOLS_dosaditBarvyTypuUdalosti() {
-  let count = 0;
-  DEFAULT_EVENT_TYPES.forEach((t) => {
-    const existing = dbFindById_(SHEETS.EVENT_TYPES, t.id);
-    if (!existing) {
-      console.log('Přeskočeno — typ „' + t.id + '" zatím v databázi není (naseje se sám při prvním použití).');
-      return;
-    }
-    dbUpdate_(SHEETS.EVENT_TYPES, t.id, { color: t.color, bg_color: t.bgColor });
-    count++;
-    console.log('Dosazeno: ' + t.label + ' (' + t.id + ') — barva ikony ' + t.color + ', barva podkladu ' + t.bgColor);
-  });
-  console.log('Hotovo — upraveno typů: ' + count);
-}
-
-/**
- * Jednorázová oprava POSUNUTÝCH DAT ve `events` — u řádků založených PŘED
- * v0.8.0 appka dnes čte špatné sloupce (viz kritický komentář u DB_SCHEMA
- * v 20_db.js a historie ve SPECIFIKACE.md, kapitola 9.9). `recurrence_id`
- * se do schématu vložil DOPROSTŘED (mezi owner_email a created_at), ne na
- * konec — dbGetAll_/dbRecordToRow_ ale čtou/zapisují čistě podle POZICE,
- * ne podle textu v hlavičce, takže u starších řádků appka dnes čte:
- *
- *   recurrence_id ← skutečné created_at
- *   created_at    ← skutečné created_by
- *   created_by    ← skutečné updated_at
- *   updated_at    ← skutečné updated_by
- *   updated_by    ← nic (u starých řádků ten sloupec fyzicky neexistoval)
- *
- * Reálný dopad: appka u takové (ve skutečnosti jednorázové) události
- * zobrazuje "Opakující se" a nabízí volbu rozsahu úpravy/smazání, protože
- * recurrence_id vychází jako neprázdný (obsahuje starý časový údaj místo
- * prázdného řetězce).
- *
- * DETEKCE: skutečná recurrence_id je buď prázdná, nebo UUID (z uuid_(),
- * tvar „xxxxxxxx-xxxx-…") — nikdy nevypadá jako výstup nowIso_()
- * („RRRR-MM-DDTHH:mm:ss.sssZ"). Cokoliv, co tomuhle tvaru odpovídá, je
- * jednoznačně posunutý řádek, ne skutečná opakující se událost.
- *
- * OPRAVA: pro každý postižený řádek posune čtveřici polí o jednu pozici
- * doleva (viz mapování výše) a recurrence_id vynuluje. Zapisuje se PŘÍMO
- * do listu (ne přes dbUpdate_) — ten záměrně chrání created_at/created_by/
- * updated_at před přepsáním při běžné úpravě (viz dbUpdate_ v 20_db.js),
- * což je přesně to, co tahle oprava potřebuje změnit.
- *
- * Bezpečné spustit i opakovaně — po opravě už recurrence_id detekčnímu
- * vzoru neodpovídá, druhé spuštění nenajde nic k opravě.
- */
-function TOOLS_opravPosunutaDataUdalosti() {
-  const isoWithMillisZ = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
-
-  withLock_(() => {
-    // Čerstvé čtení POD zámkem, ne z cache před ním — ať _row (fyzický
-    // řádek v listu, viz dbGetAll_) sedí i kdyby mezitím někdo jiný
-    // smazal/přidal jinou událost a čísla řádků se posunula.
-    dbInvalidate_(SHEETS.EVENTS);
-    const rows = dbGetAll_(SHEETS.EVENTS);
-    const affected = rows.filter((r) => isoWithMillisZ.test(String(r.recurrence_id || '')));
-
-    if (!affected.length) {
-      console.log('Žádný posunutý řádek nenalezen — nic k opravě (buď oprava už proběhla, nebo appka žádnou postiženou událost nemá).');
-      return;
-    }
-
-    console.log('Nalezeno posunutých řádků: ' + affected.length + '. Opravuji…');
-    const sheet = dbSheet_(SHEETS.EVENTS);
-    const headers = DB_SCHEMA[SHEETS.EVENTS];
-
-    affected.forEach((r) => {
-      const fixed = Object.assign({}, r, {
-        recurrence_id: '',
-        created_at: String(r.recurrence_id),
-        created_by: String(r.created_at),
-        updated_at: String(r.created_by),
-        updated_by: String(r.updated_at || ''),
-      });
-      delete fixed._row;
-
-      sheet.getRange(r._row, 1, 1, headers.length).setValues([dbRecordToRow_(SHEETS.EVENTS, fixed)]);
-
-      console.log(
-        'Opraveno id=' + r.id + ' „' + r.title + '" — created_at=' + fixed.created_at +
-        ', created_by=' + fixed.created_by + ', updated_at=' + fixed.updated_at +
-        ', updated_by=' + (fixed.updated_by || '(prázdné)') + ', recurrence_id vynulováno.'
-      );
-    });
-
-    dbInvalidate_(SHEETS.EVENTS);
-    console.log('---');
-    console.log('Hotovo — opraveno řádků: ' + affected.length + '. Zkontroluj v appce, že dotčené události už nenabízí "Opakující se".');
-  });
-}
-
-/**
- * Založí denní časovaný trigger pro automatickou synchronizaci dat
- * filiálek — mezi 6:00 a 7:00, zdrojový soubor se sám aktualizuje mezi
- * 4-5h, hodina je rezerva. Ruční záloha z editoru — appka od verze
- * s ovládáním triggeru přímo v Nastavení (záložka Import dat) volá
- * stejnou funkci (`_importSetTrigger_` v 60_import.js), takže obojí
- * dělá přesně totéž.
- *
- * Trigger sám o sobě appku nijak nenastavuje — dokud SUPERADMIN v appce
- * aspoň jednou ručně nesynchronizuje (záložka Import dat v Nastavení),
- * nemá `_settings.importFolderId`/`importSearchTerm` co použít a jen se
- * o tom zaloguje (viz _importRunScheduledSync_).
- */
-function TOOLS_nastavDenniSynchronizaci() {
-  _importSetTrigger_(true, 6);
-  console.log('Denní trigger založen — poběží jednou za den mezi 6:00 a 7:00 (přesnou minutu si řídí Apps Script sám).');
-}
-
-/** Zruší trigger založený přes TOOLS_nastavDenniSynchronizaci (nebo v appce) — bezpečné spustit i když žádný neexistuje. */
-function TOOLS_zrusDenniSynchronizaci() {
-  _importSetTrigger_(false, 6);
-  console.log('Denní trigger zrušen.');
+  console.log('Hotovo. Otevři appku pod ' + me + ' a zkontroluj zvoneček — mělo by se objevit všech ' +
+    'pět akcí výše (u „Testovací konzultace" dvě samostatné, vytvoření i úprava). Klik na položku ' +
+    'otevře danou událost a TÍM oznámení k ní zmizí — u „Zrušené testovací schůzky" žádný klik nejde, ' +
+    'ta v seznamu zůstane jako čistě informační záznam o smazání.');
 }

@@ -30,7 +30,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.9.3',
+  version: 'v0.9.4',
   releaseDate: '7.9.2026',
 
   /**
@@ -38,7 +38,6 @@ const CONFIG = {
    * jak se píše v seznamu fontů Google Sheets — setFontFamily() neexistující
    * název tiše ignoruje a list zůstane v Arialu bez jakékoliv chybové hlášky.
    * Kontrola: otevřít vzniklou databázi a podívat se na seznam fontů.
-   * Oprava bez zakládání databáze znovu: TOOLS_prefontujDb() v 90_tools.js.
    */
   sheetFont: 'Lidl Font Cond Pro',
 

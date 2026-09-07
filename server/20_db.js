@@ -30,9 +30,9 @@
  * bez chyby. Přesně tohle se stalo `events.recurrence_id` (vložen mezi
  * `owner_email` a `created_at`) — u událostí založených před touhle
  * změnou appka `recurrence_id` čtela hodnotu, která byla ve skutečnosti
- * `created_at`, `created_at` skutečné `created_by` atd. OPRAVENO —
- * viz `TOOLS_opravPosunutaDataUdalosti` v 90_tools.js (jednorázový
- * ruční nástroj, bezpečný spustit i opakovaně).
+ * `created_at`, `created_at` skutečné `created_by` atd. OPRAVENO
+ * jednorázovým ručním nástrojem (od té doby smazaným, viz SPECIFIKACE.md
+ * kapitola 9.9 pro postup, kdyby se to muselo opakovat).
  */
 const DB_SCHEMA = {
   _users: [
@@ -253,16 +253,16 @@ function dbSpreadsheet_() {
 /**
  * Vrátí list dané tabulky. Samoopravné ve DVOU směrech — DB_SCHEMA se
  * v čase rozšiřuje (nové funkce = nové tabulky NEBO nové sloupce v už
- * existující tabulce), ale dbEnsureSchema_() se sama od sebe nespouští,
- * jen při wizardu nebo ručně přes TOOLS_zkontrolujSchema:
+ * existující tabulce) a dbEnsureSchema_() se spustí AUTOMATICKY, kdykoli
+ * hlavička listu neodpovídá aktuálnímu DB_SCHEMA — netřeba nic spouštět
+ * ručně (viz _dbHeaderMatches_ níže):
  *   1. tabulka úplně chybí → doplnit celou (viz historie: event_comments),
  *   2. tabulka existuje, ale hlavička neodpovídá aktuální DB_SCHEMA (typicky
  *      přibyly sloupce na konci) → doplnit chybějící sloupce, ne založit
  *      znovu.
- * Bez tohoto by nový sloupec přidaný do schématu zůstal v datech neviditelný,
- * dokud by si někdo nevzpomněl spustit nástroj ručně — přesně ta past, co se
- * reálně stala s tabulkou event_comments. Chyba padne, jen když list chybí
- * i po pokusu o opravu (typicky překlep v názvu tabulky).
+ * Bez tohoto by nový sloupec přidaný do schématu zůstal v datech neviditelný.
+ * Chyba padne, jen když list chybí i po pokusu o opravu (typicky překlep
+ * v názvu tabulky).
  */
 function dbSheet_(table) {
   const spreadsheet = dbSpreadsheet_();
@@ -449,10 +449,10 @@ function dbInvalidate_(table) {
  *
  * U sloupců z TEXT_COLUMNS se hodnota navíc uvozuje apostrofem — stejný trik
  * jako ruční zápis '2026-09-02T08:30 v UI Sheets, který vynutí doslovný text.
- * Ukázalo se totiž (viz TOOLS_diagnostikaUdalosti a paměť projektu), že
- * samotné nastavení formátu buňky na "@" zápisu přes appendRow/setValues
- * nezabrání — Sheets si řetězec vypadající jako datum stejně tiše převede
- * na typ Date. Apostrof do výsledné hodnoty nejde, jen vynutí interpretaci.
+ * Ukázalo se totiž, že samotné nastavení formátu buňky na "@" zápisu přes
+ * appendRow/setValues nezabrání — Sheets si řetězec vypadající jako datum
+ * stejně tiše převede na typ Date. Apostrof do výsledné hodnoty nejde, jen
+ * vynutí interpretaci.
  */
 function dbRecordToRow_(table, record) {
   const textColumns = TEXT_COLUMNS[table] || [];

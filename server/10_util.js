@@ -105,8 +105,7 @@ function formatDateTimeCz_(localIso) {
  *
  * Selhání se jen zaloguje — font je kosmetika a nesmí shodit vytvoření
  * databáze. Pokud se název fontu netrefí, Sheets nic neohlásí a list
- * zůstane v Arialu; opravu bez zakládání databáze znovu umí
- * TOOLS_prefontujDb() v 90_tools.js.
+ * zůstane v Arialu.
  */
 function applySheetFont_(sheet) {
   try {

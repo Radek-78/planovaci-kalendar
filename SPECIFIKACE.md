@@ -94,7 +94,7 @@ server/
   40_setup.js       isSetupDone_, scriptFolder_, wizardInfo_, setupInitialize
   50_api.js         veřejné endpointy (vše přes guard_)
   60_import.js      import dat filiálek/LC ze sdíleného souboru na Disku
-  90_tools.js       ruční nástroje vlastníka (reset, diagnostika, trigger importu)
+  90_tools.js       ruční nástroje vlastníka spouštěné z editoru (viz 9.4)
   99_main.js        doGet — routing wizard / app / bez přístupu
 ui/
   styles.html       design systém (Lidl barvy, komponenty) + blok kalendáře
@@ -199,8 +199,7 @@ funguje tedy i jako migrace při pozdějším rozšíření.
 doslovný text (`2026-09-01T08:30`), jinak Sheets hodnotu tiše převede na typ
 Date a textové porovnání rozsahu v `apiGetEvents` přestane fungovat (řetězec
 jako `"Wed Sep 02"` se s `RRRR-MM-DD` nikdy neshoduje). Tato chyba se v PMS
-reálně vyskytla (`_pmsEnsurePlannerEventsSheet_`) a 2. 9. 2026 i tady —
-ověřeno nástrojem `TOOLS_diagnostikaUdalosti`.
+reálně vyskytla (`_pmsEnsurePlannerEventsSheet_`) a 2. 9. 2026 i tady.
 
 Samotné nastavení formátu buňky na `"@"` (`setNumberFormat`) se ukázalo
 **nespolehlivé** — Sheets si řetězec vypadající jako datum přesto tiše
@@ -244,9 +243,7 @@ Název fontu: **`Lidl Font Cond Pro`** (`CONFIG.sheetFont`).
 
 `setFontFamily()` neexistující název tiše ignoruje — list by zůstal v Arialu
 a nikde by se neobjevila chyba. Po prvním spuštění wizardu se proto název
-ověří pohledem do vzniklé databáze. Pro případ, že by se netrefil, bude
-v `90_tools.js` funkce `TOOLS_prefontujDb`, která přeformátuje všechny listy
-existující databáze — oprava tedy nevyžaduje zakládat databázi znovu.
+ověří pohledem do vzniklé databáze.
 
 ### 5.4 Nastavení (`_settings`)
 
@@ -560,6 +557,17 @@ KAŽDÉM otevření appky, `apiGetBootstrap`). Čistě informační, neřídí
 matlo: jmenovalo se to jako "poslední návštěva", ale ve skutečnosti to
 byl jen kurzor oznámení posouvaný kliknutím na zvoneček.
 
+**Ruční ověření** — `90_tools.js` obsahuje (na žádost, po smazání všech
+dřívějších `TOOLS_` nástrojů) jedinou funkci `TOOLS_vytvorTestovaciOznameni`:
+vloží sadu testovacích akcí (nová událost, komentář, úprava, smazání) jako
+DRUHÝ uživatel z `_users` (Apps Script vždy spouští skript pod tím, kdo je
+zrovna přihlášený v prohlížeči, přihlásit se fyzicky pod cizím účtem nejde —
+proto se testovací řádky zapisují napřímo přes `dbAppend_`, ne `dbInsert_`,
+s `owner_email`/`created_by`/`user` nastaveným ručně). Po přihlášení appka
+ukáže tyhle akce ve zvonečku přesně tak, jako by je udělal někdo jiný —
+včetně ověření, že se položka odškrtne skutečným otevřením dané události,
+ne jen otevřením seznamu.
+
 ### 9.5 Nastavení
 
 Správa (přidání/úprava/smazání) přístupná jen SUPERADMINovi
@@ -797,10 +805,7 @@ firemní adresář):
   synchronizace", `apiSetImportTrigger`) — appka běží jako "Execute as
   me" (viz appsscript.json), takže webový požadavek od SUPERADMINa má
   stejná oprávnění `ScriptApp` jako ruční spuštění z editoru, obojí
-  totiž ve skutečnosti běží pod účtem vlastníka skriptu. Ruční záloha
-  z editoru (`TOOLS_nastavDenniSynchronizaci`/`TOOLS_zrusDenniSynchronizaci`,
-  90_tools.js) zůstává a volá STEJNOU funkci (`_importSetTrigger_`), ať
-  trigger logika existuje jen jednou. `atHour(N)` neurčuje přesnou
+  totiž ve skutečnosti běží pod účtem vlastníka skriptu. `atHour(N)` neurčuje přesnou
   minutu, jen hodinové okno — o to se stará Apps Script sám. "Zapnuto"
   appka čte VŽDY živě ze `ScriptApp.getProjectTriggers()` (skutečná
   pravda, ne jen uložené nastavení, které by mohlo zůstat neaktuální,
@@ -1322,11 +1327,11 @@ PŘED touhle změnou appka od v0.8.0 do opravy níže četla `recurrence_id`
 jako hodnotu, která byla ve skutečnosti `created_at` — takže se u starších
 (ve skutečnosti jednorázových) událostí zobrazovalo "Opakující se" a
 nabízela volba rozsahu úpravy/smazání. **Opraveno** jednorázovým ručním
-nástrojem `TOOLS_opravPosunutaDataUdalosti` (90_tools.js) — detekuje
-postižené řádky podle tvaru `recurrence_id` (vypadá jako výstup
-`nowIso_()`, ne jako UUID ani prázdný řetězec, což skutečná hodnota nikdy
-není) a posune čtveřici polí `created_at/created_by/updated_at/updated_by`
-zpátky na správnou pozici. Bezpečné spustit i opakovaně.
+nástrojem (od té doby smazaným spolu se všemi ostatními `TOOLS_` funkcemi,
+viz 9.4) — detekoval postižené řádky podle tvaru `recurrence_id` (vypadá
+jako výstup `nowIso_()`, ne jako UUID ani prázdný řetězec, což skutečná
+hodnota nikdy není) a posunul čtveřici polí
+`created_at/created_by/updated_at/updated_by` zpátky na správnou pozici.
 
 - **Založení** — formulář nové události má v kartě Termín pole
   "Opakování" (Neopakovat / Každý den / Každý týden / Každé 2 týdny /
@@ -1432,9 +1437,11 @@ spreadsheet smazán, property se vynuluje a wizard se spustí znovu.
   nevytvoří dvě databáze.
 - Wizard nepřijímá ID existujícího spreadsheetu. Jediná cesta k databázi je ta,
   kterou vytvoří sám.
-- Reset je možný pouze ručně z editoru Apps Script (`TOOLS_resetInicializace`),
-  nikdy z webového rozhraní. Reset jen odpojí property; spreadsheet v Drive
-  zůstane.
+- Reset inicializace (odpojení `_users`/nastavení od skriptu, ne smazání
+  dat) nikdy nejde z webového rozhraní — jen ručně, přímým zásahem do
+  Script Properties v editoru Apps Script. Momentálně na to není
+  samostatný pomocný nástroj v `90_tools.js` (dřívější `TOOLS_resetInicializace`
+  byl na žádost smazán spolu se všemi ostatními nástroji, viz historie).
 
 ---
 

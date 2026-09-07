@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.9.4 - 07.09.2026 07:50
+- v0.9.4: Úklid ručních nástrojů a nová funkce pro testování oznámení. Smazány všechny dosavadní TOOLS_ funkce ve správcovském souboru nástrojů - byly to většinou jednorázové diagnostické a opravné nástroje, které už splnily svůj účel. Místo nich jediná nová funkce TOOLS_vytvorTestovaciOznameni: vloží sadu testovacích akcí (nová událost, komentář, úprava, smazání) jako druhý uživatel z databáze, takže po přihlášení appka ukáže tyhle akce ve zvonečku přesně tak, jako by je udělal někdo jiný. Jde tak přímo ověřit novou logiku oznámení podle jednotlivých událostí, včetně toho, že se položka odškrtne skutečným otevřením dané události, ne jen otevřením seznamu.
+
 ## v0.9.3 - 07.09.2026 07:44
 - v0.9.3: Skutečná oprava listu _event_views - byla to moje chyba, ne shoda okolností. Diagnostika ukázala, že běžící kód vidí schéma jako jediný sloupec last_seen_at, ačkoliv v souboru na disku bylo schéma se čtyřmi sloupci správně. Příčina: při jedné z minulých úprav jsem omylem zapsal last_seen_at ještě jednou uvnitř objektu DB_SCHEMA místo do TEXT_COLUMNS, kam patřilo - u duplicitního klíče v objektu JavaScript vždy vyhraje ten pozdější zápis, takže se čtyřsloupcové schéma tiše přepsalo jednosloupcovým. Teď je last_seen_at na správném místě a v souboru jsem strojově ověřil, že se žádný podobný duplicitní klíč nikde jinde neopakuje.
 
