@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.9.2 - 07.09.2026 07:37
+- v0.9.2: Diagnostický nástroj pro list _event_views. Nahlásil jsi, že po čistém testu (nový deploy, smazaná stará data, nová událost) má list _event_views jen jeden sloupec last_seen_at, místo očekávaných čtyř. Statickou kontrolou kódu (schéma, zápisová cesta v dbInsert_) jsem chybu nenašel - schéma má v repozitáři správně čtyři pole a nikdy nemělo méně. Přidal jsem nástroj TOOLS_diagnostikaEventViews, který se spouští z editoru a vypíše, co si nasazený kód doopravdy myslí o tvaru listu, a co v listu doopravdy je - teprve podle toho půjde přesně určit, jestli je problém v zápisu, nebo že se do projektu nepropsal celý kód.
+
 ## v0.9.1 - 07.09.2026 07:22
 - v0.9.1: Nástroj na opravu posunutých dat u starších událostí. Minule jsem objevil, že vložení sloupce recurrence_id doprostřed schématu tabulky events, ne na konec, posunulo data u událostí založených před verzí 0.8.0 - appka u nich četla created_at místo recurrence_id, created_by místo created_at a tak dál, takže se u ve skutečnosti jednorázových událostí zobrazovalo Opakující se. Přidán jednorázový ruční nástroj TOOLS_opravPosunutaDataUdalosti ve správcovském souboru nástrojů - najde postižené řádky podle tvaru hodnoty v recurrence_id, který by tam nikdy neměl být, a přesune sloupce zpátky na správné místo. Bezpečné spustit i opakovaně. Nutné spustit ručně z editoru Apps Scriptu po nasazení.
 

@@ -410,6 +410,51 @@ function TOOLS_simulujOznameniProMe() {
  *
  * Dočasný nástroj — po vyřešení problému ho lze z projektu smazat.
  */
+/**
+ * Diagnostika `_event_views` — list má mít 4 sloupce (id/event_id/
+ * user_email/last_seen_at, viz DB_SCHEMA v 20_db.js), nahlášeno ale jako
+ * jediný sloupec `last_seen_at`. Statickou kontrolou kódu (schéma, zápisová
+ * cesta v dbInsert_/dbRecordToRow_) se chyba nenašla — tenhle nástroj
+ * porovná, co si RUNTIME (kód, který skutečně běží PRÁVĚ TEĎ v tomhle
+ * projektu) myslí, že má list mít, s tím, co v listu doopravdy je.
+ *
+ * Spustit VŽDY z editoru (Spustit → vybrat funkci) — na rozdíl od
+ * nasazené web appky editor vždy spouští aktuálně uloženou verzi kódu
+ * (HEAD), takže výsledek nezávisí na tom, jestli má appka aktuální
+ * nasazení.
+ */
+function TOOLS_diagnostikaEventViews() {
+  console.log('DB_SCHEMA._event_views (co si RUNTIME myslí, že má list mít): ' +
+    JSON.stringify(DB_SCHEMA[SHEETS.EVENT_VIEWS]));
+  console.log('SHEETS.EVENT_VIEWS (název listu): ' + JSON.stringify(SHEETS.EVENT_VIEWS));
+
+  const spreadsheet = dbSpreadsheet_();
+  const sheet = spreadsheet.getSheetByName(SHEETS.EVENT_VIEWS);
+
+  if (!sheet) {
+    console.log('List „' + SHEETS.EVENT_VIEWS + '" v databázi vůbec neexistuje.');
+    return;
+  }
+
+  console.log('List nalezen. getLastColumn()=' + sheet.getLastColumn() + ', getMaxColumns()=' + sheet.getMaxColumns() +
+    ', getLastRow()=' + sheet.getLastRow() + ', getMaxRows()=' + sheet.getMaxRows());
+
+  const width = Math.max(sheet.getLastColumn(), 1);
+  const headerRow = sheet.getRange(1, 1, 1, width).getValues()[0];
+  console.log('Skutečný obsah řádku 1 (hlavička), sloupce 1–' + width + ': ' + JSON.stringify(headerRow));
+
+  if (sheet.getLastRow() >= 2) {
+    const dataRow = sheet.getRange(2, 1, 1, width).getValues()[0];
+    console.log('Skutečný obsah řádku 2 (první data), sloupce 1–' + width + ': ' + JSON.stringify(dataRow));
+  }
+
+  console.log('---');
+  console.log('Pokud DB_SCHEMA._event_views výše má 4 položky, ale skutečný obsah řádku 1 má jen 1 — ' +
+    'chyba je v tom, JAK appka do listu zapisuje (dbEnsureSchema_/dbInsert_), ne ve schématu samotném.');
+  console.log('Pokud DB_SCHEMA._event_views výše má jen 1 položku — nasazený kód v tomhle projektu ' +
+    'neodpovídá tomu, co je v repozitáři (clasp push se nepropsal celý, nebo se díváš do jiného projektu).');
+}
+
 function TOOLS_diagnostikaUdalosti() {
   const rows = dbGetAll_(SHEETS.EVENTS);
   console.log('Počet řádků v events (bez hlavičky, bez prázdných řádků): ' + rows.length);
