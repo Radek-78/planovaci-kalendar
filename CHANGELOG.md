@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.9.5 - 07.09.2026 08:03
+- v0.9.5: Oprava kliknutí na oznámení o smazané události a nová volba Zobrazit všechna oznámení. Kliknutí na smazanou událost dřív vždy skončilo chybovou hláškou, protože appka se snažila otevřít detail události, která už neexistuje - teď appka jen zaznamená, že jsi oznámení viděl, a položka zmizí ze seznamu, okno oznámení přitom zůstane otevřené, ať jde postupně odkliknout víc smazaných událostí za sebou. Nová volba nad seznamem oznámení zobrazí i ta už viděná - už viděné položky appka vizuálně ztlumí, ať je jasné, co je nové. Přepínač se při každém dalším otevření zvonečku vrátí na výchozí zobrazení jen nových.
+
 ## v0.9.4 - 07.09.2026 07:50
 - v0.9.4: Úklid ručních nástrojů a nová funkce pro testování oznámení. Smazány všechny dosavadní TOOLS_ funkce ve správcovském souboru nástrojů - byly to většinou jednorázové diagnostické a opravné nástroje, které už splnily svůj účel. Místo nich jediná nová funkce TOOLS_vytvorTestovaciOznameni: vloží sadu testovacích akcí (nová událost, komentář, úprava, smazání) jako druhý uživatel z databáze, takže po přihlášení appka ukáže tyhle akce ve zvonečku přesně tak, jako by je udělal někdo jiný. Jde tak přímo ověřit novou logiku oznámení podle jednotlivých událostí, včetně toho, že se položka odškrtne skutečným otevřením dané události, ne jen otevřením seznamu.
 

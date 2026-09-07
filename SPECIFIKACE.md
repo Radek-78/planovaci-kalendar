@@ -372,6 +372,7 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiGetBootstrap()` | `calendar_read` | — | uživatel, jeho práva, nastavení, typy událostí, oznámení (viz 9.4) — zapíše `last_login_at` na teď, jinak ČISTÉ ČTENÍ (oznámení samotná nic neposouvají) |
 | `apiMarkNotificationsSeen()` | `calendar_read` | — | — (posune `notifications_seen_at` uživatele na teď — jen oznámení BEZ vazby na událost, viz 9.4) |
 | `apiRecordEventView(payload)` | `calendar_read` | `{ eventId }` | — (upsert do `_event_views` — kdy přihlášený naposledy viděl tuhle událost, viz 9.4) |
+| `apiGetAllNotifications()` | `calendar_read` | — | úplná historie oznámení (ne jen neviděná), každá položka s `unseen` — pro "Zobrazit všechna oznámení" v `#notifyModal` (viz 9.4) |
 | `apiGetEvents(payload)` | `calendar_read` | `{ startDate, endDate }`, obě `YYYY-MM-DD` | pole událostí protínajících rozsah, včetně `recurrenceId` (viz 9.9) |
 | `apiSaveEvent(payload)` | `calendar_write` | s `id` = úprava (+ `scope: 'single'\|'following'` u výskytu ze série, viz 9.9), bez `id` = nová (+ `recurrence: { freq, count } \| { freq, until }` založí celou sérii) | `{ id }` prvního/upraveného výskytu |
 | `apiDeleteEvent(payload)` | `calendar_write` | `{ id, scope: 'single'\|'following' }` — scope jen u výskytu ze série | — |
@@ -526,19 +527,28 @@ uživatel ve skutečnosti nikdy neotevřel, jen ji viděl v seznamu.
 
 **Text a proklik** — `detail` (uložený v `_audit_log`) je hotová česká věta
 BEZ technického ID — server ho tam nikdy nedává, i kdyby se hodilo (např.
-u komentáře radši jméno události než její ID). Odkaz na konkrétní záznam,
-na který klik v panelu vede, nese samostatný sloupec `_audit_log.entity_id`
-(u komentářů id UDÁLOSTI, ne komentáře — proklik vždy vede na událost).
-Klik funguje, jen když je událost mezi už načtenými pro zobrazený měsíc
-(`this.currentEvents`) — jinak (jiný měsíc, nebo už smazaná) appka jasně
-řekne, že ji nenašla, místo tichého kliku do prázdna.
+u komentáře radši jméno události než její ID). Odkaz na konkrétní záznam
+nese samostatný sloupec `_audit_log.entity_id` (u komentářů id UDÁLOSTI,
+ne komentáře — proklik vždy vede na událost). Klik se chová podle
+`action` (`App.bindNotifications`) TŘEMI různými způsoby:
 
-`import.sync` je výjimka z pravidla „proklik na událost" — nevztahuje se
-k žádné, `entity_id` u něj nese id řádku `_import_log` (viz 9.6), ale klik
-vede rovnou na Log importu v Nastavení, ne na detail podle entity_id.
-Appka to pozná podle `action`, ne podle entity_id (`App.renderNotifyItem`/
-`bindNotifications`) — a jen tomu, kdo do Nastavení vůbec má přístup
-(SUPERADMIN), ostatním se položka netváří jako klikací.
+1. **Běžná akce vázaná na existující událost** (`event.create/update`,
+   `comment.create/delete`) — otevře její detail (`App.openNotificationTarget`
+   → `openEventModal`), pokud je mezi už načtenými pro zobrazený měsíc
+   (`this.currentEvents`); jinak appka jasně řekne, že ji nenašla, místo
+   tichého kliku do prázdna (typicky jiný měsíc, než appka má zrovna
+   otevřený).
+2. **`event.delete`** — na rozdíl od ostatních tu není kam přesměrovat,
+   událost už neexistuje. Klik proto NEOTVÍRÁ nic, jen zaznamená „viděl
+   jsem to" stejným mechanismem jako otevření detailu
+   (`App.acknowledgeDeletedEventNotification` → `recordEventView`) a
+   položka zmizí ze seznamu. Modal oznámení se přitom NEZAVÍRÁ (na rozdíl
+   od ostatních dvou případů) — jde tak postupně odkliknout víc smazaných
+   událostí za sebou.
+3. **`import.sync`** — nevztahuje se k žádné události, `entity_id` u něj
+   nese id řádku `_import_log` (viz 9.6); klik vede rovnou na Log importu
+   v Nastavení, a to jen tomu, kdo tam vůbec má přístup (SUPERADMIN),
+   ostatním se položka netváří jako klikací.
 
 **Formát data a času** — `D.M.RRRR HH:MM` (bez úvodních nul, české
 zvyklosti) je jediný formát v celé appce, kdekoli se datum zobrazuje spolu
@@ -556,6 +566,26 @@ KAŽDÉM otevření appky, `apiGetBootstrap`). Čistě informační, neřídí
 `_users`), do 8. kola oboje žilo v jednom poli `last_visit_at`, což
 matlo: jmenovalo se to jako "poslední návštěva", ale ve skutečnosti to
 byl jen kurzor oznámení posouvaný kliknutím na zvoneček.
+
+**"Zobrazit všechna oznámení"** — přepínač nad seznamem v `#notifyModal`
+(`#notifyShowAllToggle`), vypnutý = výchozí chování popsané výše (jen
+neviděné). Zapnutím appka poprvé natáhne `apiGetAllNotifications` — STEJNÁ
+filtrace jako `_computeNotifications_` (whitelist akcí, bez vlastních),
+ale bez ohledu na to, jestli je položka viděná; obě sdílí jedno jádro
+(`_notificationRows_` v 50_api.js), aby se stejná logika nepsala dvakrát.
+Každá položka navíc nese `unseen` — appka podle něj už viděné vizuálně
+ztlumí (`.notify-item.is-seen`), ať je jasné, co je nové. Strop
+`LIMITS.NOTIFY_ALL_MAX_ITEMS` (200) je vyšší než `NOTIFY_MAX_ITEMS` (30) —
+je to úplná historie, ne jen čerstvé.
+
+Přepnutí zpátky na "jen neviděné" nežádá server znovu (`App.notifyAllItems`
+zůstává v paměti, dokud je modal otevřený), ale KAŽDÉ znovuotevření
+zvonečku (`App.openNotifyModal`) přepínač vrátí na výchozí stav a cache
+zahodí — appka se má pokaždé znovu zeptat "co je nového", ne nabízet to,
+co si uživatel zvolil naposledy. Kliknutí na položku v tomhle zobrazení se
+chová stejně jako v běžném (viz „Text a proklik" výše) — u `event.delete`
+se `unseen` jen přepne na `false` (položka zůstává vidět, dál v historii),
+u ostatních otevře detail.
 
 **Ruční ověření** — `90_tools.js` obsahuje (na žádost, po smazání všech
 dřívějších `TOOLS_` nástrojů) jedinou funkci `TOOLS_vytvorTestovaciOznameni`:

@@ -76,9 +76,12 @@ function _eventViewsMap_(email) {
 }
 
 /**
- * Spočítá oznámení pro přihlášeného uživatele ze whitelistu NOTIFY_ACTIONS
- * (00_config.js), kromě jeho vlastních akcí (svoje změny si nikdo
- * nepotřebuje připomínat). ČISTÉ ČTENÍ — nic tu neposouvá.
+ * Projde `_audit_log` a pro KAŽDÝ řádek z whitelistu NOTIFY_ACTIONS
+ * (00_config.js), kromě vlastních akcí přihlášeného (svoje změny si nikdo
+ * nepotřebuje připomínat), spočítá, jestli je pro něj ještě NEVIDĚNÝ.
+ * Sdílené jádro pro _computeNotifications_ (jen neviděné, pro odznak) i
+ * apiGetAllNotifications (úplná historie, pro "Zobrazit všechna oznámení").
+ * ČISTÉ ČTENÍ — nic tu neposouvá.
  *
  * Dva různé mechanismy podle toho, čeho se akce týká (viz
  * NOTIFY_ACTIONS_EVENT_SCOPED):
@@ -106,8 +109,10 @@ function _eventViewsMap_(email) {
  *    `notifications_seen_at` (apiMarkNotificationsSeen), stejně jako dřív
  *    fungovalo VŠECHNO. Prázdný `notifications_seen_at` (úplně první
  *    návštěva) se bere jako „teď" — ze stejného důvodu jako výše.
+ *
+ * @returns {{row: Object, unseen: boolean}[]} od nejnovějšího
  */
-function _computeNotifications_(user) {
+function _notificationRows_(user) {
   const row = dbFindById_(SHEETS.USERS, user.id);
   const accountCreatedAt = row && row.created_at ? String(row.created_at) : '';
   // MÍSTNÍ čas (ne nowIso_/UTC) — _audit_log.timestamp je taky v místním
@@ -117,21 +122,27 @@ function _computeNotifications_(user) {
 
   const eventViews = _eventViewsMap_(user.email);
 
-  const matching = dbGetAll_(SHEETS.AUDIT)
+  return dbGetAll_(SHEETS.AUDIT)
     .filter((r) => NOTIFY_ACTIONS.indexOf(String(r.action)) !== -1)
     .filter((r) => cleanEmail_(r.user) !== user.email)
-    .filter((r) => {
+    .map((r) => {
+      let unseen;
       if (NOTIFY_ACTIONS_EVENT_SCOPED.indexOf(String(r.action)) === -1) {
-        return String(r.timestamp) > notificationsSeenAt;
+        unseen = String(r.timestamp) > notificationsSeenAt;
+      } else if (accountCreatedAt && String(r.timestamp) <= accountCreatedAt) {
+        unseen = false;
+      } else {
+        const seenAt = eventViews[String(r.entity_id)];
+        unseen = !seenAt || String(r.timestamp) > seenAt;
       }
-      if (accountCreatedAt && String(r.timestamp) <= accountCreatedAt) return false;
-      const seenAt = eventViews[String(r.entity_id)];
-      return !seenAt || String(r.timestamp) > seenAt;
+      return { row: r, unseen: unseen };
     })
-    .sort((a, b) => (a.timestamp < b.timestamp ? 1 : a.timestamp > b.timestamp ? -1 : 0)); // nejnovější nahoře
+    .sort((a, b) => (a.row.timestamp < b.row.timestamp ? 1 : a.row.timestamp > b.row.timestamp ? -1 : 0)); // nejnovější nahoře
+}
 
-  const nameCache = {};
-  const items = matching.slice(0, LIMITS.NOTIFY_MAX_ITEMS).map((r) => ({
+/** Přemění řádek `_audit_log` na podobu pro klienta — sdílené _computeNotifications_/apiGetAllNotifications. */
+function _publicNotifyItem_(r, nameCache) {
+  return {
     action: String(r.action),
     detail: String(r.detail),
     actorName: _resolveUserName_(r.user, nameCache),
@@ -140,9 +151,35 @@ function _computeNotifications_(user) {
     // (viz #calNotifyList) jím otevře detail té konkrétní události.
     // Prázdné jen u starších řádků logu z doby před přidáním entity_id.
     entityId: String(r.entity_id || ''),
-  }));
+  };
+}
+
+/** Oznámení pro odznak/zvoneček — jen NEVIDĚNÁ (viz _notificationRows_). ČISTÉ ČTENÍ. */
+function _computeNotifications_(user) {
+  const all = _notificationRows_(user);
+  const matching = all.filter((x) => x.unseen);
+
+  const nameCache = {};
+  const items = matching.slice(0, LIMITS.NOTIFY_MAX_ITEMS).map((x) => _publicNotifyItem_(x.row, nameCache));
 
   return { unseenCount: matching.length, items: items };
+}
+
+/**
+ * Úplná historie oznámení (ne jen neviděná) — pro přepínač "Zobrazit
+ * všechna oznámení" v #notifyModal (viz App.bindNotifications). Stejná
+ * filtrace jako _computeNotifications_ (whitelist akcí, bez vlastních),
+ * ale BEZ ohledu na to, jestli už byla položka viděná — každá navíc nese
+ * `unseen`, ať appka může neviděné vizuálně odlišit (viz App.renderNotifyItem).
+ */
+function apiGetAllNotifications() {
+  return guard_(PERM_KEYS.CALENDAR_READ, (user) => {
+    const all = _notificationRows_(user);
+    const nameCache = {};
+    const items = all.slice(0, LIMITS.NOTIFY_ALL_MAX_ITEMS).map((x) =>
+      Object.assign(_publicNotifyItem_(x.row, nameCache), { unseen: x.unseen }));
+    return { items: items };
+  });
 }
 
 /**

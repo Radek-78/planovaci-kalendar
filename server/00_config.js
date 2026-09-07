@@ -30,7 +30,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.9.4',
+  version: 'v0.9.5',
   releaseDate: '7.9.2026',
 
   /**
@@ -241,6 +241,8 @@ const LIMITS = {
   ORG_FIELD_MAX: 60,
   /** Nejvíc oznámení, které apiGetBootstrap vrátí najednou — pojistka proti obřímu seznamu (např. hodně starý notifications_seen_at). */
   NOTIFY_MAX_ITEMS: 30,
+  /** Nejvíc položek, které vrátí apiGetAllNotifications ("Zobrazit všechna oznámení") — vyšší strop než NOTIFY_MAX_ITEMS, je to úplná historie, ne jen čerstvé neviděné. */
+  NOTIFY_ALL_MAX_ITEMS: 200,
   /** Název pracovní pozice (Nastavení). */
   POSITION_NAME_MAX: 60,
   /** Název oddělení (Nastavení). */

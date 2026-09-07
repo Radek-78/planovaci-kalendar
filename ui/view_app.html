@@ -1068,6 +1068,13 @@
     </button>
   </div>
   <div class="modal-body" id="notifyModalBody">
+    <label class="notify-all-toggle">
+      <span>Zobrazit všechna oznámení</span>
+      <span class="toggle-switch">
+        <input type="checkbox" id="notifyShowAllToggle">
+        <span class="toggle-switch-track"><span class="toggle-switch-knob"></span></span>
+      </span>
+    </label>
     <div class="notify-list" id="calNotifyList"><!-- vykresleno JS --></div>
   </div>
 </dialog>
@@ -1214,6 +1221,18 @@
      * timestamp }] }.
      */
     notifications: { unseenCount: 0, items: [] },
+
+    /**
+     * Stav přepínače "Zobrazit všechna oznámení" v #notifyModal (viz
+     * openNotifyModal/bindNotifications) — notifyAllItems je `null`, dokud
+     * appka úplnou historii ještě nenačetla (apiGetAllNotifications),
+     * jinak pole položek i s příznakem `unseen` pro každou (viz
+     * renderNotifyItem). Reset na výchozí stav při KAŽDÉM otevření modalu
+     * (viz openNotifyModal) — appka se pokaždé znovu ptá "co je nového",
+     * ne co si uživatel naposledy zvolil za zobrazení.
+     */
+    notifyShowingAll: false,
+    notifyAllItems: null,
 
     /** Smí uživatel upravit/smazat i CIZÍ událost (ADMIN/SUPERADMIN)? Ze serveru, viz canManageForeignEvents_. */
     canManageForeignEvents: false,
@@ -1744,11 +1763,10 @@
 
     /**
      * Otevírání/zavírání modalu s oznámeními — stejný vzor jako ostatní
-     * modaly appky (klik na pozadí/křížek/Esc zavře). Data už jsou
-     * z bootstrapu (this.notifications) — modal je jen zobrazí, žádné
-     * další volání serveru. „last_visit_at" se posouvá na serveru už při
-     * bootstrapu (viz _computeNotifications_), ne tady — otevření modalu
-     * je čistě vizuální, na to, co appka počítá za „viděné", nemá vliv.
+     * modaly appky (klik na pozadí/křížek/Esc zavře). Výchozí seznam
+     * (this.notifications) už je z bootstrapu, modal ho jen zobrazí —
+     * žádné volání serveru navíc, dokud uživatel nezaškrtne "Zobrazit
+     * všechna oznámení" (viz openNotifyModal/apiGetAllNotifications).
      */
     bindNotifications() {
       const dialog = document.querySelector('#notifyModal');
@@ -1768,6 +1786,7 @@
       // vztahuje (viz entityId/renderNotifyItem) — jen ty, co ho mají
       // (nemrtvý klik nikam, viz is-clickable v CSS). Import dat filiálek
       // je výjimka — vede na Log importu v Nastavení, ne na událost.
+      // Smazaná událost je druhá výjimka — viz acknowledgeDeletedEventNotification.
       document.querySelector('#calNotifyList').addEventListener('click', (e) => {
         const item = e.target.closest('.notify-item');
         if (!item) return;
@@ -1781,8 +1800,43 @@
         }
 
         if (!item.dataset.entityId) return;
+
+        if (item.dataset.action === 'event.delete') {
+          this.acknowledgeDeletedEventNotification(item.dataset.entityId);
+          return;
+        }
+
         Ui.closeModal(dialog);
         this.openNotificationTarget(item.dataset.entityId, item);
+      });
+
+      // "Zobrazit všechna oznámení" — přepne mezi obvyklým seznamem
+      // neviděných (this.notifications.items, appka ho drží živě) a úplnou
+      // historií ze serveru (apiGetAllNotifications), tu appka natáhne až
+      // při prvním zaškrtnutí a dál si ji v rámci otevřeného modalu drží
+      // (viz notifyAllItems) — druhé zaškrtnutí tam a zpátky tak nežádá
+      // server znovu.
+      document.querySelector('#notifyShowAllToggle').addEventListener('change', (e) => {
+        this.notifyShowingAll = e.target.checked;
+
+        if (this.notifyShowingAll && !this.notifyAllItems) {
+          document.querySelector('#calNotifyList').innerHTML =
+            '<div class="notify-empty"><p>Načítám…</p></div>';
+          Ui.call('apiGetAllNotifications', null, { silent: true })
+            .then((data) => {
+              this.notifyAllItems = data.items;
+              this.renderNotifyList();
+            })
+            .catch((error) => {
+              Ui.toast(error.message, 'error');
+              e.target.checked = false;
+              this.notifyShowingAll = false;
+              this.renderNotifyList();
+            });
+          return;
+        }
+
+        this.renderNotifyList();
       });
     },
 
@@ -1800,6 +1854,13 @@
      * příště jen prohlédne znovu, nic se nerozbije.
      */
     openNotifyModal(originEl) {
+      // Reset na výchozí zobrazení (jen neviděná) při KAŽDÉM otevření —
+      // appka se pokaždé znovu ptá "co je nového", ne co si uživatel
+      // naposledy zvolil (viz komentář u notifyShowingAll výše).
+      this.notifyShowingAll = false;
+      this.notifyAllItems = null;
+      document.querySelector('#notifyShowAllToggle').checked = false;
+
       this.renderNotifyList();
       const dialog = document.querySelector('#notifyModal');
       this.setModalOrigin(dialog, originEl);
@@ -1821,17 +1882,36 @@
     /**
      * Otevře událost, ke které se oznámení vztahuje. Bere ji z už načtených
      * dat pro zobrazený měsíc (this.currentEvents, stejně jako
-     * openEventModal) — když tam není (jiný měsíc, nebo už smazaná, typicky
-     * u oznámení „Smazána…"), appka to řekne rovnou, ne že by klik mlčky
-     * nic neudělal.
+     * openEventModal) — když tam není (typicky jiný měsíc, než appka má
+     * zrovna načtený — smazané události sem vůbec nechodí, ty odchytí
+     * acknowledgeDeletedEventNotification níže dřív), appka to řekne
+     * rovnou, ne že by klik mlčky nic neudělal.
      */
     openNotificationTarget(eventId, originEl) {
       const event = this.currentEvents.find((e) => e.id === eventId);
       if (!event) {
-        Ui.toast('Událost se nepodařilo najít — může být smazaná, nebo mimo aktuálně zobrazený měsíc.', 'error');
+        Ui.toast('Událost se nepodařilo najít — je mimo aktuálně zobrazený měsíc.', 'error');
         return;
       }
       this.openEventModal(eventId, originEl);
+    },
+
+    /**
+     * Klik na oznámení o SMAZANÉ události — na rozdíl od ostatních akcí tu
+     * není kam přesměrovat (samotná událost už neexistuje, openEventModal
+     * by vždy skončil chybou „nepodařilo se najít"). Appka místo otevření
+     * jen zaznamená „viděl jsem to" stejným mechanismem jako běžné otevření
+     * detailu (recordEventView — ten zařídí i zápis na server i okamžité
+     * zmizení z odznaku/this.notifications.items) a rovnou přerenderuje
+     * viditelný seznam, ať položka zmizí i vizuálně hned teď.
+     *
+     * Modal se záměrně NEZAVÍRÁ (na rozdíl od ostatních položek) — uživatel
+     * tak může postupně odklikat víc smazaných událostí za sebou, aniž by
+     * musel zvoneček pokaždé znovu otvírat.
+     */
+    acknowledgeDeletedEventNotification(eventId) {
+      this.recordEventView(eventId);
+      this.renderNotifyList();
     },
 
     /** Odznak s počtem u zvonečku — skrytý, když je unseenCount 0. */
@@ -1846,13 +1926,20 @@
       }
     },
 
-    /** Seznam v modalu oznámení — vykreslí se až při otevření (data má appka už z bootstrapu). */
+    /**
+     * Seznam v modalu oznámení. Zdroj dat podle přepínače "Zobrazit
+     * všechna oznámení" (viz bindNotifications) — buď obvyklý živě
+     * udržovaný seznam neviděných (this.notifications.items, z bootstrapu),
+     * nebo kompletní historie ze serveru (this.notifyAllItems, natažená
+     * až na vyžádání).
+     */
     renderNotifyList() {
       const list = document.querySelector('#calNotifyList');
-      const items = this.notifications.items;
+      const items = this.notifyShowingAll ? (this.notifyAllItems || []) : this.notifications.items;
+      const emptyText = this.notifyShowingAll ? 'Zatím žádná oznámení.' : 'Od poslední návštěvy nic nového.';
       list.innerHTML = items.length
         ? items.map((n) => this.renderNotifyItem(n)).join('')
-        : '<div class="notify-empty"><i class="ph ph-bell-slash" aria-hidden="true"></i><p>Od poslední návštěvy nic nového.</p></div>';
+        : '<div class="notify-empty"><i class="ph ph-bell-slash" aria-hidden="true"></i><p>' + emptyText + '</p></div>';
     },
 
     /**
@@ -1882,15 +1969,23 @@
      * `import.sync` je výjimka — nevede na žádnou konkrétní událost, ale na
      * Log importu v Nastavení (viz bindNotifications), a to jen tomu, kdo
      * tam vůbec má přístup (SUPERADMIN) — ostatním se netváří jako tlačítko.
+     *
+     * `n.unseen === false` nastává jen v zobrazení "všechna oznámení"
+     * (apiGetAllNotifications posílá u KAŽDÉ položky, jestli je pořád
+     * neviděná) — appka takovou položku vizuálně ztlumí (.is-seen), ať je
+     * na první pohled jasné, co je nové a co ne. V obvyklém zobrazení
+     * (this.notifications.items) je to pole vždycky undefined, appka tam
+     * ukazuje jen samé neviděné, takže styl nikdy neuplatní.
      */
     renderNotifyItem(n) {
       const meta = this.NOTIFY_TYPE_META[n.action] || { icon: 'ph-bell', color: 'var(--muted)', label: 'Oznámení' };
       const isImportLink = n.action === 'import.sync' && this.canManageSettings;
       const clickable = (n.entityId || isImportLink) ? ' is-clickable' : '';
+      const seenClass = n.unseen === false ? ' is-seen' : '';
       const entityAttr = n.entityId ? ' data-entity-id="' + Ui.escape(n.entityId) + '"' : '';
       const actionAttr = ' data-action="' + Ui.escape(n.action) + '"';
 
-      return '<div class="notify-item' + clickable + '"' + actionAttr + entityAttr + '>' +
+      return '<div class="notify-item' + clickable + seenClass + '"' + actionAttr + entityAttr + '>' +
         '<span class="notify-item-icon" style="--notify-color:' + Ui.escape(meta.color) + '">' +
           '<i class="ph ' + Ui.escape(meta.icon) + '" aria-hidden="true"></i></span>' +
         '<div class="notify-item-body">' +
@@ -5719,10 +5814,14 @@
 
     /**
      * Po skutečném zobrazení události (viz recordEventView) odstraní její
-     * případná oznámení z už načteného seznamu a přepočítá odznak — server
-     * by je stejně při dalším apiGetBootstrap už nevrátil (viz _event_views
-     * na serveru), tohle appce jen ušetří čekání na příští otevření, ať
-     * odznak zmizí hned.
+     * případná oznámení z už načteného seznamu neviděných a přepočítá
+     * odznak — server by je stejně při dalším apiGetBootstrap už nevrátil
+     * (viz _event_views na serveru), tohle appce jen ušetří čekání na
+     * příští otevření, ať odznak zmizí hned.
+     *
+     * notifyAllItems (viz "Zobrazit všechna oznámení") se NEMAŽE — úplná
+     * historie má tu položku ukazovat dál, jen ne jako novou, proto se jí
+     * u odpovídajících záznamů jen přepne `unseen` na false.
      */
     clearNotificationsForEvent(eventId) {
       const before = this.notifications.items.length;
@@ -5731,6 +5830,12 @@
       if (removed > 0) {
         this.notifications.unseenCount = Math.max(0, this.notifications.unseenCount - removed);
         this.renderNotifyBadge();
+      }
+
+      if (this.notifyAllItems) {
+        this.notifyAllItems.forEach((n) => {
+          if (n.entityId === eventId) n.unseen = false;
+        });
       }
     },
 

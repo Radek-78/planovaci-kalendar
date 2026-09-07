@@ -3340,6 +3340,24 @@
      a čas. Řádky odděluje spodní linka (stejný vzor jako .day-event-item/
      .user-row) — viditelně oddělené, ne jen obarvené na hover. ── */
 
+  /* Přepínač "Zobrazit všechna oznámení" nad seznamem — stejný vzor jako
+     .event-form-toggle-field (popisek vlevo, přepínač vpravo), jen
+     s odsazením/linkou dole, ať je vidět jako samostatný řádek nad
+     seznamem, ne jeho součást. */
+  .notify-all-toggle {
+    align-items: center;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex;
+    justify-content: space-between;
+    padding: 0 4px 10px;
+  }
+
+  .notify-all-toggle > span:first-child {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
   .notify-list {
     display: flex;
     flex-direction: column;
@@ -3365,6 +3383,16 @@
 
   .notify-item.is-clickable:hover {
     background: var(--page);
+  }
+
+  /* Jen v zobrazení "Zobrazit všechna oznámení" (viz renderNotifyItem) —
+     už viděné položky appka vizuálně ztlumí, ať je na první pohled jasné,
+     co je nové a co ne. Ikona/kicker (barevné podle typu akce) schválně
+     zůstávají beze změny — ztlumit jen text/čas, ne úplně smazat barevné
+     rozlišení typu. */
+  .notify-item.is-seen .notify-item-text,
+  .notify-item.is-seen .notify-item-time {
+    opacity: 0.55;
   }
 
   .notify-item-icon {
