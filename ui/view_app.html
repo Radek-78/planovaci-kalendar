@@ -1795,8 +1795,17 @@
       // vztahuje (viz entityId/renderNotifyItem) — jen ty, co ho mají
       // (nemrtvý klik nikam, viz is-clickable v CSS). Import dat filiálek
       // je výjimka — vede na Log importu v Nastavení, ne na událost.
-      // Smazaná událost je druhá výjimka — viz acknowledgeDeletedEventNotification.
+      // Smazaná událost je druhá výjimka — a ikona "označit jako viděné"
+      // (.notify-item-ack) třetí, obojí viz acknowledgeNotification.
       document.querySelector('#calNotifyList').addEventListener('click', (e) => {
+        // Ikona "označit jako viděné" má přednost před obecným kliknutím
+        // na položku — stejný vzor jako tužka/koš v chipu/seznamu dne.
+        const ackBtn = e.target.closest('.notify-item-ack');
+        if (ackBtn && ackBtn.dataset.entityId) {
+          this.acknowledgeNotification(ackBtn.dataset.entityId);
+          return;
+        }
+
         const item = e.target.closest('.notify-item');
         if (!item) return;
 
@@ -1811,7 +1820,7 @@
         if (!item.dataset.entityId) return;
 
         if (item.dataset.action === 'event.delete') {
-          this.acknowledgeDeletedEventNotification(item.dataset.entityId);
+          this.acknowledgeNotification(item.dataset.entityId);
           return;
         }
 
@@ -1893,8 +1902,8 @@
      * dat pro zobrazený měsíc (this.currentEvents, stejně jako
      * openEventModal) — když tam není (typicky jiný měsíc, než appka má
      * zrovna načtený — smazané události sem vůbec nechodí, ty odchytí
-     * acknowledgeDeletedEventNotification níže dřív), appka to řekne
-     * rovnou, ne že by klik mlčky nic neudělal.
+     * acknowledgeNotification níže dřív), appka to řekne rovnou, ne že by
+     * klik mlčky nic neudělal.
      */
     openNotificationTarget(eventId, originEl) {
       const event = this.currentEvents.find((e) => e.id === eventId);
@@ -1906,19 +1915,28 @@
     },
 
     /**
-     * Klik na oznámení o SMAZANÉ události — na rozdíl od ostatních akcí tu
-     * není kam přesměrovat (samotná událost už neexistuje, openEventModal
-     * by vždy skončil chybou „nepodařilo se najít"). Appka místo otevření
-     * jen zaznamená „viděl jsem to" stejným mechanismem jako běžné otevření
-     * detailu (recordEventView — ten zařídí i zápis na server i okamžité
-     * zmizení z odznaku/this.notifications.items) a rovnou přerenderuje
-     * viditelný seznam, ať položka zmizí i vizuálně hned teď.
+     * Označí oznámení k události za viděné BEZ otevření jejího detailu —
+     * dva vstupní body:
      *
-     * Modal se záměrně NEZAVÍRÁ (na rozdíl od ostatních položek) — uživatel
-     * tak může postupně odklikat víc smazaných událostí za sebou, aniž by
-     * musel zvoneček pokaždé znovu otvírat.
+     *  1) klik na oznámení o SMAZANÉ události — tam ani není kam
+     *     přesměrovat (událost už neexistuje, openEventModal by vždy
+     *     skončil chybou „nepodařilo se najít"),
+     *  2) klik na ikonu "označit jako viděné" (.notify-item-ack,
+     *     renderNotifyItem) u KTERÉHOKOLI jiného typu — rychlá alternativa
+     *     ke kliknutí na celou položku, když je z textu jasné, o co jde,
+     *     a nemá smysl kvůli tomu otevírat celý detail.
+     *
+     * Oba případy dělají to samé: zaznamenají „viděl jsem to" stejným
+     * mechanismem jako běžné otevření detailu (recordEventView — ten
+     * zařídí i zápis na server, i okamžité zmizení z odznaku/
+     * this.notifications.items) a rovnou přerenderují viditelný seznam,
+     * ať položka zmizí i vizuálně hned teď.
+     *
+     * Modal se záměrně NEZAVÍRÁ (na rozdíl od otevření detailu) — uživatel
+     * tak může postupně odklikat víc oznámení za sebou, aniž by musel
+     * zvoneček pokaždé znovu otvírat.
      */
-    acknowledgeDeletedEventNotification(eventId) {
+    acknowledgeNotification(eventId) {
       this.recordEventView(eventId);
       this.renderNotifyList();
     },
@@ -1984,7 +2002,18 @@
      * neviděná) — appka takovou položku vizuálně ztlumí (.is-seen), ať je
      * na první pohled jasné, co je nové a co ne. V obvyklém zobrazení
      * (this.notifications.items) je to pole vždycky undefined, appka tam
-     * ukazuje jen samé neviděné, takže styl nikdy neuplatní.
+     * ukazuje jen samé neviděné, takže styl nikdy neuplatní. Stejné pole
+     * řídí i tlačítko "označit jako viděné" (.notify-item-ack) níže — u
+     * už viděné položky (v zobrazení "všechna oznámení") by nemělo co dělat.
+     *
+     * `.notify-item-ack` (jen u akcí vázaných na událost, viz
+     * NOTIFY_ACTIONS_EVENT_SCOPED na serveru) je RYCHLÁ alternativa ke
+     * kliknutí na celou položku — appka rovnou zavolá recordEventView
+     * (stejný zápis do _event_views, jako by uživatel danou událost
+     * doopravdy otevřel), ale NEOTVÍRÁ ji a NEZAVÍRÁ modal, viz
+     * acknowledgeNotification v bindNotifications. Hodí se, když je z
+     * textu oznámení jasné, o co jde, a nemá smysl kvůli tomu otevírat
+     * celý detail jen na odškrtnutí.
      */
     renderNotifyItem(n) {
       const meta = this.NOTIFY_TYPE_META[n.action] || { icon: 'ph-bell', color: 'var(--muted)', label: 'Oznámení' };
@@ -1994,6 +2023,13 @@
       const entityAttr = n.entityId ? ' data-entity-id="' + Ui.escape(n.entityId) + '"' : '';
       const actionAttr = ' data-action="' + Ui.escape(n.action) + '"';
 
+      const showAck = n.entityId && n.action !== 'import.sync' && n.unseen !== false;
+      const ack = showAck
+        ? '<button type="button" class="notify-item-ack" data-entity-id="' + Ui.escape(n.entityId) +
+            '" title="Označit jako viděné" aria-label="Označit oznámení jako viděné">' +
+            '<i class="ph ph-check" aria-hidden="true"></i></button>'
+        : '';
+
       return '<div class="notify-item' + clickable + seenClass + '"' + actionAttr + entityAttr + '>' +
         '<span class="notify-item-icon" style="--notify-color:' + Ui.escape(meta.color) + '">' +
           '<i class="ph ' + Ui.escape(meta.icon) + '" aria-hidden="true"></i></span>' +
@@ -2002,6 +2038,7 @@
           '<p class="notify-item-text"><strong>' + Ui.escape(n.actorName) + '</strong> ' + Ui.escape(n.detail) + '</p>' +
           '<p class="notify-item-time">' + Ui.escape(this.formatDateTime(n.timestamp)) + '</p>' +
         '</div>' +
+        ack +
       '</div>';
     },
 

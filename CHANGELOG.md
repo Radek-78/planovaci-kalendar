@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.9.9 - 07.09.2026 08:30
+- v0.9.9: Hranatější odznak a rychlé odškrtnutí oznámení bez otevírání události. Odznak počtu nových akcí je nově čtvereček s malým zaoblením rohů místo kolečka, jak na chipu v mřížce, tak v seznamu dne. U každého oznámení ve zvonečku, které se vztahuje k události, navíc přibyla ikona zaškrtnutí - kliknutím na ni appka zaznamená, že jsi oznámení viděl, přesně jako by ses do dané události podíval, ale bez otevírání jejího detailu. Okno oznámení se přitom nezavírá, jde tak postupně odklikat víc položek za sebou. Ikona se zobrazí jen u skutečně nových oznámení, ne u těch už viděných v zobrazení Zobrazit všechna oznámení.
+
 ## v0.9.8 - 07.09.2026 08:22
 - v0.9.8: Odznak nových akcí i přímo na chipu v mřížce kalendáře, ne jen v seznamu dne. Předchozí verze zobrazovala číslo jen po rozkliknutí dne - teď je vidět rovnou v měsíční mřížce, vedle tužky a koše na samotném chipu. Odznak navíc nově nezávisí na tom, jestli uživatel danou událost smí upravovat - je tu něco nového je užitečné vědět i pro toho, kdo má kalendář jen ke čtení, tužka a koš samotné zůstávají viditelné jen pro správce události jako dosud.
 

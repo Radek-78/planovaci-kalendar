@@ -553,14 +553,25 @@ ne komentáře — proklik vždy vede na událost). Klik se chová podle
 2. **`event.delete`** — na rozdíl od ostatních tu není kam přesměrovat,
    událost už neexistuje. Klik proto NEOTVÍRÁ nic, jen zaznamená „viděl
    jsem to" stejným mechanismem jako otevření detailu
-   (`App.acknowledgeDeletedEventNotification` → `recordEventView`) a
-   položka zmizí ze seznamu. Modal oznámení se přitom NEZAVÍRÁ (na rozdíl
-   od ostatních dvou případů) — jde tak postupně odkliknout víc smazaných
-   událostí za sebou.
+   (`App.acknowledgeNotification` → `recordEventView`) a položka zmizí ze
+   seznamu. Modal oznámení se přitom NEZAVÍRÁ (na rozdíl od ostatních
+   případů) — jde tak postupně odkliknout víc smazaných událostí za sebou.
 3. **`import.sync`** — nevztahuje se k žádné události, `entity_id` u něj
    nese id řádku `_import_log` (viz 9.6); klik vede rovnou na Log importu
    v Nastavení, a to jen tomu, kdo tam vůbec má přístup (SUPERADMIN),
    ostatním se položka netváří jako klikací.
+
+**Ikona "Označit jako viděné"** (`.notify-item-ack`, ikona zaškrtnutí u
+každé položky) — rychlá alternativa ke kliknutí na celou položku, pro
+JAKOUKOLI akci vázanou na událost (ne jen `event.delete`), když je z
+textu jasné, o co jde, a nemá smysl kvůli tomu otevírat celý detail.
+Klik na ni volá STEJNOU `App.acknowledgeNotification` jako bod 2 výše —
+zaznamená „viděl jsem to" (`recordEventView`) bez otevření čehokoli,
+modal zůstává otevřený. Zobrazí se jen u položek, které jsou skutečně
+ještě neviděné (`n.unseen !== false`) — v zobrazení „Zobrazit všechna
+oznámení" u už viděných položek chybí, nemají co odškrtávat. U
+`import.sync` se nezobrazuje vůbec — tenhle typ řídí `notifications_seen_at`
+(posouvá se automaticky otevřením zvonečku), ne `_event_views`.
 
 **Formát data a času** — `D.M.RRRR HH:MM` (bez úvodních nul, české
 zvyklosti) je jediný formát v celé appce, kdekoli se datum zobrazuje spolu

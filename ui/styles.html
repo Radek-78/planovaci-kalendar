@@ -2927,7 +2927,7 @@
   .cal-chip-badge {
     align-items: center;
     background: var(--lidl-red);
-    border-radius: 999px;
+    border-radius: 3px;
     color: var(--white);
     display: inline-flex;
     flex-shrink: 0;
@@ -3335,7 +3335,7 @@
   .day-event-badge {
     align-items: center;
     background: var(--lidl-red);
-    border-radius: 999px;
+    border-radius: 4px;
     color: var(--white);
     display: inline-flex;
     font-size: 10px;
@@ -3496,6 +3496,36 @@
     color: var(--muted);
     font-size: 11px;
     margin: 4px 0 0;
+  }
+
+  /* Ikona "označit jako viděné" (viz renderNotifyItem/acknowledgeNotification)
+     — třetí sloupec vedle ikony typu a textu, svisle vystředěná proti celé
+     výšce položky (na rozdíl od .notify-item-icon, ta zůstává zarovnaná
+     nahoru). Zelená na hover — potvrzující/kladná akce, na rozdíl od
+     barev podle typu akce jinde v položce. */
+  .notify-item-ack {
+    align-items: center;
+    align-self: center;
+    background: var(--page);
+    border: none;
+    border-radius: 8px;
+    color: var(--muted);
+    cursor: pointer;
+    display: inline-flex;
+    flex-shrink: 0;
+    height: 28px;
+    justify-content: center;
+    transition: background 0.1s, color 0.1s;
+    width: 28px;
+  }
+
+  .notify-item-ack i {
+    font-size: 14px;
+  }
+
+  .notify-item-ack:hover {
+    background: var(--green);
+    color: var(--white);
   }
 
   /* #notifyModal .modal-body je flex sloupec s pevnou výškou (viz výše) —
