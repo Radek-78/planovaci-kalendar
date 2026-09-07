@@ -160,7 +160,6 @@ const DB_SCHEMA = {
     'id', 'label', 'type', 'all_day', 'start_time', 'end_time', 'duration_days', 'description',
     'created_at', 'created_by', 'updated_at', 'updated_by',
   ],
-  _event_views: ['last_seen_at'],
 };
 
 /**
@@ -205,6 +204,7 @@ const TEXT_COLUMNS = {
   _holidays: ['date', 'created_at', 'updated_at'],
   // start_time/end_time (např. "9:00") by Sheets rádo převedlo na čas, stejný důvod jako u _stores otevírací doby výše.
   _event_templates: ['start_time', 'end_time', 'created_at', 'updated_at'],
+  _event_views: ['last_seen_at'],
 };
 
 /**

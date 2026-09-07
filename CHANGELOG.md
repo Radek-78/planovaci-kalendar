@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.9.3 - 07.09.2026 07:44
+- v0.9.3: Skutečná oprava listu _event_views - byla to moje chyba, ne shoda okolností. Diagnostika ukázala, že běžící kód vidí schéma jako jediný sloupec last_seen_at, ačkoliv v souboru na disku bylo schéma se čtyřmi sloupci správně. Příčina: při jedné z minulých úprav jsem omylem zapsal last_seen_at ještě jednou uvnitř objektu DB_SCHEMA místo do TEXT_COLUMNS, kam patřilo - u duplicitního klíče v objektu JavaScript vždy vyhraje ten pozdější zápis, takže se čtyřsloupcové schéma tiše přepsalo jednosloupcovým. Teď je last_seen_at na správném místě a v souboru jsem strojově ověřil, že se žádný podobný duplicitní klíč nikde jinde neopakuje.
+
 ## v0.9.2 - 07.09.2026 07:37
 - v0.9.2: Diagnostický nástroj pro list _event_views. Nahlásil jsi, že po čistém testu (nový deploy, smazaná stará data, nová událost) má list _event_views jen jeden sloupec last_seen_at, místo očekávaných čtyř. Statickou kontrolou kódu (schéma, zápisová cesta v dbInsert_) jsem chybu nenašel - schéma má v repozitáři správně čtyři pole a nikdy nemělo méně. Přidal jsem nástroj TOOLS_diagnostikaEventViews, který se spouští z editoru a vypíše, co si nasazený kód doopravdy myslí o tvaru listu, a co v listu doopravdy je - teprve podle toho půjde přesně určit, jestli je problém v zápisu, nebo že se do projektu nepropsal celý kód.
 
