@@ -2049,6 +2049,34 @@
     overflow-y: auto;
   }
 
+  /* Karta jedné sekce záložky. Vlastní třídu potřebuje jen kvůli tomu, že
+     .field-group je grid s gap:10px — vlastní margin-bottom uvnitř by se
+     ke gapu přičítal a mezery by se rozjely (viz nulování níže). */
+  .import-card > * {
+    margin-bottom: 0;
+  }
+
+  .import-card-head {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+  }
+
+  /* Číslo kroku. Čtvereček s malým zaoblením, stejný tvar jako odznak
+     počtu nových akcí u události — ať má appka jeden tvarový jazyk. */
+  .import-step {
+    align-items: center;
+    background: var(--lidl-blue);
+    border-radius: 4px;
+    color: var(--white);
+    display: inline-flex;
+    font-size: 11px;
+    height: 18px;
+    justify-content: center;
+    letter-spacing: 0;
+    width: 18px;
+  }
+
   .import-actions {
     display: flex;
     justify-content: flex-end;
@@ -2057,14 +2085,13 @@
   .import-results-label {
     color: var(--muted);
     font-size: 13px;
-    margin: 0 0 8px;
+    margin: 0;
   }
 
   .import-file-list {
     background: var(--white);
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    margin-bottom: 12px;
     max-height: 220px;
     overflow-y: auto;
   }
@@ -2140,11 +2167,12 @@
   /* ── Ověření vybraného souboru (existence/sloupce listů, viz
      apiValidateImportFile) — stejný jazyk jako .import-result-box. ── */
 
+  /* Bez vlastního margin-bottom — odsazení od tlačítka Synchronizovat
+     řeší gap karty (.field-group), jinak by se mezery sčítaly. */
   .import-validation-box {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    margin-bottom: 12px;
   }
 
   .import-validation-line {
@@ -2179,13 +2207,9 @@
 
   /* ── Automatická noční synchronizace (zapnutí/vypnutí, hodina) ── */
 
-  .import-trigger {
-    background: var(--white);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 14px 16px;
-  }
-
+  /* Vzhled karty si bere z .field-group .field-group-accent jako ostatní
+     sekce záložky — vlastní bílý box tu dřív byl jediný svého druhu
+     a záložka kvůli němu působila nesourodě. */
   .import-trigger-row {
     align-items: end;
     display: flex;
@@ -2212,25 +2236,15 @@
     min-height: 38px;
   }
 
+  /* Bez vlastního marginu — odsazení od řádku s nastavením řeší gap karty
+     (.field-group), dřívějších 10px by se k němu přičítalo. */
   .import-trigger-status {
     color: var(--muted);
     font-size: 12.5px;
-    margin: 10px 0 0;
+    margin: 0;
   }
 
   /* ── Log importu (trvalá historie synchronizací, viz apiGetImportLog) ── */
-
-  .import-log-heading {
-    align-items: center;
-    color: var(--muted);
-    display: flex;
-    font-size: 12px;
-    font-weight: 700;
-    gap: 6px;
-    letter-spacing: 0.03em;
-    margin: 0 0 8px;
-    text-transform: uppercase;
-  }
 
   .import-log-list {
     background: var(--white);
@@ -2252,9 +2266,22 @@
     align-items: center;
     cursor: pointer;
     display: flex;
-    gap: 12px;
+    gap: 10px;
     list-style: none;
     padding: 10px 12px;
+  }
+
+  /* Otočí se dolů po rozbalení — nativní marker je schovaný (viz níže),
+     tohle je jediná indicie, že řádek jde rozkliknout. */
+  .import-log-caret {
+    color: var(--muted);
+    flex-shrink: 0;
+    font-size: 13px;
+    transition: transform 0.15s ease;
+  }
+
+  .import-log-entry[open] .import-log-caret {
+    transform: rotate(90deg);
   }
 
   .import-log-entry summary::-webkit-details-marker {
@@ -2272,11 +2299,72 @@
     width: 120px;
   }
 
-  .import-log-summary {
+  /* Název souboru — dlouhé názvy se zkracují výpustkou, ať štítky s počty
+     vpravo nikdy nevytlačí mimo řádek. */
+  .import-log-file {
     color: var(--text);
+    flex: 1;
     font-size: 13px;
+    font-weight: 700;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
+  .import-log-nochange {
+    color: var(--muted);
+    flex-shrink: 0;
+    font-size: 12.5px;
+  }
+
+  /* ── Počty změn jako štítky (viz importLogChips) ── */
+
+  .import-log-chips {
+    align-items: center;
+    display: flex;
+    flex-shrink: 0;
+    gap: 10px;
+  }
+
+  .import-log-chip-group {
+    align-items: center;
+    display: flex;
+    gap: 4px;
+  }
+
+  .import-log-chip-label {
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  /* Stejný čtvereček se zaoblenými rohy jako .import-step a odznak počtu
+     nových akcí u události — jeden tvarový jazyk napříč appkou. */
+  .import-log-chip {
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 5px;
+  }
+
+  .import-log-chip.is-added {
+    background: #e5f5ea;
+    color: #16a34a;
+  }
+
+  .import-log-chip.is-changed {
+    background: #fdf1dc;
+    color: #b45309;
+  }
+
+  .import-log-chip.is-removed {
+    background: #fdeaea;
+    color: var(--lidl-red);
+  }
+
+  /* Odsazení zleva jen tolik, aby bylo poznat, že výpis patří pod řádek
+     nad ním. Dřív bylo zarovnané až za sloupec s časem (144px), což
+     u dlouhých řádků výpisu změn zbytečně ubíralo šířku. */
   .import-log-detail {
     background: var(--page);
     border-top: 1px solid var(--line-soft);
@@ -2286,7 +2374,7 @@
     margin: 0;
     max-height: 200px;
     overflow-y: auto;
-    padding: 10px 12px 10px 144px;
+    padding: 10px 12px 10px 36px;
     white-space: pre-wrap;
   }
 

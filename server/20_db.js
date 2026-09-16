@@ -182,24 +182,52 @@ const TEXT_COLUMNS = {
   _positions: ['created_at', 'updated_at'],
   _event_types: ['created_at', 'updated_at'],
   _departments: ['created_at', 'updated_at'],
-  // otevírací doba (např. "7:00") i updated_at — obojí by Sheets rádo
-  // převedlo na čas/datum, viz komentář výše. `id` = "Číslo" filiálky ze
-  // zdroje (např. "994") — bez ochrany by ho Sheets tiše převedlo na typ
-  // Number, `dbFindById_` by pak takovou filiálku nikdy nedohledal
-  // (nahlášená chyba „Filiálka nebyla nalezena" u (de)aktivace) — čtecí
-  // strana (dbFindBy_) už na tenhle nesoulad typů netahá, ale řádky
-  // zapsané ještě před touhle opravou (dokud je nepřepíše další sync)
-  // v listu samotném pořád budou vypadat jako číslo (vpravo zarovnané),
-  // ne jako text — vizuální kosmetika, appce samotné už nevadí.
+  // _stores je ČISTÉ ZRCADLO cizího exportu — všechen obsah je text, proto
+  // je tu chráněný KAŽDÝ sloupec kromě `active`. Ten jediný je skutečný
+  // boolean řízený appkou (apiSetStoreActive) a čte ho toBool_; apostrof
+  // před true/false by z něj udělal řetězec, takže ten se tu záměrně NESMÍ
+  // objevit.
+  //
+  // Důvody, proč je ochrana takhle plošná (všechny reálně nahlášené chyby):
+  //
+  // 1) NEKONEČNÁ SMYČKA „filiálka se změnila" (nahlášeno u 278 Mikulov
+  //    a 365 Orlová). Dvě filiálky mají ulici pojmenovanou po datu
+  //    ("28. Října", "17. listopadu"). Bez ochrany `ulice` se dělo tohle:
+  //    sync zapsal správný text → Sheets si ho tiše převedla na typ Date →
+  //    další noc ho dbGetAll_ přečetl jako Date → _storeRowChanges_ udělal
+  //    String(Date) ("Wed Oct 28 2026 …") a porovnal s textem ze zdroje →
+  //    nerovnost → „změna" → zápis téhož textu → a zase dokola. Nikdy se
+  //    to nemohlo ustálit, proto to bylo KAŽDÝ den. Pozor na záměnu
+  //    s opravou v _importCellText_ (60_import.js): ta řeší ČTECÍ stranu
+  //    (buňku typu Date ve zdrojovém souboru), tahle řeší stranu ZÁPISU
+  //    do našeho listu — jsou to dva různé problémy se stejným příznakem.
+  //
+  // 2) telefonní čísla a `psc` — bez ochrany z nich Sheets udělá Number
+  //    a tiše zahodí mezery i případné vedoucí nuly (ztráta dat).
+  //
+  // 3) `id` = "Číslo" filiálky ze zdroje (např. "994") — bez ochrany typ
+  //    Number, `dbFindById_` by takovou filiálku nikdy nedohledal
+  //    (nahlášená chyba „Filiálka nebyla nalezena" u (de)aktivace). Čtecí
+  //    strana (dbFindBy_) už na tenhle nesoulad typů netahá, ale řádky
+  //    zapsané ještě před touhle opravou (dokud je nepřepíše další sync)
+  //    v listu samotném pořád vypadají jako číslo — vizuální kosmetika.
+  //
+  // 4) otevírací doba (např. "7:00") a updated_at — převod na čas/datum,
+  //    viz obecný komentář nad TEXT_COLUMNS.
   _stores: [
-    'id',
+    'id', 'kod', 'nazev', 'lc',
+    'telefon_prodejny', 'vt', 'telefon_vt', 'rm', 'telefon_rm', 'zastupce_rm', 'telefon_zastupce',
+    'ulice', 'mesto', 'psc',
     'po_otevreno', 'po_zavreno', 'ut_otevreno', 'ut_zavreno', 'st_otevreno', 'st_zavreno',
     'ct_otevreno', 'ct_zavreno', 'pa_otevreno', 'pa_zavreno', 'so_otevreno', 'so_zavreno',
     'ne_otevreno', 'ne_zavreno', 'updated_at',
   ],
   _logistic_centers: ['created_at', 'updated_at'],
-  // id = stejné "Číslo" jako u _stores, stejný důvod ochrany.
-  _store_closures: ['id', 'od', 'do', 'updated_at'],
+  // id = stejné "Číslo" jako u _stores, stejný důvod ochrany. `nazev` je
+  // stejně jako u _stores text ze zdroje — chráněný ze stejného důvodu
+  // (bod 1 výše). `celkem_dni` se tu záměrně nechrání: to je jediná
+  // skutečně číselná hodnota, appka si ji dopočítává sama.
+  _store_closures: ['id', 'nazev', 'od', 'do', 'updated_at'],
   _import_log: ['created_at'],
   _holidays: ['date', 'created_at', 'updated_at'],
   // start_time/end_time (např. "9:00") by Sheets rádo převedlo na čas, stejný důvod jako u _stores otevírací doby výše.

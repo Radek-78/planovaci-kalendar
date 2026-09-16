@@ -233,6 +233,15 @@ key jsou pojmově vždycky text), `id` navíc doplněno do `TEXT_COLUMNS._stores
 `_store_closures`, ať se u obou napříště zapisuje chráněně (projeví se
 až při dalším přepsání `dbReplaceAll_`, tedy dalším importu).
 
+**Třetí reálná manifestace téže třídy chyby (16. 9. 2026):** nechráněná
+`_stores.ulice` způsobovala, že se dvě filiálky s ulicí pojmenovanou po
+datu hlásily jako změněné každý jednotlivý den — nekonečná smyčka
+zápis → převod na `Date` → čtení jako `Date` → „změna". Podrobně
+v kapitole 9.6, etapa 6. **Obecné pravidlo z toho plynoucí:** u tabulky,
+která je jen zrcadlem cizího systému, patří do `TEXT_COLUMNS` rovnou
+VŠECHNY textové sloupce. Chránit až ten, u kterého se chyba zrovna
+projevila, znamená čekat, až se projeví u dalšího.
+
 ### 5.3 Font
 
 Všechny listy databáze se po vytvoření naformátují firemním fontem přes
@@ -440,7 +449,7 @@ mřížce chyběla. Podmínka: `start <= to && end >= from`.
 | **Uživatelé** | tabulka, přidání, změna role/oprávnění, deaktivace |
 | **Filiálky** | čtecí přehled filiálek (import dat, viz 9.6), detail na klik na řádek |
 | **LC** | čtecí přehled logistických center (import dat, viz 9.6), editace čísla/zkratky |
-| **Nastavení** | záložky: Oddělení, Pracovní pozice, Typy událostí (viz 9.5), Šablony událostí (viz 9.9), Import dat (viz 9.6), Státní svátky ČR (viz 9.7) |
+| **Nastavení** | záložky: Oddělení, Pracovní pozice, Typy událostí (viz 9.5), Šablony událostí (viz 9.9), Import dat filiálek (viz 9.6), Státní svátky ČR (viz 9.7) |
 
 **Verze appky v sidebaru** — `#sidebarVersion`, tichý řádek pod kartou
 přihlášeného uživatele (`.sidebar-user`), zapisuje ho `onBootstrap` z
@@ -718,7 +727,7 @@ každý den mezi 4-5h ráno přepisuje (appka do něj nikdy nezapisuje). Appka
 si z něj bere kopii do vlastních tabulek (`_stores`, `_logistic_centers`,
 `_store_closures`, viz kapitola 5.1) — nikdy nečte zdroj přímo za běhu.
 
-**Etapa 1 (implementováno)** — záložka „Import dat" v Nastavení:
+**Etapa 1 (implementováno)** — záložka „Import dat filiálek" v Nastavení:
 
 1. Pole *Složka (URL nebo ID)* + *Hledaný výraz* → `apiSearchImportFiles`
    prohledá zadanou složku na Disku (`DriveApp`), vrátí Sheets soubory,
@@ -966,6 +975,58 @@ polí, které Sheets sama převede na datum:
   ještě jednou nahlásí jako "změněné" (přechod na nový, stabilní formát),
   od další noci už zůstanou beze změny navždy, dokud se opravdu nezmění
   zdroj.
+
+**Etapa 6 (implementováno)** — tytéž dvě filiálky se ale hlásily jako
+změněné dál, každý den. Etapa 5 totiž opravila jen ČTECÍ stranu a skutečná
+příčina byla na straně ZÁPISU, v našem vlastním listu:
+
+- Rozhodující indicie byla v Logu importu: šipka ukazovala pořád stejným
+  směrem — `Ulice „Wed Oct 28 2026 …" → „28. Října"`. Vlevo (uloženo u nás)
+  řetězec z `Date`, vpravo (ze zdroje) správný text. Zdroj tedy posílal
+  text v pořádku; rozbité bylo to, co jsme měli uložené.
+- Příčina: `ulice` nebyla v `TEXT_COLUMNS._stores`, takže jí `dbRecordToRow_`
+  nepředřadil apostrof. Vznikla nekonečná smyčka: sync zapíše `"28. Října"`
+  → Sheets si ho tiše převede na typ `Date` → další noc ho `dbGetAll_`
+  přečte jako `Date` → `_storeRowChanges_` udělá `String(Date)` a porovná
+  s textem ze zdroje → nerovnost → "změna" → zápis téhož textu → dokola.
+  **Nikdy se to nemohlo ustálit — proto to bylo každý den.**
+- Oprava: `_stores` je čisté zrcadlo cizího exportu, kde je všechen obsah
+  text. V `TEXT_COLUMNS._stores` je proto nově chráněný **každý** sloupec
+  kromě `active` (jediný skutečný boolean, řídí ho `apiSetStoreActive`
+  a čte `toBool_` — apostrof by z něj udělal řetězec). Stejnou dírou
+  trpěla i telefonní čísla a `psc` (Sheets z nich dělá Number a tiše
+  zahodí mezery i vedoucí nuly) a `_store_closures.nazev`; u uzavírek
+  zůstává nechráněné jen číselné `celkem_dni`.
+- **Jednorázový důsledek po nasazení**: první sync ty dvě filiálky ještě
+  jednou nahlásí jako změněné — přepisuje se jimi rozbitá uložená hodnota.
+  `dbReplaceAll_` přitom projde všechny řádky přes `dbRecordToRow_`, takže
+  je tím rovnou vyléčí. Od té chvíle ticho.
+- **Poučení do budoucna**: u zrcadlových tabulek (obsah přebíraný z cizího
+  systému) se vyplatí chránit rovnou VŠECHNY textové sloupce, ne až ten,
+  u kterého se chyba zrovna projeví. Příznak „položka se hlásí jako
+  změněná každý běh" je typicky tahle smyčka, ne vadný zdroj.
+
+**Etapa 7 (implementováno)** — přehlednější podoba záložky. Dřív byla
+záložka svislá hromádka bloků, každý v jiném vizuálním jazyce (šedý
+`field-group`, pak úplně neorámovaný blok se souborem a tlačítkem
+Synchronizovat, pak bílý box, pak nadpis bez rámečku) a nešlo z ní poznat,
+co s čím souvisí ani že jde o postup v krocích:
+
+- Všechny čtyři sekce jsou teď karty ve stejném jazyce jako sekce
+  formuláře události (`.field-group.field-group-accent` + `.kicker`).
+- První dvě karty nesou **číslo kroku** (`.import-step`), protože na jejich
+  pořadí skutečně záleží — *1 · Zdroj dat*, *2 · Soubor k synchronizaci*.
+  Karta kroku 2 se vůbec nezobrazí, dokud hledání něco nenajde. Noční
+  synchronizace a Historie číslo nemají, to nejsou kroky postupu.
+- Řádek historie ukazuje místo dlouhé věty **název souboru + barevné
+  štítky s počty** (`importLogChips`) seskupené po Filiálky / LC /
+  Uzavírky. Štítek nese jen znaménko a číslo (`+3` / `~2` / `−1`), ne
+  „3 nové filiálky" — vyhne se to skloňování podle počtu, význam řekne
+  `title`. Hotové `e.summary` ze serveru se tu záměrně nepoužívá, zůstává
+  pro zvoneček a audit log, kde je celá věta namístě.
+- Řádek dostal šipku (`.import-log-caret`, otáčí se přes `[open]`) — je to
+  jediná indicie, že jde rozkliknout, nativní `<details>` marker je
+  schovaný.
 
 ### 9.7 Státní svátky ČR
 

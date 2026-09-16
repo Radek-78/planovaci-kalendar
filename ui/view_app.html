@@ -192,7 +192,7 @@
             <i class="ph ph-copy" aria-hidden="true"></i> Šablony událostí
           </button>
           <button class="settings-tab" type="button" data-settings-tab="import">
-            <i class="ph ph-cloud-arrow-down" aria-hidden="true"></i> Import dat
+            <i class="ph ph-cloud-arrow-down" aria-hidden="true"></i> Import dat filiálek
           </button>
           <button class="settings-tab" type="button" data-settings-tab="holidays">
             <i class="ph ph-flag" aria-hidden="true"></i> Státní svátky ČR
@@ -264,8 +264,17 @@
           <div class="settings-panel-head">
             <p class="settings-panel-desc">Synchronizace filiálek a LC ze sdíleného souboru na Disku (listy Organizace_Detail a Zavrene_Openings).</p>
           </div>
+          <!-- Celá záložka je poskládaná ze stejných karet (.field-group
+               .field-group-accent + .kicker) jako sekce formuláře události —
+               dřív tu každý blok vypadal jinak (šedý box / vůbec žádný rámeček
+               / bílý box) a nešlo poznat, co s čím souvisí.
+               První dvě karty mají ČÍSLO KROKU, protože na jejich pořadí
+               skutečně záleží: bez vyhledání souboru v kroku 1 se karta
+               kroku 2 vůbec nezobrazí. Noční synchronizace a historie číslo
+               nemají — to nejsou kroky postupu, ale nastavení a výpis. -->
           <div class="import-panel">
-            <div class="field-group">
+            <section class="field-group field-group-accent import-card">
+              <p class="kicker import-card-head"><span class="import-step">1</span> Zdroj dat</p>
               <label>
                 <span>Složka (URL nebo ID) *</span>
                 <input type="text" id="importFolderInput" maxlength="500" placeholder="https://drive.google.com/drive/folders/…">
@@ -279,10 +288,14 @@
                   <i class="ph ph-magnifying-glass" aria-hidden="true"></i> Hledat soubory
                 </button>
               </div>
-            </div>
+            </section>
 
-            <div class="import-results is-hidden" id="importResultsWrap">
-              <p class="import-results-label">Nalezené soubory — vybraný (nejnovější) se použije při synchronizaci:</p>
+            <!-- is-hidden přepíná renderImportResults — dokud hledání nic
+                 nenajde, karta kroku 2 se vůbec nezobrazí (prázdná karta by
+                 jen mátla). -->
+            <section class="field-group field-group-accent import-card import-results is-hidden" id="importResultsWrap">
+              <p class="kicker import-card-head"><span class="import-step">2</span> Soubor k synchronizaci</p>
+              <p class="import-results-label">Použije se vybraný soubor — přednastavený je vždy ten nejnovější:</p>
               <div class="import-file-list" id="importResultsList"><!-- vykresleno JS --></div>
               <!-- Ověření vybraného souboru (existence a sloupce listů
                    Organizace_Detail/Zavrene_Openings) — viz
@@ -293,7 +306,7 @@
                   <i class="ph ph-arrows-clockwise" aria-hidden="true"></i> Synchronizovat
                 </button>
               </div>
-            </div>
+            </section>
 
             <div class="import-sync-result" id="importSyncResult"><!-- vykresleno JS --></div>
 
@@ -302,8 +315,8 @@
                  apiSetImportTrigger v 60_import.js. Skutečný trigger je
                  stejný, ať appka spouští, nebo ho založí ručně
                  TOOLS_nastavDenniSynchronizaci v editoru. -->
-            <div class="import-trigger">
-              <p class="import-log-heading"><i class="ph ph-alarm" aria-hidden="true"></i> Automatická noční synchronizace</p>
+            <section class="field-group field-group-accent import-card import-trigger">
+              <p class="kicker import-card-head"><i class="ph ph-alarm" aria-hidden="true"></i> Automatická noční synchronizace</p>
               <div class="import-trigger-row">
                 <label class="import-trigger-toggle">
                   <input type="checkbox" id="importTriggerEnabled">
@@ -318,15 +331,15 @@
                 </button>
               </div>
               <p class="import-trigger-status" id="importTriggerStatus"></p>
-            </div>
+            </section>
 
             <!-- Log importu — trvalá historie synchronizací (viz
                  apiGetImportLog v server/60_import.js). Každá položka jde
                  rozkliknout (<details>) na podrobný výpis změn. -->
-            <div class="import-log">
-              <p class="import-log-heading"><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> Historie synchronizací</p>
+            <section class="field-group field-group-accent import-card import-log">
+              <p class="kicker import-card-head"><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> Historie synchronizací</p>
               <div class="import-log-list" id="importLogList"><!-- vykresleno JS --></div>
-            </div>
+            </section>
           </div>
         </div>
 
@@ -5065,22 +5078,70 @@
     },
 
     /**
+     * Počty změn jako barevné štítky. V řádku historie se číslo přečte
+     * rychleji než věta — proto se tu NEPOUŽÍVÁ hotové `e.summary` ze
+     * serveru (to zůstává pro zvoneček a audit log, kde je celá věta
+     * namístě).
+     *
+     * Štítek nese jen znaménko a číslo (+3 / ~2 / −1), ne "3 nové
+     * filiálky" — vyhne se to skloňování podle počtu (1 nová filiálka,
+     * 2 nové filiálky, 5 nových filiálek), které by se jinak muselo řešit
+     * pro každou kombinaci zvlášť. Co které znaménko znamená, řekne title.
+     * Vypisují se jen nenulové položky, stejně jako je vypisuje
+     * _importBuildSummary_ na serveru.
+     */
+    importLogChips(counts) {
+      const groups = [
+        { label: 'Filiálky', items: [
+          { n: counts.storesAdded, cls: 'is-added', sign: '+', title: 'nových filiálek' },
+          { n: counts.storesChanged, cls: 'is-changed', sign: '~', title: 'změněných filiálek' },
+          { n: counts.storesRemoved, cls: 'is-removed', sign: '−', title: 'odebraných filiálek' },
+        ] },
+        { label: 'LC', items: [
+          { n: counts.lcAdded, cls: 'is-added', sign: '+', title: 'nových LC' },
+          { n: counts.lcRemoved, cls: 'is-removed', sign: '−', title: 'odebraných LC' },
+        ] },
+        { label: 'Uzavírky', items: [
+          { n: counts.closuresAdded, cls: 'is-added', sign: '+', title: 'nových uzavírek' },
+          { n: counts.closuresRemoved, cls: 'is-removed', sign: '−', title: 'skončených uzavírek' },
+        ] },
+      ];
+
+      return groups.map((g) => {
+        const chips = g.items.filter((i) => i.n).map((i) =>
+          '<span class="import-log-chip ' + i.cls + '" title="' + Ui.escape(i.n + ' ' + i.title) + '">' +
+            i.sign + i.n +
+          '</span>').join('');
+        if (!chips) return '';
+        return '<span class="import-log-chip-group">' +
+          '<span class="import-log-chip-label">' + g.label + '</span>' + chips +
+        '</span>';
+      }).join('');
+    },
+
+    /**
      * Jeden záznam historie — nativní <details>/<summary>, ať appka
      * nepotřebuje vlastní JS na rozbalení/sbalení. Podrobný výpis (pole
      * `detail` ze serveru) se zobrazí, jen když se něco skutečně změnilo —
      * u „beze změn" syncu by byl jen matoucí prázdný/opakující se text.
+     * Neprázdné `chips` = něco se změnilo, je to jedna a táž podmínka.
      */
     renderImportLogEntry(e) {
-      const c = e.counts;
-      const hasChanges = c.storesAdded || c.storesChanged || c.storesRemoved ||
-        c.lcAdded || c.lcRemoved || c.closuresAdded || c.closuresRemoved;
+      const chips = this.importLogChips(e.counts);
 
       return '<details class="import-log-entry">' +
         '<summary>' +
+          // Šipka je jediná vizuální indicie, že řádek jde rozkliknout —
+          // nativní marker je schovaný (viz ::-webkit-details-marker v CSS)
+          // a bez šipky to působilo jako obyčejný neklikací výpis.
+          '<i class="ph ph-caret-right import-log-caret" aria-hidden="true"></i>' +
           '<span class="import-log-time">' + Ui.escape(this.formatDateTime(e.createdAt)) + '</span>' +
-          '<span class="import-log-summary">' + Ui.escape(e.summary) + '</span>' +
+          '<span class="import-log-file">' + Ui.escape(e.fileName) + '</span>' +
+          (chips
+            ? '<span class="import-log-chips">' + chips + '</span>'
+            : '<span class="import-log-nochange">beze změn</span>') +
         '</summary>' +
-        (hasChanges ? '<pre class="import-log-detail">' + Ui.escape(e.detail) + '</pre>' : '') +
+        (chips ? '<pre class="import-log-detail">' + Ui.escape(e.detail) + '</pre>' : '') +
       '</details>';
     },
 
