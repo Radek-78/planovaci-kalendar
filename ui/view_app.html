@@ -3611,10 +3611,14 @@
     /** Znovu vykreslí hlavičku i data dané tabulky — po každé změně řazení/filtru. */
     refreshDataTable(tableName) {
       this.renderDataTableHead(tableName);
-      if (tableName === 'users') this.renderUsersFromCache();
-      else if (tableName === 'stores') this.renderStores();
-      else if (tableName === 'requests') this.renderRequests();
-      else this.renderLc();
+      // Mapa ze stejného důvodu jako u dataTableSource výše.
+      const render = {
+        users: () => this.renderUsersFromCache(),
+        stores: () => this.renderStores(),
+        lc: () => this.renderLc(),
+        requests: () => this.renderRequests(),
+      }[tableName];
+      if (render) render();
     },
 
     /** Druhý klik na stejný sloupec popover jen zavře, klik na jiný ho přepne. */
@@ -3637,11 +3641,23 @@
       }
     },
 
-    /** Zdrojová (nefiltrovaná) data dané tabulky — pro popover, který z nich čte DISTINCT hodnoty (viz openColumnFilterPopover). */
+    /**
+     * Zdrojová (nefiltrovaná) data dané tabulky — pro popover, který z nich
+     * čte DISTINCT hodnoty (viz openColumnFilterPopover).
+     *
+     * ZÁMĚRNĚ mapa, ne řetěz if/else s pádem na poslední tabulku. Ten se
+     * při přidání Požadavků choval tiše špatně: popover jim podstrčil data
+     * LC, `filterValue` nad cizími řádky vrátil samé prázdno a okno filtru
+     * se otevřelo bez jediné hodnoty (nahlášeno). Chybějící tabulka teď
+     * vrátí prázdno místo cizích dat — pořád špatně, ale aspoň viditelně.
+     */
     dataTableSource(tableName) {
-      if (tableName === 'users') return this.usersCache;
-      if (tableName === 'stores') return this.storesCache;
-      return this.lcCache;
+      return ({
+        users: this.usersCache,
+        stores: this.storesCache,
+        lc: this.lcCache,
+        requests: this.requestsCache,
+      })[tableName] || [];
     },
 
     /**
@@ -5633,7 +5649,10 @@
 
       return '<div class="data-row request-row" data-id="' + Ui.escape(r.id) + '">' +
         '<span class="user-cell-muted">' + Ui.escape(this.formatDateTime(r.createdAt)) + '</span>' +
-        '<span class="user-cell-muted">' + Ui.escape(r.authorName) + '</span>' +
+        '<span class="user-cell-muted request-cell-author">' +
+          '<span class="request-author-name">' + Ui.escape(r.authorName) + '</span>' +
+          (r.authorLocation ? '<span class="request-author-loc">' + Ui.escape(r.authorLocation) + '</span>' : '') +
+        '</span>' +
         '<span class="user-cell-name request-cell-title">' + Ui.escape(r.title) + '</span>' +
         '<span class="user-cell-muted request-cell-desc">' + Ui.escape(r.description || '—') + '</span>' +
         '<span><span class="request-status-chip ' + step.cls + '">' + Ui.escape(step.label) + '</span></span>' +
@@ -5854,7 +5873,9 @@
 
       document.querySelector('#requestModalInfo').innerHTML =
         '<div class="request-meta">' +
-          '<span><i class="ph ph-user" aria-hidden="true"></i> ' + Ui.escape(request.authorName) + '</span>' +
+          '<span><i class="ph ph-user" aria-hidden="true"></i> ' + Ui.escape(request.authorName) +
+            (request.authorLocation ? '<span class="request-author-loc">' + Ui.escape(request.authorLocation) + '</span>' : '') +
+          '</span>' +
           '<span><i class="ph ph-clock" aria-hidden="true"></i> ' + Ui.escape(this.formatDateTime(request.createdAt)) + '</span>' +
         '</div>' +
         '<div class="field-group field-group-accent">' +

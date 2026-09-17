@@ -1689,6 +1689,29 @@ nabídka filtru by byla seznam celých popisů a řazení podle popisu nedává
 smysl. Sloupec s počtem komentářů v přehledu není; `commentCount` ze
 serveru se dál drží v cache, ale nic se kvůli němu nepřekresluje.
 
+Šířky sloupců jsou napevno v `grid-template-columns` u
+`.requests-table-head, .request-row` (dnes `130px 0.6fr 0.6fr 1.6fr 110px
+150px 76px`) — na přání zadavatele bez ovládání v appce. Aspoň jeden
+textový sloupec musí zůstat v `fr`, jinak by měla tabulka pevný součet
+šířek a při jiné velikosti okna by buď zbývalo prázdné místo, nebo by
+naskočil vodorovný posuvník.
+
+U zadavatele se vedle jména ukazuje **malý štítek umístění** (DL nebo
+zkratka LC, `authorLocation` ze serveru). Ve zúženém sloupci se zkracuje
+jméno, štítek nikdy — ze kterého LC požadavek přišel je důležitější než
+celé jméno, to je stejně vidět po rozkliknutí. Kvůli tomu má sekce vlastní
+`_resolveRequestAuthor_` místo `_resolveUserName_`: jedno dohledání řádku
+v `_users` dá jméno i umístění najednou.
+
+**Pozor na řetězy `if/else` podle názvu tabulky.** Obecná tabulka jich má
+několik (`dataTableSource`, `refreshDataTable`) a ty s pádem na poslední
+větev se při přidání Požadavků chovaly tiše špatně — popover filtru jim
+podstrčil data LC, `filterValue` nad cizími řádky vrátil samé prázdno
+a okno filtru se otevřelo bez jediné hodnoty. Obojí je dnes mapa podle
+názvu tabulky: chybějící záznam vrátí prázdno místo cizích dat. Stejnou
+třídou chyby bylo i to, že se u Požadavků zapomnělo zavolat
+`renderDataTableHead` a nad seznamem chyběla celá hlavička.
+
 **Barevná škála pokroku** — šest kroků po 20 % od červené přes žlutou po
 zelenou. Barvu drží jedna CSS proměnná `--request-progress-color`, ze které
 čte proužek v přehledu i posuvník v detailu (`accent-color`), takže obě

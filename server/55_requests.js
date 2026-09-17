@@ -61,11 +61,12 @@ function _requestProgressFor_(requestedProgress) {
  * pravidla duplikovat — server si je i tak ověřuje znovu při každém zápisu,
  * tohle řídí jen to, co má smysl vůbec nabízet v UI.
  */
-function _publicRequest_(row, user, settings, nameCache, commentCounts) {
+function _publicRequest_(row, user, settings, authorCache, commentCounts) {
   const statusKey = String(row.status || REQUEST_STATUSES[0].key);
   const def = _requestStatusDef_(statusKey) || REQUEST_STATUSES[0];
   const authorEmail = cleanEmail_(row.created_by);
   const isOwner = authorEmail === user.email;
+  const author = _resolveRequestAuthor_(row.created_by, authorCache);
 
   return {
     id: String(row.id),
@@ -75,7 +76,10 @@ function _publicRequest_(row, user, settings, nameCache, commentCounts) {
     statusLabel: def.label,
     progress: Number(row.progress || 0),
     authorEmail: authorEmail,
-    authorName: _resolveUserName_(row.created_by, nameCache),
+    authorName: author.name,
+    // Umístění (DL / zkratka LC) se v přehledu ukazuje jako malý štítek
+    // vedle jména — kdo požadavek zadal, je tím rovnou zařazené.
+    authorLocation: author.location,
     createdAt: String(row.created_at || ''),
     updatedAt: String(row.updated_at || ''),
     commentCount: commentCounts ? (commentCounts[String(row.id)] || 0) : 0,
@@ -83,6 +87,27 @@ function _publicRequest_(row, user, settings, nameCache, commentCounts) {
     canDelete: isOwner || canManageForeignEvents_(user),
     canManageStatus: canManageRequestStatus_(user, settings),
   };
+}
+
+/**
+ * Jméno a umístění zadavatele. Vlastní pomocník místo _resolveUserName_
+ * proto, že přehled ukazuje vedle jména i štítek umístění (DL / zkratka
+ * LC) — jedno dohledání řádku v `_users` tak stačí na obojí.
+ *
+ * `cache` drží výsledky v rámci jednoho volání, ať se stejný e-mail
+ * neprohledává v tabulce opakovaně.
+ */
+function _resolveRequestAuthor_(email, cache) {
+  const low = cleanEmail_(email);
+  if (cache[low] !== undefined) return cache[low];
+
+  const user = dbFindBy_(SHEETS.USERS, 'email', low);
+  const fullName = user ? (String(user.firstName || '') + ' ' + String(user.lastName || '')).trim() : '';
+  cache[low] = {
+    name: fullName || low,
+    location: user ? String(user.location || '') : '',
+  };
+  return cache[low];
 }
 
 /** Mapa `request_id → počet komentářů` — jedním průchodem, ne dotazem na požadavek. */
@@ -108,11 +133,11 @@ function _requestCommentCounts_() {
 function apiGetRequests() {
   return guard_(PERM_KEYS.CALENDAR_READ, (user) => {
     const settings = settingsAll_();
-    const nameCache = {};
+    const authorCache = {};
     const counts = _requestCommentCounts_();
 
     return dbGetAll_(SHEETS.REQUESTS)
-      .map((row) => _publicRequest_(row, user, settings, nameCache, counts))
+      .map((row) => _publicRequest_(row, user, settings, authorCache, counts))
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
   });
 }
