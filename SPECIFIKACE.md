@@ -1712,6 +1712,19 @@ Seznam komentářů v detailu má **rezervovanou výšku** (`.request-comments-l
 Dřív měl jen `flex: 1`, takže modal po dotažení komentářů povyrostl a celé
 okno poskočilo.
 
+Celý modal má navíc **pevnou velikost** (`.modal-fixed-tall`) od prvního
+zobrazení — popis může mít pár slov i 4000 znaků, takže se okno pokaždé
+otevíralo jinak velké. Dlouhý popis se scrolluje uvnitř své karty
+(`max-height` na `.request-description`), aby neodsunul komentáře mimo
+dohled.
+
+Posuvník pokroku má po stranách krokovací tlačítka **− a +** (po 20 %),
+na krajích rozsahu zakázaná. Klik na krok **Dokončeno** navíc rovnou
+dotáhne pokrok na 100 % — hotový požadavek na 40 % by nikomu nic neřekl.
+Je to jediná vazba mezi stavem a pokrokem a je čistě na klientovi jako
+zkratka; server obě hodnoty dál bere nezávisle, ostatní stavy pokrok
+nemění.
+
 **Menu** je kvůli téhle sekci rozdělené do skupin oddělených linkou:
 Kalendář + Požadavky / Uživatelé / Filiálky + LC, a Nastavení samostatně
 dole (`.nav-group-bottom` s `margin-top: auto`) — je to správa appky, ne

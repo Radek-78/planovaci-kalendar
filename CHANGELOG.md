@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.12.3 - 17.09.2026 14:39
+- v0.12.3: Krokovací tlačítka u pokroku, pevná velikost okna požadavku a Dokončeno dotáhne pokrok na sto procent. Posuvník pokroku má nově po stranách tlačítka minus a plus, obě po dvaceti procentech, a na krajích rozsahu se zakážou, ať nejde odeslat hodnota, kterou by server stejně odmítl. Kliknutí na krok Dokončeno rovnou dotáhne pokrok na sto procent - hotový požadavek na čtyřiceti procentech by nikomu nic neřekl. Je to jediná vazba mezi stavem a pokrokem, ostatní stavy pokrok dál nechávají být. Okno detailu požadavku mělo velikost podle toho, co v něm zrovna bylo, takže se u každého požadavku otevřelo jinak velké podle délky popisu. Nově má pevnou velikost od prvního zobrazení a dlouhý popis se scrolluje uvnitř své karty, aby neodsunul komentáře mimo dohled.
+
 ## v0.12.2 - 17.09.2026 14:33
 - v0.12.2: Opravená chybějící hlavička tabulky požadavků, okamžitá odezva na změnu stavu a barevný pokrok. Nad seznamem požadavků chyběla hlavička s názvy sloupců, a tím i filtrování a řazení - appka ji vůbec nevykreslovala. Sloupce jsou nově v pořadí Zadáno, Zadal, Název, Popis, Stav, Pokrok, Akce
 - přibyl tedy popis a zmizel počet komentářů. Popis je jediný sloupec bez filtru a řazení, je to volný text a nabídka filtru by byla seznam celých popisů. Kliknutí na krok průběhu se dřív projevilo až po odpovědi serveru, což při volání do Apps Scriptu trvá i přes vteřinu a působilo to, jako by tlačítko nezabralo. Appka teď zobrazí výsledek okamžitě a na server čeká na pozadí

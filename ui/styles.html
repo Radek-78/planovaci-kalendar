@@ -2634,6 +2634,40 @@
     min-width: 0;
   }
 
+  /* Krokovací tlačítka po stranách posuvníku. Čtvercová se zaoblením jako
+     ostatní ikonová tlačítka appky; barvu si berou ze stejné proměnné jako
+     posuvník, takže drží krok s barevnou škálou pokroku. */
+  .request-progress-step-btn {
+    align-items: center;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--request-progress-color, var(--lidl-blue));
+    cursor: pointer;
+    display: inline-flex;
+    flex-shrink: 0;
+    height: 26px;
+    justify-content: center;
+    transition: background 0.12s, border-color 0.12s;
+    width: 26px;
+  }
+
+  .request-progress-step-btn i {
+    font-size: 13px;
+  }
+
+  .request-progress-step-btn:hover:not(:disabled) {
+    background: var(--page);
+    border-color: var(--request-progress-color, var(--lidl-blue));
+  }
+
+  /* Na krajích rozsahu (0 % a 100 %) tlačítko nic nedělá — ať je to vidět. */
+  .request-progress-step-btn:disabled {
+    color: var(--muted);
+    cursor: default;
+    opacity: 0.45;
+  }
+
   .request-progress-edit output {
     color: var(--request-progress-color, var(--text));
     flex-shrink: 0;
@@ -2676,10 +2710,14 @@
   }
 
   /* pre-wrap — popis se zadává jako víceřádkový text a odřádkování je jeho součástí */
+  /* Vlastní scroll místo neomezeného růstu — jinak by 4000 znaků popisu
+     odsunulo komentáře tak hluboko, že by se k nim muselo dlouho rolovat. */
   .request-description {
     font-size: 13.5px;
     line-height: 1.55;
     margin: 0;
+    max-height: 220px;
+    overflow-y: auto;
     white-space: pre-wrap;
   }
 
@@ -3505,6 +3543,15 @@
   /* Širší varianta pro dvousloupcové modaly (detail události, uživatel). */
   .modal-wide {
     max-width: min(720px, calc(100vw - 32px));
+  }
+
+  /* PEVNÁ velikost od prvního zobrazení — nezávisle na tom, co je uvnitř.
+     Detail požadavku má popis od pár slov po 4000 znaků a komentáře
+     přibývají za běhu, takže se okno pokaždé otevřelo jinak velké a po
+     dotažení komentářů ještě povyrostlo (nahlášeno). Dlouhý obsah se teď
+     scrolluje uvnitř, rám zůstává stát. */
+  .modal-fixed-tall {
+    height: min(760px, calc(100vh - 20px));
   }
 
   /* Ještě širší varianta — pro modaly se sloupci vedle sebe. */

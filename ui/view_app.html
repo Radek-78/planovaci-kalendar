@@ -926,7 +926,7 @@
      nekliknutelný ukazatel, ať je průběh vidět všem. Historie se načítá
      z auditního logu (apiGetRequestHistory), proto je v <details> —
      zajímá až při dohledávání, ne pokaždé. ══ -->
-<dialog class="modal modal-wide modal-grow" id="requestModal">
+<dialog class="modal modal-wide modal-grow modal-fixed-tall" id="requestModal">
   <div class="modal-header">
     <span class="modal-icon"><i class="ph ph-clipboard-text" aria-hidden="true"></i></span>
     <div class="modal-header-text">
@@ -5835,10 +5835,19 @@
       // ten jiné hodnoty odmítne, aby v datech nevznikla hodnota, kterou by
       // posuvník neuměl zobrazit zpátky.
       const progress = Number(request.progress || 0);
+      // Tlačítka -/+ vedle posuvníku: na krajích se zakazují, ať se nedá
+      // odeslat hodnota mimo rozsah, kterou by server stejně odmítl.
+      const stepBtn = (delta, icon, label) =>
+        '<button type="button" class="request-progress-step-btn" data-progress-delta="' + delta + '"' +
+          ((delta < 0 && progress <= 0) || (delta > 0 && progress >= 100) ? ' disabled' : '') +
+          ' aria-label="' + label + '"><i class="ph ' + icon + '" aria-hidden="true"></i></button>';
+
       const progressControl = canManage
         ? '<div class="request-progress-edit ' + this.requestProgressClass(progress) + '">' +
             '<label for="requestProgressInput">Pokrok</label>' +
+            stepBtn(-20, 'ph-minus', 'Snížit pokrok o 20 %') +
             '<input type="range" id="requestProgressInput" min="0" max="100" step="20" value="' + progress + '">' +
+            stepBtn(20, 'ph-plus', 'Zvýšit pokrok o 20 %') +
             '<output id="requestProgressOutput">' + progress + ' %</output>' +
           '</div>'
         : this.renderRequestProgressBar(progress, 'is-detail');
@@ -5882,9 +5891,20 @@
       // celý innerHTML při každé změně stavu, přímé listenery by nepřežily.
       const info = document.querySelector('#requestModalInfo');
       info.addEventListener('click', (e) => {
+        const progressBtn = e.target.closest('.request-progress-step-btn');
+        if (progressBtn) {
+          const current = Number(document.querySelector('#requestProgressInput').value);
+          this.saveRequestState(null, current + Number(progressBtn.dataset.progressDelta));
+          return;
+        }
+
         const step = e.target.closest('.request-step.is-clickable');
         if (step) {
-          this.saveRequestState(step.dataset.status, null);
+          // Dokončeno rovnou dotáhne pokrok na 100 % (zadání) — hotový
+          // požadavek na 40 % by nikomu nic neřekl. Ostatní stavy pokrok
+          // nechávají být, na stavu jsou dál nezávislé.
+          const status = step.dataset.status;
+          this.saveRequestState(status, status === 'done' ? 100 : null);
           return;
         }
         const history = e.target.closest('#requestHistory summary');
