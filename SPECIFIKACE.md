@@ -1694,10 +1694,10 @@ zablokovala i prosté znovuuložení.
 „kdo/kdy/co", je trvalý a historie tak přežije i smazání požadavku. Do
 auditu se zapisuje jen SKUTEČNÁ změna (porovnávají se staré a nové
 hodnoty) — jinak by seznam zarostl prázdnými „upraveno" řádky od každého
-otevření a uložení formuláře. V detailu je historie **rovnou vidět** — dřív byla schovaná v `<details>`
-a nikdo ji nenašel. Nadpis nese **počet úprav** a pod ním je posledních
-`REQUEST_HISTORY_PREVIEW` (5) záznamů; když je jich víc, přibude tlačítko
-na úplný přehled.
+otevření a uložení formuláře. V detailu zůstává z historie jen **tlačítko s počtem úprav**. Rychlý náhled
+posledních pár záznamů tam byl, ale se sloupcem typu úpravy působil
+v úzkém sloupci nepřehledně — celý výpis patří do samostatného přehledu,
+kde je na něj místo.
 
 Úplný přehled je **druhý pohled TÉHOŽ okna** (`#requestHistoryView`), ne
 další modal nad modalem — dva modaly na sobě se špatně zavírají Escapem
@@ -1705,6 +1705,14 @@ a přetahují si fokus. Tělo detailu se schová, přehled zabere celou šířku
 okna (řádky historie jsou dlouhé, sloupec by je zbytečně lámal) a vrací se
 tlačítkem *Zpět na požadavek*. Otevření jiného požadavku okno z přehledu
 vždycky vrátí zpět.
+
+Čas se v historii zobrazuje **na sekundy** a řadí se od nejnovějšího.
+Kvůli tomu má auditní log vlastní razítko `nowLocalIsoSeconds_()` —
+`nowLocalIso_` plní i `events.start/end` a `_event_views.last_seen_at`,
+kde se nad tvarem dělá textové porovnání rozsahu, takže přidání sekund
+by ho tiše rozbilo. Řádky zapsané dřív sekundy nemají; textové řazení na
+tom nesedne (kratší řetězec je prefix delšího) a zobrazení si u nich
+doplní `:00`.
 
 Každý řádek historie nese **typ úpravy** (Stav / Procenta / Název / Popis /
 Komentář / Založení / Smazání). Typy posílá server v poli `types`, protože
@@ -1742,9 +1750,20 @@ textový sloupec musí zůstat v `fr`, jinak by měla tabulka pevný součet
 šířek a při jiné velikosti okna by buď zbývalo prázdné místo, nebo by
 naskočil vodorovný posuvník.
 
-U zadavatele se **před jménem** ukazuje malý štítek umístění (DL nebo
-zkratka LC, `authorLocation` ze serveru). Ve zúženém sloupci se zkracuje
-jméno, štítek nikdy — ze kterého LC požadavek přišel je důležitější než
+U zadavatele se **před jménem** ukazuje štítek umístění (DL nebo zkratka
+LC, `authorLocation` ze serveru) — pevně široký, ať jména za ním začínají
+na stejném místě bez ohledu na délku zkratky, a **barevně odlišený podle
+umístění**.
+
+Barvy přiděluje `requestLocationClasses` podle POŘADÍ v abecedně seřazeném
+seznamu umístění, která se v datech vyskytují. Zvažoval jsem odvození
+z názvu hashem, aby barva byla navždy stejná, ale při pár LC se barvy
+běžně srazily (DL, LC2, BRN i JIR vycházely na tutéž) — rozlišitelnost je
+tu důležitější než absolutní stálost. Cenou je, že přibytí nového LC může
+barvy posunout; LC se ale mění jednou za dlouho. Mapa se přepočítá pokaždé,
+když se vymění `requestsCache`.
+
+Ve zúženém sloupci se zkracuje jméno, štítek nikdy — ze kterého LC požadavek přišel je důležitější než
 celé jméno, to je stejně vidět po rozkliknutí. Kvůli tomu má sekce vlastní
 `_resolveRequestAuthor_` místo `_resolveUserName_`: jedno dohledání řádku
 v `_users` dá jméno i umístění najednou.

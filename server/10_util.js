@@ -84,6 +84,23 @@ function nowLocalIso_() {
 }
 
 /**
+ * Totéž VČETNĚ SEKUND (`YYYY-MM-DDTHH:mm:ss`) — jen pro `_audit_log`.
+ *
+ * Historie úprav se řadí a zobrazuje na sekundu přesně; bez nich by šlo
+ * několik zásahů v téže minutě od sebe rozeznat jen podle pořadí v listu.
+ * Záměrně SAMOSTATNÁ funkce: nowLocalIso_ plní i `events.start/end`
+ * a `_event_views.last_seen_at`, kde se nad tvarem dělá textové porovnání
+ * rozsahu — přidání sekund by ho tiše rozbilo.
+ *
+ * Řádky zapsané dřív sekundy nemají. Textové řazení na tom nesedne
+ * (kratší řetězec je prefix delšího, takže staré záznamy v téže minutě
+ * vyjdou dřív) a zobrazení si u nich doplní „:00".
+ */
+function nowLocalIsoSeconds_() {
+  return Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd'T'HH:mm:ss");
+}
+
+/**
  * Formátuje místní datum a čas (tvar `YYYY-MM-DDTHH:mm`, stejný jako
  * events.start/end nebo nowLocalIso_()) na čitelné „D.M.RRRR HH:mm" —
  * jednotný formát datumu a času v celé appce (na klientovi App.formatDateTime
@@ -146,7 +163,7 @@ function applySheetFont_(sheet) {
 function audit_(action, detail, entityId, changeTypes) {
   try {
     dbAppend_(SHEETS.AUDIT, {
-      timestamp: nowLocalIso_(),
+      timestamp: nowLocalIsoSeconds_(),
       user: currentEmail_() || 'system',
       action: String(action || ''),
       detail: String(detail || ''),

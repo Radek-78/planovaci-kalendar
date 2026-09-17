@@ -2518,17 +2518,31 @@
     min-width: 0;
   }
 
-  /* Malý štítek umístění (DL / zkratka LC) vedle jména zadavatele. */
+  /* Malý štítek umístění (DL / zkratka LC) před jménem zadavatele.
+     Pevná šířka, ať štítky ve sloupci pod sebou lícují a jména za nimi
+     začínala na stejném místě bez ohledu na délku zkratky. */
   .request-author-loc {
-    background: var(--line-soft);
     border-radius: 3px;
-    color: var(--muted);
     flex-shrink: 0;
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.03em;
+    min-width: 40px;
     padding: 2px 5px;
+    text-align: center;
   }
+
+  /* Barva podle umístění — třídu přiděluje requestLocationClass z názvu,
+     takže stejné LC má vždycky stejnou barvu a nová se přidávat nemusí.
+     Osm dvojic podklad/písmo, všechny dost tmavé na čitelnost. */
+  .request-author-loc.is-loc0 { background: #e8eefc; color: #1e40af; }
+  .request-author-loc.is-loc1 { background: #e5f5ea; color: #15803d; }
+  .request-author-loc.is-loc2 { background: #fdf1dc; color: #b45309; }
+  .request-author-loc.is-loc3 { background: #f3e8fd; color: #7e22ce; }
+  .request-author-loc.is-loc4 { background: #fdeaea; color: #b91c1c; }
+  .request-author-loc.is-loc5 { background: #dcf5f3; color: #0f766e; }
+  .request-author-loc.is-loc6 { background: #fde8f3; color: #be185d; }
+  .request-author-loc.is-loc7 { background: #eef0f3; color: #475569; }
 
   /* ── Stav požadavku ── */
 
@@ -2844,21 +2858,8 @@
     padding-top: 12px;
   }
 
-  /* Nadpis s počtem — dřív to bylo rozbalovátko, které nikdo nenašel,
-     takže je panel nově rovnou vidět a nadpis už není klikací. */
-  .request-history-head {
-    align-items: center;
-    color: var(--muted);
-    display: flex;
-    font-size: 12px;
-    font-weight: 700;
-    gap: 6px;
-    letter-spacing: 0.03em;
-    margin: 0;
-    text-transform: uppercase;
-  }
-
-  /* Počet úprav — stejný čtvereček se zaoblením jako ostatní odznaky. */
+  /* Počet úprav uvnitř tlačítka — stejný čtvereček se zaoblením jako
+     ostatní odznaky v appce. */
   .request-history-count {
     background: var(--lidl-blue);
     border-radius: 3px;
@@ -2927,10 +2928,11 @@
     margin: 0;
   }
 
-  /* Tlačítko na úplný přehled — jen když je záznamů víc, než se vejde
-     do náhledu (viz REQUEST_HISTORY_PREVIEW). */
+  /* Jediné, co z historie zůstává v detailu — tlačítko s počtem úprav.
+     Výpis patří do samostatného přehledu, kde je na sloupec typu místo. */
   .request-history-more {
     align-self: flex-start;
+    gap: 8px;
   }
 
   /* ── Úplný přehled historie — druhý pohled TÉHOŽ okna ────────────────
@@ -3719,7 +3721,7 @@
      dotažení komentářů ještě povyrostlo (nahlášeno). Dlouhý obsah se teď
      scrolluje uvnitř, rám zůstává stát. */
   .modal-fixed-tall {
-    height: min(760px, calc(100vh - 20px));
+    height: min(510px, calc(100vh - 20px));
   }
 
   /* Ještě širší varianta — pro modaly se sloupci vedle sebe. */

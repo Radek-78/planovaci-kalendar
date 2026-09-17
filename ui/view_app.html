@@ -5737,8 +5737,6 @@
      */
     requestHistoryItems: null,
 
-    /** Kolik posledních úprav se ukáže rovnou v detailu; zbytek až v úplném přehledu. */
-    REQUEST_HISTORY_PREVIEW: 5,
 
     /**
      * Popisky a barevné třídy stavů. Klíče MUSÍ sedět s REQUEST_STATUSES
@@ -5751,6 +5749,41 @@
       { key: 'in_progress', label: 'V procesu', cls: 'is-progress' },
       { key: 'done', label: 'Dokončeno', cls: 'is-done' },
     ],
+
+    /** Mapa umístění → barevná třída, dopočítaná z dat (viz requestLocationClasses). */
+    _locationClassMap: null,
+
+    /**
+     * Přidělí barvy umístěním podle POŘADÍ v abecedně seřazeném seznamu
+     * těch, která se v datech skutečně vyskytují.
+     *
+     * Zvažoval jsem odvození z názvu (hash), aby barva byla navždy stejná,
+     * ale při pár LC se barvy běžně srazily — DL, LC2, BRN i JIR vycházely
+     * na tutéž. Rozlišitelnost je tu důležitější než absolutní stálost:
+     * takhle dostanou dvě různá umístění stejnou barvu až od devátého.
+     * Cenou je, že přibytí nového LC může barvy posunout — LC se ale mění
+     * jednou za dlouho. Barvy samotné jsou v CSS (.request-author-loc.is-locN).
+     */
+    requestLocationClasses() {
+      const seen = {};
+      (this.requestsCache || []).forEach((r) => {
+        const loc = String(r.authorLocation || '').trim();
+        if (loc) seen[loc] = true;
+      });
+
+      const map = {};
+      Object.keys(seen)
+        .sort((a, b) => a.localeCompare(b, 'cs'))
+        .forEach((loc, i) => { map[loc] = 'is-loc' + (i % 8); });
+      return map;
+    },
+
+    requestLocationClass(location) {
+      const loc = String(location || '').trim();
+      if (!loc) return '';
+      if (!this._locationClassMap) this._locationClassMap = this.requestLocationClasses();
+      return this._locationClassMap[loc] || 'is-loc7';
+    },
 
     /** Definice kroku podle klíče — s bezpečným pádem na první krok u neznámé hodnoty. */
     requestStep(statusKey) {
@@ -5766,6 +5799,7 @@
       Ui.call('apiGetRequests', null, { silent: true })
         .then((items) => {
           this.requestsCache = items;
+          this._locationClassMap = null; // jiná data = jiný seznam umístění
           this.renderRequests();
         })
         .catch((error) => {
@@ -5802,7 +5836,10 @@
       return '<div class="data-row request-row" data-id="' + Ui.escape(r.id) + '">' +
         '<span class="user-cell-muted">' + Ui.escape(this.formatDateTime(r.createdAt)) + '</span>' +
         '<span class="user-cell-muted request-cell-author">' +
-          (r.authorLocation ? '<span class="request-author-loc">' + Ui.escape(r.authorLocation) + '</span>' : '') +
+          (r.authorLocation
+            ? '<span class="request-author-loc ' + this.requestLocationClass(r.authorLocation) + '">' +
+                Ui.escape(r.authorLocation) + '</span>'
+            : '') +
           '<span class="request-author-name">' + Ui.escape(r.authorName) + '</span>' +
         '</span>' +
         '<span class="user-cell-name request-cell-title">' + Ui.escape(r.title) + '</span>' +
@@ -6034,7 +6071,10 @@
       document.querySelector('#requestModalInfo').innerHTML =
         '<div class="request-meta">' +
           '<span><i class="ph ph-user" aria-hidden="true"></i> ' +
-            (request.authorLocation ? '<span class="request-author-loc">' + Ui.escape(request.authorLocation) + '</span>' : '') +
+            (request.authorLocation
+              ? '<span class="request-author-loc ' + this.requestLocationClass(request.authorLocation) + '">' +
+                  Ui.escape(request.authorLocation) + '</span>'
+              : '') +
             Ui.escape(request.authorName) +
           '</span>' +
           '<span><i class="ph ph-clock" aria-hidden="true"></i> ' + Ui.escape(this.formatDateTime(request.createdAt)) + '</span>' +
@@ -6077,7 +6117,7 @@
     renderRequestHistoryItem(h) {
       const types = (h.types || []).map((t) => this.REQUEST_CHANGE_TYPES[t]).filter((t) => t);
       return '<div class="request-history-item">' +
-        '<span class="request-history-time">' + Ui.escape(this.formatDateTime(h.timestamp)) + '</span>' +
+        '<span class="request-history-time">' + Ui.escape(this.formatDateTime(h.timestamp, true)) + '</span>' +
         '<span class="request-history-types">' +
           (types.length
             ? types.map((t) => '<span class="request-type-chip ' + t.cls + '">' + Ui.escape(t.label) + '</span>').join('')
@@ -6090,39 +6130,27 @@
     },
 
     /**
-     * Panel historie v detailu: nadpis s počtem úprav, posledních pár
-     * záznamů a tlačítko na úplný přehled. Delší historie se do detailu
-     * nevejde, aniž by zatlačila popis mimo dohled — proto náhled
-     * a samostatný pohled, ne jeden dlouhý seznam.
+     * V detailu zůstává jen TLAČÍTKO s počtem úprav. Rychlý náhled
+     * posledních pár záznamů tu byl dřív, ale se sloupcem typu úpravy
+     * působil v úzkém sloupci nepřehledně — celý výpis patří do
+     * samostatného přehledu, kde je na něj místo.
      */
     renderRequestHistoryBox() {
       const box = document.querySelector('#requestHistoryBox');
       if (!box) return;
 
       const items = this.requestHistoryItems;
-      const heading = '<p class="request-history-head">' +
-        '<i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> Historie úprav' +
-        (items ? '<span class="request-history-count">' + items.length + '</span>' : '') +
-      '</p>';
-
       if (items === null) {
-        box.innerHTML = heading + '<p class="request-history-empty">Načítám historii…</p>';
+        box.innerHTML = '<button type="button" class="button button-secondary request-history-more" disabled>' +
+          '<i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> Historie úprav…</button>';
         return;
       }
 
-      const preview = items.slice(0, this.REQUEST_HISTORY_PREVIEW);
-
-      box.innerHTML = heading +
-        (items.length
-          ? '<div class="request-history-list">' +
-              preview.map((h) => this.renderRequestHistoryItem(h)).join('') +
-            '</div>'
-          : '<p class="request-history-empty">Zatím žádné záznamy.</p>') +
-        (items.length > preview.length
-          ? '<button type="button" class="button button-secondary request-history-more" id="requestHistoryMore">' +
-              '<i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> Zobrazit celou historii (' + items.length + ')' +
-            '</button>'
-          : '');
+      box.innerHTML = '<button type="button" class="button button-secondary request-history-more" id="requestHistoryMore"' +
+        (items.length ? '' : ' disabled') + '>' +
+        '<i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> Historie úprav' +
+        '<span class="request-history-count">' + items.length + '</span>' +
+      '</button>';
     },
 
     bindRequestModal() {
@@ -6316,6 +6344,7 @@
       Ui.call('apiGetRequests', null, { silent: true })
         .then((items) => {
           this.requestsCache = items;
+          this._locationClassMap = null; // jiná data = jiný seznam umístění
           this.renderRequests();
           const request = items.find((r) => r.id === this.currentRequestId);
           if (!request) return;
@@ -7361,19 +7390,27 @@
      * Ostatních volajících se to netýkalo, ti posílají místní tvar —
      * proto se tvar rozpoznává, místo aby se převádělo natvrdo všude.
      */
-    formatDateTime(iso) {
+    formatDateTime(iso, withSeconds) {
       const text = String(iso || '');
       if (!text) return '';
+      const pad = (n) => String(n).padStart(2, '0');
 
       if (/Z$|[+-]\d{2}:?\d{2}$/.test(text)) {
         const date = new Date(text);
         if (isNaN(date.getTime())) return '';
-        const pad = (n) => String(n).padStart(2, '0');
         return date.getDate() + '.' + (date.getMonth() + 1) + '.' + date.getFullYear() +
-          ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+          ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) +
+          (withSeconds ? ':' + pad(date.getSeconds()) : '');
       }
 
-      return this.formatFullDate(text.slice(0, 10)) + ' ' + text.slice(11, 16);
+      if (!withSeconds) {
+        return this.formatFullDate(text.slice(0, 10)) + ' ' + text.slice(11, 16);
+      }
+      // Sekundy jsou v řetězci jen tam, kde je zapsal nowLocalIsoSeconds_
+      // (auditní log). Starší záznamy končí minutou — doplní se ":00", ať
+      // sloupec v historii nelícuje jednou o dva znaky jinak.
+      const time = text.slice(11, 19);
+      return this.formatFullDate(text.slice(0, 10)) + ' ' + (time.length === 5 ? time + ':00' : time);
     },
 
     /**
