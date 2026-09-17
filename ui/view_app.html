@@ -5922,11 +5922,17 @@
 
         const step = e.target.closest('.request-step.is-clickable');
         if (step) {
-          // Dokončeno rovnou dotáhne pokrok na 100 % (zadání) — hotový
-          // požadavek na 40 % by nikomu nic neřekl. Ostatní stavy pokrok
-          // nechávají být, na stavu jsou dál nezávislé.
+          // KRAJNÍ stavy rovnou srovnají i pokrok: Dokončeno na 100 %,
+          // Nový na 0 % — hotový požadavek na 40 % ani čerstvě založený
+          // na 80 % by nikomu nic neřekly. V procesu pokrok nechává být,
+          // tam dává smysl jakákoli hodnota.
+          //
+          // Obojí je zkratka na klientovi, ne pravidlo dat: server bere
+          // stav a pokrok nezávisle (jedinou výjimkou je opačný směr, viz
+          // apiSetRequestStatus), takže si pokrok jde hned zase přenastavit.
           const status = step.dataset.status;
-          this.saveRequestState(status, status === 'done' ? 100 : null);
+          const forcedProgress = status === 'done' ? 100 : (status === 'new' ? 0 : null);
+          this.saveRequestState(status, forcedProgress);
           return;
         }
         const history = e.target.closest('#requestHistory summary');

@@ -1747,9 +1747,11 @@ výšky a `.request-comments-list` zase vlastní pevnou výšku, obojí bylo
 potřeba jen v jednosloupcové podobě.
 
 Posuvník pokroku má po stranách krokovací tlačítka **− a +** (po 20 %),
-na krajích rozsahu zakázaná. Klik na krok **Dokončeno** navíc rovnou
-dotáhne pokrok na 100 % — hotový požadavek na 40 % by nikomu nic neřekl.
-Je to zkratka čistě na klientovi; ostatní stavy pokrok nemění.
+na krajích rozsahu zakázaná. Klik na **krajní** kroky navíc rovnou srovná
+i pokrok — *Dokončeno* na 100 %, *Nový* na 0 %. Hotový požadavek na 40 %
+ani čerstvě založený na 80 % by nikomu nic neřekly. *V procesu* pokrok
+nechává být, tam dává smysl jakákoli hodnota. Obojí je zkratka čistě na
+klientovi, ne pravidlo dat — pokrok jde hned zase přenastavit.
 
 Opačná vazba je naopak **na serveru**: stažení pokroku dokončeného
 požadavku pod 100 % ho vrátí do stavu *V procesu* — „Dokončeno na 60 %" by
@@ -1760,8 +1762,11 @@ na serveru, aby platila při každém zápisu a rovnou se objevila v historii
 jako skutečná změna stavu; klient si ji jen zrcadlí, aby optimistický
 náhled neukázal na okamžik stav, který server vzápětí přepíše.
 
-Mimo tyhle dvě vazby jsou stav a pokrok dál nezávislé — klik na *Nový*
-například pokrok nenuluje.
+Mimo tyhle vazby jsou stav a pokrok dál nezávislé. Opačný směr k pravidlu
+výše (tedy že zvýšení pokroku nad 0 % u stavu *Nový* by ho posunulo do
+*V procesu*) ZÁMĚRNĚ neexistuje — nebyl vyžádaný a na rozdíl od
+„Dokončeno na 60 %" není „Nový na 20 %" vnitřně rozporný záznam, jen
+neobvyklý.
 
 **Menu** je kvůli téhle sekci rozdělené do skupin oddělených linkou:
 Kalendář + Požadavky / Uživatelé / Filiálky + LC, a Nastavení samostatně

@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.12.6 - 17.09.2026 14:52
+- v0.12.6: Kliknutí na Nový srazí pokrok na nulu. Doplnění protějšku k úpravě z minulé verze - krajní kroky průběhu teď rovnou srovnají i pokrok. Dokončeno ho dotáhne na sto procent, Nový ho srazí na nulu. Čerstvě založený požadavek na osmdesáti procentech by nikomu nic neřekl, stejně jako hotový na čtyřiceti. Prostřední stav V procesu pokrok dál nechává být, tam dává smysl jakákoli hodnota. Obojí je zkratka při kliknutí, ne pravidlo dat - pokrok jde hned zase přenastavit posuvníkem nebo tlačítky minus a plus.
+
 ## v0.12.5 - 17.09.2026 14:50
 - v0.12.5: Dvousloupcový detail požadavku, štítek umístění před jménem a automatický návrat z Dokončeno. Okno detailu požadavku je nově rozdělené na dva sloupce stejně jako detail události - vlevo všechno okolo požadavku, vpravo komentáře. Každý sloupec se posouvá zvlášť, takže dlouhý popis už nemá koho odsunout, a okno je kvůli tomu širší. Štítek s umístěním zadavatele je nově před jménem, v seznamu i v detailu. Když se u dokončeného požadavku stáhne pokrok pod sto procent, vrátí se stav automaticky na V procesu - Dokončeno na šedesáti procentech by byl vnitřně rozporný záznam. Pravidlo sedí na serveru, takže platí při každém zápisu a rovnou se objeví v historii jako skutečná změna stavu. Uplatní se ale jen tehdy, když se mění samotný pokrok
 - když někdo stav zadá výslovně, appka ho respektuje, aby šlo označit za dokončený i požadavek, který zůstal rozpracovaný. Mimo tuhle vazbu a zkratku, kdy kliknutí na Dokončeno dotáhne pokrok na sto procent, jsou stav a pokrok dál nezávislé.
