@@ -1678,6 +1678,10 @@ hodnoty) — jinak by seznam zarostl prázdnými „upraveno" řádky od každé
 otevření a uložení formuláře. V detailu je historie v `<details>` a načítá
 se až při rozkliknutí, ne při otevření požadavku.
 
+Řádek `<summary>` nese **šipku** (`.request-history-caret`, otáčí se přes
+`[open]`) — nativní marker je schovaný a bez šipky nebylo poznat, že se pod
+nadpisem něco skrývá.
+
 Rozbalení panelu **přežívá překreslení** (`App.requestHistoryOpen` mimo
 DOM): `renderRequestInfo` přepisuje celé tělo detailu při každé změně, takže
 se panel po každé úpravě sbalil a vyprázdnil — působilo to, jako by se
@@ -1712,6 +1716,17 @@ celé jméno, to je stejně vidět po rozkliknutí. Kvůli tomu má sekce vlastn
 `_resolveRequestAuthor_` místo `_resolveUserName_`: jedno dohledání řádku
 v `_users` dá jméno i umístění najednou.
 
+**Potvrzovací okno zůstávalo zašedlé (opraveno, platilo pro CELOU appku).**
+`confirmAction` po úspěšně potvrzené akci jen zavře modal a stav „načítám"
+na tlačítku nikde neruší — tlačítko tedy zůstane `disabled`. Protože se
+tlačítko při dalším otevření nahrazuje klonem přes `cloneNode(true)`, klon
+si `disabled` odnesl s sebou a DALŠÍ potvrzení se otevřelo s natrvalo
+zašedlým tlačítkem a kurzorem zákazu. Projevilo se to při mazání dvou
+požadavků po sobě, ale týkalo se každého potvrzovacího okna (smazání
+události, deaktivace uživatele, svátky, pozice, oddělení, typy, šablony).
+Opraveno v `confirmAction` jedním `Ui.setButtonLoading(okBtn, false)` před
+klonováním — tedy na jednom místě, ne u osmi volajících.
+
 **Pozor na řetězy `if/else` podle názvu tabulky.** Obecná tabulka jich má
 několik (`dataTableSource`, `refreshDataTable`) a ty s pádem na poslední
 větev se při přidání Požadavků chovaly tiše špatně — popover filtru jim
@@ -1733,6 +1748,16 @@ dostane ho jako `<span>` místo `<button>`, aby appka nenabízela akci, která
 by stejně skončila chybou. Pokrok má v detailu **jediný** ukazatel: kdo smí
 měnit, dostane posuvník (ten hodnotu i ukazuje), ostatní jen proužek. Dřív
 tam byly oba naráz a působily jako dvě různá čísla.
+
+Zápis stavu a pokroku je **odložený** (`flushRequestState`, ~450 ms po
+poslední změně). Rychlé klikání na −/+ jinak vystřelilo několik souběžných
+volání; ta se na serveru řadí za sebou na zámku (`withLock_`) a jejich
+odpovědi mohly dorazit v jiném pořadí, než se klikalo — pozdní odpověď na
+starší hodnotu přepsala tu novější a pokrok naskočil zpátky, což působilo
+jako pomalá reakce (nahlášeno). Odesílá se proto až výsledek celé dávky,
+jedním voláním, a posílá se v něm stav I pokrok najednou. Zavření detailu
+rozdělaný zápis dopíše (`flushPendingRequestState` na události `close`), ať
+se poslední klik neztratí.
 
 Změna stavu i pokroku se překresluje **optimisticky** — appka rovnou
 zobrazí výsledek a teprve pak čeká na server. Kolečko na Apps Script trvá

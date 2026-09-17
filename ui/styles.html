@@ -2804,6 +2804,16 @@
     display: none;
   }
 
+  /* Otočí se dolů po rozbalení — stejný vzor jako u řádku Logu importu. */
+  .request-history-caret {
+    font-size: 13px;
+    transition: transform 0.15s ease;
+  }
+
+  .request-history[open] .request-history-caret {
+    transform: rotate(90deg);
+  }
+
   .request-history-list {
     display: flex;
     flex-direction: column;

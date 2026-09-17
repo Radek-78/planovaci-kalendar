@@ -3215,6 +3215,14 @@
       else bodyEl.textContent = opts.body;
 
       const okBtn = document.querySelector('#confirmModalOk');
+      // Po ÚSPĚŠNÉ potvrzené akci se modal jen zavře a stav "načítám" se
+      // nikde neruší — tlačítko tedy zůstane disabled. cloneNode(true) níže
+      // pak disabled zkopíruje i do nového tlačítka, takže se DALŠÍ
+      // potvrzení otevře s natrvalo zašedlým tlačítkem a kurzorem zákazu.
+      // Projevilo se při mazání dvou požadavků po sobě, ale platilo to pro
+      // KAŽDÉ potvrzovací okno v appce (smazání události, deaktivace
+      // uživatele, svátky, pozice…) — proto reset tady, ne u volajících.
+      Ui.setButtonLoading(okBtn, false);
       okBtn.className = 'button ' + (opts.okClass || 'button-danger');
       okBtn.innerHTML = '<i class="ph ' + (opts.okIcon || 'ph-trash') + '" aria-hidden="true"></i> ' + Ui.escape(opts.okLabel || 'Potvrdit');
 
@@ -5588,6 +5596,10 @@
     /** Id požadavku otevřeného v detailu — kvůli překreslení po změně stavu i po přidání komentáře. */
     currentRequestId: null,
 
+    /** Odložený zápis stavu/pokroku na server (viz saveRequestState) a stav před ním, pro případný návrat. */
+    requestStateTimer: null,
+    requestStateBeforeSave: null,
+
     /**
      * Je v detailu rozbalená Historie úprav? Drží se mimo DOM, protože
      * renderRequestInfo přepisuje celé tělo detailu při každé změně —
@@ -5903,7 +5915,13 @@
             : '<p class="request-description is-empty">Bez popisu.</p>') +
         '</div>' +
         '<details class="request-history" id="requestHistory"' + (this.requestHistoryOpen ? ' open' : '') + '>' +
-          '<summary><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> Historie úprav</summary>' +
+          // Šipka je jediná indicie, že řádek jde rozkliknout — nativní
+          // marker je schovaný a bez ní nebylo poznat, že se pod nadpisem
+          // něco skrývá (nahlášeno).
+          '<summary>' +
+            '<i class="ph ph-caret-right request-history-caret" aria-hidden="true"></i>' +
+            '<i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> Historie úprav' +
+          '</summary>' +
           '<div class="request-history-list" id="requestHistoryList"></div>' +
         '</details>';
 
@@ -5916,6 +5934,10 @@
     bindRequestModal() {
       const dialog = document.querySelector('#requestModal');
       document.querySelector('#requestModalClose').addEventListener('click', () => Ui.closeModal(dialog));
+      // Zavření jakoukoli cestou (křížek, Esc, klik mimo) — rozdělaný
+      // odložený zápis se musí dopsat, jinak by se poslední klik na -/+
+      // ztratil.
+      dialog.addEventListener('close', () => this.flushPendingRequestState());
 
       document.querySelector('#requestModalActions').addEventListener('click', (e) => {
         const btn = e.target.closest('.user-action-btn');
@@ -6031,31 +6053,65 @@
       this.renderRequestDetail(optimistic);
       this.renderRequests();
 
-      const payload = { id: id };
-      if (status !== null && status !== undefined) payload.status = status;
-      if (progress !== null && progress !== undefined) payload.progress = progress;
+      // Zápis se ODKLÁDÁ. Rychlé klikání na -/+ jinak vystřelí několik
+      // souběžných volání; ta se na serveru řadí za sebou na zámku
+      // (withLock_) a jejich odpovědi můžou dorazit v jiném pořadí, než se
+      // klikalo — pozdní odpověď na starší hodnotu pak přepsala tu
+      // novější a pokrok naskočil zpátky. Působilo to, jako by appka
+      // reagovala se zpožděním (nahlášeno). Odesílá se proto až výsledný
+      // stav po krátké pauze, jedním voláním.
+      //
+      // Původní hodnota se drží od PRVNÍ změny v dávce, ať je při chybě
+      // kam couvnout, i když se mezitím klikalo několikrát.
+      if (!this.requestStateBeforeSave) this.requestStateBeforeSave = previous;
+      clearTimeout(this.requestStateTimer);
+      this.requestStateTimer = setTimeout(() => this.flushRequestState(id), 450);
+    },
 
-      Ui.call('apiSetRequestStatus', payload, { silent: true })
+    /**
+     * Odešle odložený stav a pokrok jedním voláním. Posílá obojí najednou
+     * (ne jen to, co se zrovna měnilo) — je to výsledek celé dávky kliknutí
+     * a stav už si klient odvodil stejným pravidlem jako server.
+     */
+    flushRequestState(id) {
+      this.requestStateTimer = null;
+      const current = this.requestsCache.find((r) => r.id === id);
+      const before = this.requestStateBeforeSave;
+      this.requestStateBeforeSave = null;
+      if (!current || !before) return;
+      if (current.status === before.status && current.progress === before.progress) return;
+
+      Ui.call('apiSetRequestStatus',
+        { id: id, status: current.status, progress: current.progress }, { silent: true })
         .then((updated) => {
           this.replaceRequestInCache(updated);
-          // Překreslovat znovu má smysl, jen když se server v něčem liší od
+          // Překreslovat má smysl, jen když se server v něčem liší od
           // odhadu — jinak by uživateli zbytečně poskočil rozdělaný detail.
-          if (updated.status !== optimistic.status || updated.progress !== optimistic.progress) {
+          if (this.currentRequestId === id &&
+              (updated.status !== current.status || updated.progress !== current.progress)) {
             this.renderRequestDetail(updated);
             this.renderRequests();
-          } else if (this.requestHistoryOpen) {
+          } else if (this.requestHistoryOpen && this.currentRequestId === id) {
             // Překreslovat netřeba (server potvrdil odhad), ale historie má
-            // o záznam víc — optimistické vykreslení proběhlo dřív, než se
-            // na server vůbec stihlo zapsat.
+            // o záznam víc — vykreslení proběhlo dřív než zápis.
             this.loadRequestHistory(id);
           }
         })
         .catch((error) => {
-          this.replaceRequestInCache(previous);
-          this.renderRequestDetail(previous);
+          this.replaceRequestInCache(before);
+          if (this.currentRequestId === id) {
+            this.renderRequestDetail(before);
+          }
           this.renderRequests();
           Ui.toast(error.message, 'error');
         });
+    },
+
+    /** Dopíše rozdělaný odložený zápis hned — při zavření detailu, ať se změna neztratí. */
+    flushPendingRequestState() {
+      if (!this.requestStateTimer) return;
+      clearTimeout(this.requestStateTimer);
+      this.flushRequestState(this.currentRequestId);
     },
 
     /** Nahradí jeden požadavek v cache čerstvou verzí ze serveru (beze změny pořadí). */
