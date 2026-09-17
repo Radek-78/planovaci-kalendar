@@ -150,8 +150,8 @@
     </div>
 
     <footer class="gate-actions">
-      <button class="button button-secondary is-invisible" type="button" id="wizBack">Zpět</button>
-      <button class="button button-primary" type="button" id="wizNext" disabled>Pokračovat</button>
+      <button class="button button-secondary is-invisible" type="button" id="wizBack"><i class="ph ph-arrow-left" aria-hidden="true"></i> Zpět</button>
+      <button class="button button-primary" type="button" id="wizNext" disabled>Pokračovat <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
     </footer>
 
   </div>
@@ -320,9 +320,12 @@
       const next = document.querySelector('#wizNext');
       Ui.setButtonLoading(next, false);
       next.disabled = this.step === 1 && !this.isOwner;
-      next.textContent =
-        this.step === 4 ? 'Vytvořit aplikaci' :
-        this.step === 5 ? 'Spustit aplikaci' : 'Pokračovat';
+      // innerHTML, ne textContent — popisek nese i ikonu. Jsou to pevné
+      // řetězce z kódu, žádný uživatelský vstup, takže escapovat není co.
+      next.innerHTML =
+        this.step === 4 ? '<i class="ph ph-check" aria-hidden="true"></i> Vytvořit aplikaci' :
+        this.step === 5 ? '<i class="ph ph-door-open" aria-hidden="true"></i> Spustit aplikaci' :
+        'Pokračovat <i class="ph ph-arrow-right" aria-hidden="true"></i>';
     },
 
     /**

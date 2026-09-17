@@ -30,7 +30,7 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.12.0',
+  version: 'v0.12.1',
   releaseDate: '17.9.2026',
 
   /**
@@ -115,18 +115,26 @@ const SHEETS = {
 /**
  * Stavy požadavku (sekce Požadavky). ZÁMĚRNĚ pevná trojice v kódu, ne
  * konfigurovatelný seznam jako typy událostí — průběh požadavku je pro
- * všechna LC stejný a tyhle klíče řídí i dopočet procenta pokroku, takže
- * přidání čtvrtého stavu není jen doplnění řádku do tabulky.
+ * všechna LC stejný.
  *
- * `progress` = procento, které stavu přísluší napevno; `null` znamená
- * "řídí si ho uživatel". Díky tomu si stav a procento nemůžou odporovat
- * (nejde mít Dokončeno na 40 %) — viz _requestProgressFor_ v 50_api.js.
+ * Stav a procento pokroku jsou NEZÁVISLÉ (zadání): stav se přepíná
+ * tlačítky, procento posuvníkem, jedno druhé nijak nepřepisuje. Dřívější
+ * podoba procento ze stavu dopočítávala (Nový = 0, Dokončeno = 100),
+ * což se v praxi ukázalo jako omezující — požadavek může být klidně
+ * rozpracovaný na 60 % a přitom už označený jako dokončený, nebo naopak.
  */
 const REQUEST_STATUSES = [
-  { key: 'new', label: 'Nový', progress: 0 },
-  { key: 'in_progress', label: 'V procesu', progress: null },
-  { key: 'done', label: 'Dokončeno', progress: 100 },
+  { key: 'new', label: 'Nový' },
+  { key: 'in_progress', label: 'V procesu' },
+  { key: 'done', label: 'Dokončeno' },
 ];
+
+/**
+ * O kolik procent se posouvá pokrok požadavku. Posuvník na klientovi má
+ * tenhle `step`, server pak kontroluje, že přišel násobek — ať se do dat
+ * nedostane hodnota, kterou by UI neuměla zobrazit zpátky na sobě samém.
+ */
+const REQUEST_PROGRESS_STEP = 20;
 
 /**
  * Klíče oprávnění, se kterými pracuje guard_ v 30_auth.js.

@@ -98,7 +98,7 @@
           <button class="cal-nav-btn" type="button" id="calPrev" aria-label="Předchozí měsíc">
             <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-left"></use></svg>
           </button>
-          <button class="cal-nav-today" type="button" id="calToday">Dnes</button>
+          <button class="cal-nav-today" type="button" id="calToday"><i class="ph ph-calendar-check" aria-hidden="true"></i> Dnes</button>
           <button class="cal-nav-btn" type="button" id="calNext" aria-label="Následující měsíc">
             <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
           </button>
@@ -617,11 +617,11 @@
             </button>
             <div class="type-picker-menu is-pill-menu is-hidden" id="eventFormRecurrenceMenu">
               <div id="eventFormRecurrenceFreqOptions">
-                <button type="button" class="recurrence-picker-option" data-freq="">Neopakovat</button>
-                <button type="button" class="recurrence-picker-option" data-freq="daily">Každý den</button>
-                <button type="button" class="recurrence-picker-option" data-freq="weekly">Každý týden</button>
-                <button type="button" class="recurrence-picker-option" data-freq="biweekly">Každé 2 týdny</button>
-                <button type="button" class="recurrence-picker-option" data-freq="monthly">Každý měsíc</button>
+                <button type="button" class="recurrence-picker-option" data-freq=""><i class="ph ph-x-circle" aria-hidden="true"></i> Neopakovat</button>
+                <button type="button" class="recurrence-picker-option" data-freq="daily"><i class="ph ph-repeat" aria-hidden="true"></i> Každý den</button>
+                <button type="button" class="recurrence-picker-option" data-freq="weekly"><i class="ph ph-repeat" aria-hidden="true"></i> Každý týden</button>
+                <button type="button" class="recurrence-picker-option" data-freq="biweekly"><i class="ph ph-repeat" aria-hidden="true"></i> Každé 2 týdny</button>
+                <button type="button" class="recurrence-picker-option" data-freq="monthly"><i class="ph ph-repeat" aria-hidden="true"></i> Každý měsíc</button>
                 <div class="recurrence-picker-end is-hidden" id="eventFormRecurrenceEndFields">
                   <label>
                     <span>Počet opakování</span>
@@ -908,9 +908,13 @@
         </label>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="button button-ghost" type="button" id="requestFormCancel">Zrušit</button>
-      <button class="button button-primary" type="submit" id="requestFormSubmit">Uložit</button>
+    <div class="modal-actions">
+      <button class="button button-secondary" type="button" id="requestFormCancel">
+        <i class="ph ph-x" aria-hidden="true"></i> Zrušit
+      </button>
+      <button class="button button-primary" type="submit" id="requestFormSubmit">
+        <i class="ph ph-check" aria-hidden="true"></i> Uložit
+      </button>
     </div>
   </form>
 </dialog>
@@ -3699,8 +3703,10 @@
           '</div>' +
         '</div>' +
         '<div class="column-filter-actions">' +
-          '<button type="button" class="button button-secondary" id="columnFilterClear">Zrušit filtr</button>' +
-          '<button type="button" class="button button-primary" id="columnFilterApply">Použít</button>' +
+          '<button type="button" class="button button-secondary" id="columnFilterClear">' +
+            '<i class="ph ph-x" aria-hidden="true"></i> Zrušit filtr</button>' +
+          '<button type="button" class="button button-primary" id="columnFilterApply">' +
+            '<i class="ph ph-check" aria-hidden="true"></i> Použít</button>' +
         '</div>';
 
       document.body.appendChild(popover);
@@ -5580,22 +5586,6 @@
       return this.REQUEST_STATUS_STEPS.find((s) => s.key === statusKey) || this.REQUEST_STATUS_STEPS[0];
     },
 
-    /**
-     * „D.M.RRRR HH:mm" v MÍSTNÍM čase prohlížeče.
-     *
-     * Záměrně ne App.formatDateTime: ta hodnotu jen nakrájí podle pozic
-     * znaků, což sedí na `events.start` (tvar YYYY-MM-DDTHH:mm v místní
-     * zóně), ale `created_at` je uložené přes nowIso_() jako UTC s „Z" —
-     * krájení by u něj ukázalo čas posunutý o offset zóny. Tady se proto
-     * převádí přes Date, stejně jako u formatCommentTime.
-     */
-    formatTimestamp(iso) {
-      const date = new Date(iso);
-      if (isNaN(date.getTime())) return '';
-      const time = String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
-      return date.getDate() + '.' + (date.getMonth() + 1) + '.' + date.getFullYear() + ' ' + time;
-    },
-
     /* ── Přehled ───────────────────────────────────────────────────────── */
 
     loadRequests() {
@@ -5642,7 +5632,7 @@
         '<span><span class="request-status-chip ' + step.cls + '">' + Ui.escape(step.label) + '</span></span>' +
         '<span class="user-cell-name request-cell-title">' + Ui.escape(r.title) + '</span>' +
         '<span class="user-cell-muted">' + Ui.escape(r.authorName) + '</span>' +
-        '<span class="user-cell-muted">' + Ui.escape(this.formatTimestamp(r.createdAt)) + '</span>' +
+        '<span class="user-cell-muted">' + Ui.escape(this.formatDateTime(r.createdAt)) + '</span>' +
         this.renderRequestProgressBar(r.progress, 'is-row') +
         '<span class="user-cell-muted">' + (r.commentCount ? r.commentCount : '—') + '</span>' +
         '<span class="user-actions">' + actions + '</span>' +
@@ -5784,11 +5774,11 @@
       document.querySelector('#requestModalKicker').textContent = 'Požadavek — ' + this.requestStep(request.status).label;
       document.querySelector('#requestModalActions').innerHTML =
         (request.canEdit
-          ? '<button type="button" class="event-modal-action" data-action="edit" title="Upravit" aria-label="Upravit požadavek">' +
+          ? '<button type="button" class="user-action-btn" data-action="edit" title="Upravit" aria-label="Upravit požadavek">' +
             '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>'
           : '') +
         (request.canDelete
-          ? '<button type="button" class="event-modal-action is-danger" data-action="delete" title="Smazat" aria-label="Smazat požadavek">' +
+          ? '<button type="button" class="user-action-btn is-danger" data-action="delete" title="Smazat" aria-label="Smazat požadavek">' +
             '<i class="ph ph-trash" aria-hidden="true"></i></button>'
           : '');
 
@@ -5821,13 +5811,15 @@
           : '<span class="request-step' + state + '">' + inner + '</span>';
       }).join('');
 
-      // Procento se ručně zadává JEN ve stavu V procesu — u Nový/Dokončeno
-      // ho určuje sám stav (0/100, viz _requestProgressFor_ na serveru),
-      // takže posuvník by tam jen sliboval něco, co server stejně přepíše.
-      const slider = (canManage && request.status === 'in_progress')
+      // Posuvník je NEZÁVISLÝ na stavu (zadání) — ukazuje se ve všech třech
+      // stavech, ne jen ve V procesu, a stav ho nijak nepřepisuje. Krok
+      // 20 % musí sedět s REQUEST_PROGRESS_STEP na serveru; ten jiné
+      // hodnoty odmítne, aby v datech nevznikla hodnota, kterou by
+      // posuvník neuměl zobrazit zpátky.
+      const slider = canManage
         ? '<div class="request-progress-edit">' +
             '<label for="requestProgressInput">Pokrok</label>' +
-            '<input type="range" id="requestProgressInput" min="0" max="100" step="5" value="' + Number(request.progress || 0) + '">' +
+            '<input type="range" id="requestProgressInput" min="0" max="100" step="20" value="' + Number(request.progress || 0) + '">' +
             '<output id="requestProgressOutput">' + Number(request.progress || 0) + ' %</output>' +
           '</div>'
         : '';
@@ -5835,7 +5827,7 @@
       document.querySelector('#requestModalInfo').innerHTML =
         '<div class="request-meta">' +
           '<span><i class="ph ph-user" aria-hidden="true"></i> ' + Ui.escape(request.authorName) + '</span>' +
-          '<span><i class="ph ph-clock" aria-hidden="true"></i> ' + Ui.escape(this.formatTimestamp(request.createdAt)) + '</span>' +
+          '<span><i class="ph ph-clock" aria-hidden="true"></i> ' + Ui.escape(this.formatDateTime(request.createdAt)) + '</span>' +
         '</div>' +
         '<div class="field-group field-group-accent">' +
           '<p class="kicker"><i class="ph ph-flow-arrow" aria-hidden="true"></i> Průběh</p>' +
@@ -5860,7 +5852,7 @@
       document.querySelector('#requestModalClose').addEventListener('click', () => Ui.closeModal(dialog));
 
       document.querySelector('#requestModalActions').addEventListener('click', (e) => {
-        const btn = e.target.closest('.event-modal-action');
+        const btn = e.target.closest('.user-action-btn');
         if (!btn) return;
         const request = this.requestsCache.find((r) => r.id === this.currentRequestId);
         if (!request) return;
@@ -5874,7 +5866,7 @@
       info.addEventListener('click', (e) => {
         const step = e.target.closest('.request-step.is-clickable');
         if (step) {
-          this.setRequestStatus(step.dataset.status, null);
+          this.saveRequestState(step.dataset.status, null);
           return;
         }
         const history = e.target.closest('#requestHistory summary');
@@ -5889,7 +5881,7 @@
       });
       info.addEventListener('change', (e) => {
         if (e.target.id !== 'requestProgressInput') return;
-        this.setRequestStatus('in_progress', Number(e.target.value));
+        this.saveRequestState(null, Number(e.target.value));
       });
 
       document.querySelector('#requestCommentForm').addEventListener('submit', (e) => {
@@ -5904,15 +5896,18 @@
     },
 
     /**
-     * Uloží stav (a případně procento) a překreslí detail i řádek v
-     * seznamu. `progress: null` = neposílá se, server si u Nový/Dokončeno
-     * procento stejně určí sám.
+     * Uloží stav NEBO procento a překreslí detail i řádek v seznamu.
+     *
+     * Posílá se jen to, co se skutečně mění (`null` = neposílat) — stav
+     * a procento jsou nezávislé, takže klik na krok průběhu nesmí přepsat
+     * nastavené procento a naopak.
      */
-    setRequestStatus(status, progress) {
+    saveRequestState(status, progress) {
       const id = this.currentRequestId;
       if (!id) return;
 
-      const payload = { id: id, status: status };
+      const payload = { id: id };
+      if (status !== null && status !== undefined) payload.status = status;
       if (progress !== null && progress !== undefined) payload.progress = progress;
 
       Ui.call('apiSetRequestStatus', payload, { silent: true })
@@ -5963,7 +5958,7 @@
           list.innerHTML = items.length
             ? items.map((h) =>
               '<div class="request-history-item">' +
-                '<span class="request-history-time">' + Ui.escape(this.formatTimestamp(h.timestamp)) + '</span>' +
+                '<span class="request-history-time">' + Ui.escape(this.formatDateTime(h.timestamp)) + '</span>' +
                 '<span class="request-history-text">' +
                   '<strong>' + Ui.escape(h.userName) + '</strong> — ' + Ui.escape(h.detail) +
                 '</span>' +
@@ -6917,8 +6912,33 @@
       return Number(parts[2]) + '.' + Number(parts[1]) + '.' + parts[0];
     },
 
+    /**
+     * „D.M.RRRR HH:mm". Zvládá OBA tvary razítek, které po appce kolují:
+     *
+     *  - `YYYY-MM-DDTHH:mm` bez zóny (events.start/end, _audit_log.timestamp
+     *    přes nowLocalIso_, modifiedAt u nalezených souborů) — to UŽ JE
+     *    místní čas, stačí nakrájet podle pozic znaků,
+     *  - úplné ISO s „Z" nebo posunem (`created_at`, které dbInsert_ ukládá
+     *    přes nowIso_/toISOString) — to je UTC a musí se PŘEVÉST.
+     *
+     * Dřív se krájelo vždycky, takže časy v Logu importu ukazovaly UTC,
+     * tedy o hodinu/dvě míň než skutečný čas synchronizace (nahlášeno).
+     * Ostatních volajících se to netýkalo, ti posílají místní tvar —
+     * proto se tvar rozpoznává, místo aby se převádělo natvrdo všude.
+     */
     formatDateTime(iso) {
-      return this.formatFullDate(iso.slice(0, 10)) + ' ' + iso.slice(11, 16);
+      const text = String(iso || '');
+      if (!text) return '';
+
+      if (/Z$|[+-]\d{2}:?\d{2}$/.test(text)) {
+        const date = new Date(text);
+        if (isNaN(date.getTime())) return '';
+        const pad = (n) => String(n).padStart(2, '0');
+        return date.getDate() + '.' + (date.getMonth() + 1) + '.' + date.getFullYear() +
+          ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+      }
+
+      return this.formatFullDate(text.slice(0, 10)) + ' ' + text.slice(11, 16);
     },
 
     /**

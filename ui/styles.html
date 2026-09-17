@@ -2839,15 +2839,24 @@
   }
 
   .cal-nav-today {
+    align-items: center;
     background: var(--white);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     color: var(--lidl-dark-blue);
     cursor: pointer;
+    display: inline-flex;
     font-size: 12px;
     font-weight: 700;
+    gap: 6px;
     height: 32px;
     padding: 0 12px;
+  }
+
+  /* Ikona o něco větší než 12px popisek, ať je vůbec čitelná — stejný
+     poměr jako u .kicker i. */
+  .cal-nav-today i {
+    font-size: 14px;
   }
 
   .cal-nav-today:hover {
@@ -4059,20 +4068,34 @@
     z-index: 1;
   }
 
+  /* Na tmavě modré hlavičce modalu. Dřív byla úplně průhledná a splývala
+     s pozadím — teď mají jemný podklad i obrys, takže je na první pohled
+     poznat, že jde o tlačítka, ne o dekoraci. */
   .event-modal-actions .user-action-btn {
-    background: transparent;
-    color: rgba(255, 255, 255, 0.7);
-    height: 30px;
-    width: 30px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.85);
+    height: 32px;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    width: 32px;
+  }
+
+  .event-modal-actions .user-action-btn i {
+    font-size: 15px;
   }
 
   .event-modal-actions .user-action-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.45);
     color: var(--white);
   }
 
+  /* Smazání červeně až při najetí — v klidovém stavu by dvě různobarevná
+     tlačítka vedle sebe na hlavičce zbytečně křičela. */
   .event-modal-actions .user-action-btn.is-danger:hover {
-    background: rgba(230, 10, 20, 0.35);
+    background: rgba(230, 10, 20, 0.55);
+    border-color: rgba(255, 255, 255, 0.55);
+    color: var(--white);
   }
 
   .event-info-value {
@@ -5010,18 +5033,26 @@
   }
 
   .recurrence-picker-option {
+    align-items: center;
     background: none;
     border: none;
     border-radius: var(--radius);
     color: var(--text);
     cursor: pointer;
-    display: block;
+    display: flex;
     font: inherit;
     font-size: 13px;
     font-weight: 600;
+    gap: 8px;
     padding: 9px 10px;
     text-align: left;
     width: 100%;
+  }
+
+  /* Ikona tlumeně — nese jen "opakuje se / neopakuje", hlavní je text. */
+  .recurrence-picker-option i {
+    color: var(--muted);
+    font-size: 15px;
   }
 
   .recurrence-picker-option:hover {

@@ -1045,6 +1045,16 @@ co s čím souvisí ani že jde o postup v krocích:
   jediná indicie, že jde rozkliknout, nativní `<details>` marker je
   schovaný.
 
+**Zobrazení času v Logu importu (opraveno).** `App.formatDateTime` původně
+razítko jen nakrájela podle pozic znaků. To sedí na tvarech, které appka
+ukládá v MÍSTNÍM čase (`events.start/end`, `_audit_log.timestamp` přes
+`nowLocalIso_`, `modifiedAt` u nalezených souborů), ale `_import_log.
+created_at` plní `dbInsert_` přes `nowIso_()`, tedy úplným ISO v UTC —
+krájení u něj ukazovalo čas o hodinu/dvě míň, než kdy synchronizace
+opravdu proběhla. `formatDateTime` teď tvar rozpozná (`Z` nebo posun zóny
+na konci) a UTC převede přes `Date`; místní tvary krájí dál jako dřív.
+Převádět natvrdo všude by rozbilo právě ty správné volající.
+
 ### 9.7 Státní svátky ČR
 
 Svátky jsou **plně editovatelná tabulka** `_holidays` (id/date/name +
@@ -1597,21 +1607,22 @@ request_comments: id, request_id, author_email, text, created_at
 „Kdo zadal" a „kdy zadal" nemají vlastní sloupce — pokrývá je
 `created_by`/`created_at`, které `dbInsert_` vyplní samo.
 
-**Stav a pokrok** jsou ZÁMĚRNĚ provázané, ne dvě nezávislá pole. Trojice
-stavů je pevně v kódu (`REQUEST_STATUSES` v 00_config.js), ne
-konfigurovatelný seznam jako typy událostí — průběh požadavku je pro
-všechna LC stejný a klíče řídí i dopočet procenta:
+**Stav a pokrok jsou NEZÁVISLÉ.** Trojice stavů je pevně v kódu
+(`REQUEST_STATUSES` v 00_config.js), ne konfigurovatelný seznam jako typy
+událostí — průběh požadavku je pro všechna LC stejný. Procento pokroku je
+ale samostatná hodnota: stav se přepíná tlačítky pásu průběhu, procento
+posuvníkem, jedno druhé nikdy nepřepisuje.
 
-| Stav | Procento |
-|---|---|
-| Nový | vždy 0 % |
-| V procesu | zadává uživatel (0–100) |
-| Dokončeno | vždy 100 % |
+První podoba procento ze stavu dopočítávala (Nový = 0, Dokončeno = 100,
+ručně jen ve V procesu) — po vyzkoušení se to ukázalo jako omezující a na
+základě zpětné vazby se to rozpojilo. `apiSetRequestStatus` proto přijímá
+`status` i `progress` jako nepovinné a mění jen to, co skutečně dorazilo:
+klik na krok průběhu pošle jen `status`, puštění posuvníku jen `progress`.
 
-`_requestProgressFor_` u stavů s pevným procentem poslanou hodnotu
-ignoruje, takže nejde uložit „Dokončeno, 40 %". Posuvník se proto v detailu
-vykresluje jen ve stavu V procesu — jinde by sliboval něco, co server
-stejně přepíše.
+Pokrok se nastavuje **po 20 %** (`REQUEST_PROGRESS_STEP` v 00_config.js).
+Posuvník má tenhle `step` a server kontroluje, že přišel násobek — jinak by
+se do dat mohla dostat hodnota, kterou by posuvník neuměl zobrazit zpátky
+na sobě samém.
 
 **Práva**
 
@@ -1675,7 +1686,8 @@ Detail je ve stejném modal-jazyce jako událost — komentáře jsou dokonce
 doslova tytéž funkce (`renderCommentItem`/`commentsEmptyState`), liší se
 jen endpoint a cílový seznam. Pás průběhu vidí všichni; kdo nemá právo,
 dostane ho jako `<span>` místo `<button>`, aby appka nenabízela akci, která
-by stejně skončila chybou.
+by stejně skončila chybou. Posuvník pokroku se ukazuje ve všech třech
+stavech, ne jen v jednom — je na stavu nezávislý.
 
 **Menu** je kvůli téhle sekci rozdělené do skupin oddělených linkou:
 Kalendář + Požadavky / Uživatelé / Filiálky + LC, a Nastavení samostatně

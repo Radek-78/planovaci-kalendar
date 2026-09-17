@@ -36,21 +36,20 @@ function _requestStatusDef_(key) {
 }
 
 /**
- * Procento pokroku, které se má u daného stavu skutečně uložit.
+ * Ověří poslané procento pokroku. Na stavu NEZÁVISÍ — stav a procento
+ * jsou dvě samostatné hodnoty (viz komentář u REQUEST_STATUSES).
  *
- * U stavů s pevným procentem (Nový = 0, Dokončeno = 100) se poslaná
- * hodnota ZÁMĚRNĚ ignoruje — jinak by šlo uložit „Dokončeno, 40 %" a stav
- * s procentem by si odporovaly. Ručně se procento zadává jen ve stavu
- * „V procesu" (`progress: null` v REQUEST_STATUSES).
+ * Kontroluje se i násobek REQUEST_PROGRESS_STEP: posuvník v UI jiné
+ * hodnoty nenabízí, takže cokoli jiného by se sice uložilo, ale uživatel
+ * by to pak nemohl trefit zpátky.
  */
-function _requestProgressFor_(statusKey, requestedProgress) {
-  const def = _requestStatusDef_(statusKey);
-  if (!def) throw userError_('Neznámý stav požadavku.');
-  if (def.progress !== null) return def.progress;
-
+function _requestProgressFor_(requestedProgress) {
   const value = Math.round(Number(requestedProgress));
   if (!isFinite(value) || value < 0 || value > 100) {
     throw userError_('Pokrok musí být celé číslo od 0 do 100.');
+  }
+  if (value % REQUEST_PROGRESS_STEP !== 0) {
+    throw userError_('Pokrok se nastavuje po ' + REQUEST_PROGRESS_STEP + ' %.');
   }
   return value;
 }
@@ -142,7 +141,7 @@ function apiSaveRequest(payload) {
         title: title,
         description: description,
         status: REQUEST_STATUSES[0].key,
-        progress: REQUEST_STATUSES[0].progress,
+        progress: 0,
       });
       audit_('request.create', 'Nový požadavek „' + title + '"', String(created.id));
       return _publicRequest_(created, user, settings, {}, {});
@@ -177,11 +176,13 @@ function apiSaveRequest(payload) {
 }
 
 /**
- * Změní stav a procento pokroku. Oddělený endpoint právě proto, že tohle
- * je jediná část požadavku s jiným pravidlem než „vlastník nebo správce"
- * — viz canManageRequestStatus_ v 30_auth.js.
+ * Změní stav NEBO procento pokroku — obojí je nezávislé, takže volající
+ * posílá jen to, co skutečně mění (klik na krok průběhu pošle jen `status`,
+ * puštění posuvníku jen `progress`). Oddělený endpoint od apiSaveRequest
+ * proto, že tohle je jediná část požadavku s jiným pravidlem než
+ * „vlastník nebo správce" — viz canManageRequestStatus_ v 30_auth.js.
  *
- * @param {Object} payload  { id, status, progress? }
+ * @param {Object} payload  { id, status?, progress? } — aspoň jedno z nich
  */
 function apiSetRequestStatus(payload) {
   return guard_(PERM_KEYS.CALENDAR_READ, (user) => {
@@ -205,12 +206,18 @@ function apiSetRequestStatus(payload) {
       throw userError_('Požadavek nebyl nalezen — možná ho mezitím smazal někdo jiný.');
     }
 
-    const def = _requestStatusDef_(data.status);
-    if (!def) throw userError_('Neznámý stav požadavku.');
-    const progress = _requestProgressFor_(def.key, data.progress);
+    const hasStatus = data.status !== undefined && data.status !== null;
+    const hasProgress = data.progress !== undefined && data.progress !== null;
+    if (!hasStatus && !hasProgress) {
+      throw userError_('Není co změnit — chybí stav i pokrok.');
+    }
 
     const oldDef = _requestStatusDef_(existing.status) || REQUEST_STATUSES[0];
     const oldProgress = Number(existing.progress || 0);
+
+    const def = hasStatus ? _requestStatusDef_(data.status) : oldDef;
+    if (!def) throw userError_('Neznámý stav požadavku.');
+    const progress = hasProgress ? _requestProgressFor_(data.progress) : oldProgress;
 
     const updated = dbUpdate_(SHEETS.REQUESTS, id, { status: def.key, progress: progress, updated_by: user.email });
 
