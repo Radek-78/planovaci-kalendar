@@ -30,8 +30,8 @@ const CONFIG = {
    * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
    * první spuštění release.ps1 hodnoty přepíše.
    */
-  version: 'v0.11.0',
-  releaseDate: '16.9.2026',
+  version: 'v0.12.0',
+  releaseDate: '17.9.2026',
 
   /**
    * Font, kterým se formátují listy databáze. Musí to být PŘESNÝ název tak,
@@ -108,7 +108,25 @@ const SHEETS = {
   HOLIDAYS: '_holidays',
   EVENT_TEMPLATES: '_event_templates',
   EVENT_VIEWS: '_event_views',
+  REQUESTS: 'requests',
+  REQUEST_COMMENTS: 'request_comments',
 };
+
+/**
+ * Stavy požadavku (sekce Požadavky). ZÁMĚRNĚ pevná trojice v kódu, ne
+ * konfigurovatelný seznam jako typy událostí — průběh požadavku je pro
+ * všechna LC stejný a tyhle klíče řídí i dopočet procenta pokroku, takže
+ * přidání čtvrtého stavu není jen doplnění řádku do tabulky.
+ *
+ * `progress` = procento, které stavu přísluší napevno; `null` znamená
+ * "řídí si ho uživatel". Díky tomu si stav a procento nemůžou odporovat
+ * (nejde mít Dokončeno na 40 %) — viz _requestProgressFor_ v 50_api.js.
+ */
+const REQUEST_STATUSES = [
+  { key: 'new', label: 'Nový', progress: 0 },
+  { key: 'in_progress', label: 'V procesu', progress: null },
+  { key: 'done', label: 'Dokončeno', progress: 100 },
+];
 
 /**
  * Klíče oprávnění, se kterými pracuje guard_ v 30_auth.js.
@@ -235,8 +253,9 @@ const LIMITS = {
    * serveru je pro všechny tři stejná (prostý text do tohoto limitu), i když
    * Oddělení a Pozice appka nabízí jako výběr ze seznamu v Nastavení
    * (`_departments`/`_positions`) — uložená hodnota je ale pořád jen text,
-   * žádná cizí klíč vazba (viz komentář u `_users` v 20_db.js). Umístění
-   * zůstává zatím čistě volný text bez seznamu.
+   * žádná cizí klíč vazba (viz komentář u `_users` v 20_db.js). Totéž platí
+   * i pro Umístění — to se vybírá ze zkratek aktivních LC plus pevné "DL",
+   * ale uloží se zase jen text zkratky.
    */
   ORG_FIELD_MAX: 60,
   /** Nejvíc oznámení, které apiGetBootstrap vrátí najednou — pojistka proti obřímu seznamu (např. hodně starý notifications_seen_at). */
@@ -249,6 +268,12 @@ const LIMITS = {
   DEPARTMENT_NAME_MAX: 60,
   /** Popisek typu události (Nastavení). */
   EVENT_TYPE_LABEL_MAX: 40,
+  /** Název požadavku (sekce Požadavky) — jednořádkový nadpis, ne popis. */
+  REQUEST_TITLE_MAX: 150,
+  /** Popis požadavku — delší než popis události, je to hlavní obsah záznamu. */
+  REQUEST_DESCRIPTION_MAX: 4000,
+  /** Nejvíc položek historie, které apiGetRequestHistory vrátí u jednoho požadavku. */
+  REQUEST_HISTORY_MAX: 100,
   /** URL/ID složky pro import dat filiálek (Nastavení) — URL bývá dlouhá. */
   IMPORT_FOLDER_MAX: 500,
   /** Hledaný výraz v názvu souboru při importu dat filiálek. */
@@ -304,6 +329,23 @@ const DEFAULT_SETTINGS = {
   // sadu znovu podstrčila zpátky, kdyby uživatel pro daný rok smazal
   // úplně všechny záznamy.
   holidaysSeededYears: '',
+  // Kdo smí měnit stav a procento pokroku u požadavků — dvojice "umístění
+  // + pozice" uživatele, nastavitelná v Nastavení → Požadavky.
+  //
+  // ZÁMĚRNĚ nastavení, ne konstanta v kódu: `_users.location` i
+  // `_users.position` drží jen TEXT názvu, žádnou vazbu na
+  // _logistic_centers/_positions (viz komentář u _users v 20_db.js).
+  // S názvem napevno v kódu by přejmenování pozice v Nastavení právo tiše
+  // rozbilo — a ne naráz, ale postupně: uživatelům by staré znění zůstalo
+  // uložené a právo jim fungovalo dál, dokud by je někdo příště neuložil
+  // ve formuláři, kde by se nabídl už jen nový název.
+  //
+  // Prázdná pozice = nemá ho nikdo kromě SUPERADMIN (viz
+  // _canManageRequestStatus_). Je to bezpečná výchozí hodnota — `_positions`
+  // je na začátku prázdná tabulka, appka nemůže dopředu vědět, jak se
+  // pozice u zákazníka jmenuje.
+  requestManagerLocation: 'DL',
+  requestManagerPosition: '',
 };
 
 /** Časová zóna aplikace. Musí odpovídat timeZone v appsscript.json. */

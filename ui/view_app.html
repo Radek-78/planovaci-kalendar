@@ -34,24 +34,47 @@
       </span>
     </div>
 
+    <!-- Menu je rozdělené do skupin oddělených linkou: obsah appky
+         (Kalendář, Požadavky) — lidé — importovaná data. Nastavení stojí
+         samostatně dole (.nav-group-bottom má margin-top:auto), je to
+         správa appky, ne každodenní práce.
+         Skupina se CELÁ skryje, když v ní uživatel nemá na nic právo (viz
+         syncNavGroups) — jinak by po skrytí tlačítka zbyl osiřelý
+         oddělovač a prázdná mezera. -->
     <nav class="navigation" aria-label="Hlavní navigace">
-      <button class="nav-link is-active" type="button" data-section="calendar">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"></use></svg><span>Kalendář</span>
-      </button>
-      <button class="nav-link" type="button" data-section="users" id="navUsers">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-users"></use></svg><span>Uživatelé</span>
-      </button>
+      <div class="nav-group">
+        <button class="nav-link is-active" type="button" data-section="calendar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"></use></svg><span>Kalendář</span>
+        </button>
+        <!-- Požadavky vidí a zadávat smí každý přihlášený — i VIEWER, není
+             to zápis do kalendáře (viz 55_requests.js). -->
+        <button class="nav-link" type="button" data-section="requests">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-request"></use></svg><span>Požadavky</span>
+        </button>
+      </div>
+
+      <div class="nav-group">
+        <button class="nav-link" type="button" data-section="users" id="navUsers">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-users"></use></svg><span>Uživatelé</span>
+        </button>
+      </div>
+
       <!-- Filiálky/LC vidí každý přihlášený (calendar_read) — data přichází
            importem (viz server/60_import.js), žádné omezení podle role. -->
-      <button class="nav-link" type="button" data-section="stores">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-store"></use></svg><span>Filiálky</span>
-      </button>
-      <button class="nav-link" type="button" data-section="lc">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-warehouse"></use></svg><span>LC</span>
-      </button>
-      <button class="nav-link" type="button" data-section="settings" id="navSettings">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-settings"></use></svg><span>Nastavení</span>
-      </button>
+      <div class="nav-group">
+        <button class="nav-link" type="button" data-section="stores">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-store"></use></svg><span>Filiálky</span>
+        </button>
+        <button class="nav-link" type="button" data-section="lc">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-warehouse"></use></svg><span>LC</span>
+        </button>
+      </div>
+
+      <div class="nav-group nav-group-bottom">
+        <button class="nav-link" type="button" data-section="settings" id="navSettings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-settings"></use></svg><span>Nastavení</span>
+        </button>
+      </div>
     </nav>
 
     <div class="sidebar-user">
@@ -121,6 +144,25 @@
       </div>
       <div class="cal-grid-wrap">
         <div class="cal-grid" id="calGrid"><!-- vykresleno JS --></div>
+      </div>
+    </section>
+
+    <!-- Panel: Požadavky — přehled požadavků vedoucích pracovníků LC (viz
+         server/55_requests.js). Zadat smí každý přihlášený, stav a procento
+         pokroku jen ten, kdo projde canManageRequestStatus_.
+         Tabulka používá STEJNOU obecnou hlavičku s filtrem a řazením jako
+         Uživatelé/Filiálky (viz renderDataTableHead) — proto tu není žádné
+         vlastní ovládání filtrování, sedí v hlavičce sloupců. -->
+    <section class="view-panel" data-page-section="requests">
+      <div class="section-header">
+        <h2>Požadavky</h2>
+        <button class="button button-primary" type="button" id="requestsCreateBtn">
+          <i class="ph ph-plus" aria-hidden="true"></i> Nový požadavek
+        </button>
+      </div>
+      <div class="users-panel-wrap">
+        <div class="data-table-head requests-table-head" id="requestsTableHead"><!-- vykresleno JS, viz renderDataTableHead --></div>
+        <div class="data-table-body" id="requestsList"><!-- vykresleno JS --></div>
       </div>
     </section>
 
@@ -196,6 +238,9 @@
           </button>
           <button class="settings-tab" type="button" data-settings-tab="holidays">
             <i class="ph ph-flag" aria-hidden="true"></i> Státní svátky ČR
+          </button>
+          <button class="settings-tab" type="button" data-settings-tab="requests">
+            <i class="ph ph-clipboard-text" aria-hidden="true"></i> Požadavky
           </button>
         </div>
 
@@ -339,6 +384,36 @@
             <section class="field-group field-group-accent import-card import-log">
               <p class="kicker import-card-head"><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> Historie synchronizací</p>
               <div class="import-log-list" id="importLogList"><!-- vykresleno JS --></div>
+            </section>
+          </div>
+        </div>
+
+        <!-- Požadavky — kdo smí měnit stav a procento pokroku. Dvojice
+             "umístění + pozice", ne role: proč zrovna takhle a proč jako
+             nastavení místo konstanty v kódu, viz komentář
+             u requestManagerPosition v DEFAULT_SETTINGS (00_config.js).
+             Prázdná pozice = smí jen SUPERADMIN, ne "smí každý". -->
+        <div class="settings-panel" data-settings-panel="requests">
+          <div class="settings-panel-head">
+            <p class="settings-panel-desc">Kdo smí u požadavků měnit stav a procento pokroku. Zadat požadavek a komentovat smí každý přihlášený uživatel.</p>
+          </div>
+          <div class="settings-cards">
+            <section class="field-group field-group-accent settings-card">
+              <p class="kicker settings-card-head"><i class="ph ph-shield-check" aria-hidden="true"></i> Stav požadavků smí měnit</p>
+              <div class="request-settings-row">
+                <label>
+                  <span>Umístění</span>
+                  <select id="requestSettingsLocation"><!-- vykresleno JS --></select>
+                </label>
+                <label>
+                  <span>Pozice</span>
+                  <select id="requestSettingsPosition"><!-- vykresleno JS --></select>
+                </label>
+                <button class="button button-primary" type="button" id="requestSettingsSaveBtn">
+                  <i class="ph ph-check" aria-hidden="true"></i> Uložit
+                </button>
+              </div>
+              <p class="settings-card-status" id="requestSettingsStatus"></p>
             </section>
           </div>
         </div>
@@ -799,6 +874,78 @@
       </button>
     </div>
   </form>
+</dialog>
+
+<!-- ══ Modal: požadavek (nový/upravovaný) — stejný vizuální jazyk jako
+     formulář události a svátku: Název jako "hero" pole nahoře, pod ním
+     karta s modrým orámováním pro popis.
+     Stav ani procento pokroku tu ZÁMĚRNĚ nejsou — mění se v detailu
+     požadavku a řídí je jiné právo (viz apiSetRequestStatus). ══ -->
+<dialog class="modal modal-wide modal-grow" id="requestFormModal">
+  <div class="modal-header">
+    <span class="modal-icon"><i class="ph ph-clipboard-text" aria-hidden="true"></i></span>
+    <div class="modal-header-text">
+      <p class="kicker" id="requestFormKicker">Nový požadavek</p>
+      <h2 id="requestFormModalTitle">Zadat požadavek</h2>
+    </div>
+    <button class="modal-close" type="button" id="requestFormClose" aria-label="Zavřít">
+      <i class="ph ph-x" aria-hidden="true"></i>
+    </button>
+  </div>
+  <form id="requestForm">
+    <div class="modal-body request-form-body">
+      <label class="form-hero-field">
+        <span>Název požadavku *</span>
+        <input type="text" id="requestFormTitle" maxlength="150" required class="form-hero-input">
+      </label>
+
+      <div class="field-group field-group-accent">
+        <p class="kicker"><i class="ph ph-text-align-left" aria-hidden="true"></i> Popis</p>
+        <label>
+          <span>Co je potřeba</span>
+          <textarea id="requestFormDescription" maxlength="4000" rows="7"
+                    placeholder="Popište požadavek co nejkonkrétněji…"></textarea>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="button button-ghost" type="button" id="requestFormCancel">Zrušit</button>
+      <button class="button button-primary" type="submit" id="requestFormSubmit">Uložit</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ══ Modal: detail požadavku — popis, ovládání stavu a pokroku,
+     komentáře a historie úprav.
+     Ovládání stavu appka vykreslí jen tomu, kdo na to má právo
+     (canManageStatus ze serveru); ostatní vidí stejný pás jen jako
+     nekliknutelný ukazatel, ať je průběh vidět všem. Historie se načítá
+     z auditního logu (apiGetRequestHistory), proto je v <details> —
+     zajímá až při dohledávání, ne pokaždé. ══ -->
+<dialog class="modal modal-wide modal-grow" id="requestModal">
+  <div class="modal-header">
+    <span class="modal-icon"><i class="ph ph-clipboard-text" aria-hidden="true"></i></span>
+    <div class="modal-header-text">
+      <p class="kicker" id="requestModalKicker">Požadavek</p>
+      <h2 id="requestModalTitle"></h2>
+    </div>
+    <div class="event-modal-actions" id="requestModalActions"><!-- vykresleno JS --></div>
+    <button class="modal-close" type="button" id="requestModalClose" aria-label="Zavřít">
+      <i class="ph ph-x" aria-hidden="true"></i>
+    </button>
+  </div>
+  <div class="modal-body">
+    <div class="request-modal-info" id="requestModalInfo"><!-- vykresleno JS --></div>
+    <div class="event-modal-comments">
+      <div class="event-comments-list" id="requestCommentsList"><!-- vykresleno JS --></div>
+      <form class="event-comment-form" id="requestCommentForm">
+        <textarea id="requestCommentInput" placeholder="Napište komentář…" maxlength="500" rows="1"></textarea>
+        <button type="submit" class="button-icon" id="requestCommentSubmit" aria-label="Odeslat komentář">
+          <i class="ph ph-paper-plane-tilt" aria-hidden="true"></i>
+        </button>
+      </form>
+    </div>
+  </div>
 </dialog>
 
 <!-- ══ Modal: svátek (nový/upravovaný) — stejný vizuální jazyk jako formulář
@@ -1309,6 +1456,7 @@
       const canManageSettings = data.permissions.canManageSettings === true;
       if (!canManageUsers) document.querySelector('#navUsers').classList.add('is-hidden');
       if (!canManageSettings) document.querySelector('#navSettings').classList.add('is-hidden');
+      this.syncNavGroups();
 
       this.eventTypes = data.eventTypes || {};
       this.canWrite = data.permissions.canWrite === true;
@@ -1333,12 +1481,16 @@
       this.bindChipTooltip();
       this.bindStores();
       this.bindLc();
+      this.bindRequests();
       if (!canManageSettings) {
         document.querySelector('#storesActionsHead').classList.add('is-hidden');
         document.querySelector('#lcActionsHead').classList.add('is-hidden');
       }
       if (canManageUsers) this.bindUserForm();
-      if (canManageSettings) this.bindSettings();
+      if (canManageSettings) {
+        this.bindSettings();
+        this.bindRequestSettings();
+      }
       this.renderCalendar();
       this.startPolling();
 
@@ -3312,6 +3464,31 @@
         { key: 'storeCount', label: 'Filiálek', filterValue: (l) => String(l.storeCount), sortValue: (l) => l.storeCount, filterSort: 'number', sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší' },
         { key: 'akce', label: 'Akce', actionsOnly: true },
       ],
+      requests: [
+        {
+          key: 'stav', label: 'Stav',
+          filterValue: (r) => r.status,
+          filterLabel: (v) => ({ new: 'Nový', in_progress: 'V procesu', done: 'Dokončeno' }[v] || v),
+          filterOrder: ['new', 'in_progress', 'done'],
+          sortValue: (r) => ({ new: 0, in_progress: 1, done: 2 }[r.status]),
+          sortAsc: 'Nové nahoře', sortDesc: 'Dokončené nahoře',
+        },
+        { key: 'nazev', label: 'Název', filterValue: (r) => r.title, sortValue: (r) => r.title, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
+        { key: 'zadal', label: 'Zadal', filterValue: (r) => r.authorName, sortValue: (r) => r.authorName, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
+        {
+          // Filtruje se podle DNE (ne přesného času) — jinak by měl každý
+          // požadavek vlastní, nikdy se neopakující hodnotu a filtr by
+          // nedával smysl. Řadí se přitom podle úplného razítka.
+          key: 'zadano', label: 'Zadáno',
+          filterValue: (r) => String(r.createdAt).slice(0, 10),
+          filterLabel: (v) => v.split('-').reverse().join('.'),
+          sortValue: (r) => r.createdAt,
+          filterSort: 'text', sortAsc: 'Nejstarší nahoře', sortDesc: 'Nejnovější nahoře',
+        },
+        { key: 'pokrok', label: 'Pokrok', filterValue: (r) => r.progress + ' %', sortValue: (r) => r.progress, filterSort: 'number', sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší' },
+        { key: 'komentare', label: 'Komentáře', filterValue: (r) => String(r.commentCount), sortValue: (r) => r.commentCount, filterSort: 'number', sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší' },
+        { key: 'akce', label: 'Akce', actionsOnly: true },
+      ],
     },
 
     /** Aktuální řazení/filtry obou tabulek — čistě na klientovi, nic se neukládá na server. */
@@ -3327,6 +3504,7 @@
       users: { sortOrder: [], filters: {} },
       stores: { sortOrder: [], filters: {} },
       lc: { sortOrder: [], filters: {} },
+      requests: { sortOrder: [], filters: {} },
     },
 
     /**
@@ -3428,6 +3606,7 @@
       this.renderDataTableHead(tableName);
       if (tableName === 'users') this.renderUsersFromCache();
       else if (tableName === 'stores') this.renderStores();
+      else if (tableName === 'requests') this.renderRequests();
       else this.renderLc();
     },
 
@@ -5369,6 +5548,572 @@
       }, originEl);
     },
 
+    /* ══ POŽADAVKY ══════════════════════════════════════════════════════
+       Sekce Požadavky (server/55_requests.js). Tabulka používá STEJNOU
+       obecnou hlavičku s filtrem a řazením jako Uživatelé/Filiálky
+       (DATA_TABLE_COLUMNS + applyDataTableView), detail pak stejný
+       modal-jazyk jako událost — komentáře jsou dokonce doslova tytéž
+       funkce (renderCommentItem/commentsEmptyState/formatCommentTime),
+       liší se jen endpoint a cílový seznam.
+       ════════════════════════════════════════════════════════════════ */
+
+    /** Poslední načtený seznam požadavků — filtr i řazení se počítají z něj, ne novým dotazem na server. */
+    requestsCache: [],
+
+    /** Id požadavku otevřeného v detailu — kvůli překreslení po změně stavu i po přidání komentáře. */
+    currentRequestId: null,
+
+    /**
+     * Popisky a barevné třídy stavů. Klíče MUSÍ sedět s REQUEST_STATUSES
+     * na serveru (00_config.js) — server posílá i hotový `statusLabel`,
+     * tohle je tu kvůli pořadí kroků v pásu průběhu a kvůli barvám, které
+     * server neřeší.
+     */
+    REQUEST_STATUS_STEPS: [
+      { key: 'new', label: 'Nový', cls: 'is-new' },
+      { key: 'in_progress', label: 'V procesu', cls: 'is-progress' },
+      { key: 'done', label: 'Dokončeno', cls: 'is-done' },
+    ],
+
+    /** Definice kroku podle klíče — s bezpečným pádem na první krok u neznámé hodnoty. */
+    requestStep(statusKey) {
+      return this.REQUEST_STATUS_STEPS.find((s) => s.key === statusKey) || this.REQUEST_STATUS_STEPS[0];
+    },
+
+    /**
+     * „D.M.RRRR HH:mm" v MÍSTNÍM čase prohlížeče.
+     *
+     * Záměrně ne App.formatDateTime: ta hodnotu jen nakrájí podle pozic
+     * znaků, což sedí na `events.start` (tvar YYYY-MM-DDTHH:mm v místní
+     * zóně), ale `created_at` je uložené přes nowIso_() jako UTC s „Z" —
+     * krájení by u něj ukázalo čas posunutý o offset zóny. Tady se proto
+     * převádí přes Date, stejně jako u formatCommentTime.
+     */
+    formatTimestamp(iso) {
+      const date = new Date(iso);
+      if (isNaN(date.getTime())) return '';
+      const time = String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+      return date.getDate() + '.' + (date.getMonth() + 1) + '.' + date.getFullYear() + ' ' + time;
+    },
+
+    /* ── Přehled ───────────────────────────────────────────────────────── */
+
+    loadRequests() {
+      const list = document.querySelector('#requestsList');
+      list.innerHTML = this.usersPlaceholder('Načítám požadavky…');
+
+      Ui.call('apiGetRequests', null, { silent: true })
+        .then((items) => {
+          this.requestsCache = items;
+          this.renderRequests();
+        })
+        .catch((error) => {
+          list.innerHTML = this.usersPlaceholder('Požadavky se nepodařilo načíst.');
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    renderRequests() {
+      const list = document.querySelector('#requestsList');
+      const rows = this.applyDataTableView('requests', this.requestsCache);
+
+      list.innerHTML = rows.length
+        ? rows.map((r) => this.renderRequestRow(r)).join('')
+        : this.usersPlaceholder(this.requestsCache.length
+          ? 'Žádný požadavek neodpovídá filtru.'
+          : 'Zatím žádné požadavky — zadejte první tlačítkem nahoře.');
+    },
+
+    renderRequestRow(r) {
+      const step = this.requestStep(r.status);
+      const actions =
+        (r.canEdit
+          ? '<button type="button" class="user-action-btn" data-action="edit" data-id="' + Ui.escape(r.id) +
+            '" title="Upravit" aria-label="Upravit požadavek ' + Ui.escape(r.title) + '">' +
+            '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>'
+          : '') +
+        (r.canDelete
+          ? '<button type="button" class="user-action-btn is-danger" data-action="delete" data-id="' + Ui.escape(r.id) +
+            '" title="Smazat" aria-label="Smazat požadavek ' + Ui.escape(r.title) + '">' +
+            '<i class="ph ph-trash" aria-hidden="true"></i></button>'
+          : '');
+
+      return '<div class="data-row request-row" data-id="' + Ui.escape(r.id) + '">' +
+        '<span><span class="request-status-chip ' + step.cls + '">' + Ui.escape(step.label) + '</span></span>' +
+        '<span class="user-cell-name request-cell-title">' + Ui.escape(r.title) + '</span>' +
+        '<span class="user-cell-muted">' + Ui.escape(r.authorName) + '</span>' +
+        '<span class="user-cell-muted">' + Ui.escape(this.formatTimestamp(r.createdAt)) + '</span>' +
+        this.renderRequestProgressBar(r.progress, 'is-row') +
+        '<span class="user-cell-muted">' + (r.commentCount ? r.commentCount : '—') + '</span>' +
+        '<span class="user-actions">' + actions + '</span>' +
+      '</div>';
+    },
+
+    /** Proužek pokroku — sdílený mezi řádkem tabulky a detailem, liší se jen třídou velikosti. */
+    renderRequestProgressBar(progress, extraClass) {
+      const value = Math.max(0, Math.min(100, Number(progress) || 0));
+      return '<span class="request-progress ' + extraClass + '">' +
+        '<span class="request-progress-track"><span class="request-progress-fill" style="width: ' + value + '%"></span></span>' +
+        '<span class="request-progress-value">' + value + ' %</span>' +
+      '</span>';
+    },
+
+    bindRequests() {
+      document.querySelector('#requestsCreateBtn')
+        .addEventListener('click', (e) => this.openRequestFormModal(null, e.currentTarget));
+
+      this.bindDataTableHead('requests');
+
+      // Delegovaně — seznam se překresluje celý při každé změně filtru,
+      // stavu i po uložení, takže listener na jednotlivých řádcích by se
+      // pokaždé ztratil (stejný vzor jako u mřížky kalendáře).
+      document.querySelector('#requestsList').addEventListener('click', (e) => {
+        const actionBtn = e.target.closest('.user-action-btn');
+        if (actionBtn) {
+          const request = this.requestsCache.find((r) => r.id === actionBtn.dataset.id);
+          if (!request) return;
+          if (actionBtn.dataset.action === 'edit') this.openRequestFormModal(request, actionBtn);
+          else if (actionBtn.dataset.action === 'delete') this.confirmDeleteRequest(request, actionBtn);
+          return;
+        }
+
+        const row = e.target.closest('.request-row');
+        if (row) this.openRequestModal(row.dataset.id, row);
+      });
+
+      this.bindRequestForm();
+      this.bindRequestModal();
+    },
+
+    /* ── Formulář (nový/úprava) ────────────────────────────────────────── */
+
+    openRequestFormModal(request, originEl) {
+      const dialog = document.querySelector('#requestFormModal');
+      const form = document.querySelector('#requestForm');
+
+      form.dataset.requestId = request ? request.id : '';
+      document.querySelector('#requestFormKicker').textContent = request ? 'Úprava požadavku' : 'Nový požadavek';
+      document.querySelector('#requestFormModalTitle').textContent = request ? 'Upravit požadavek' : 'Zadat požadavek';
+      document.querySelector('#requestFormTitle').value = request ? request.title : '';
+      document.querySelector('#requestFormDescription').value = request ? request.description : '';
+
+      this.setModalOrigin(dialog, originEl);
+      Ui.openModal(dialog);
+      document.querySelector('#requestFormTitle').focus();
+    },
+
+    bindRequestForm() {
+      const dialog = document.querySelector('#requestFormModal');
+      document.querySelector('#requestFormClose').addEventListener('click', () => Ui.closeModal(dialog));
+      document.querySelector('#requestFormCancel').addEventListener('click', () => Ui.closeModal(dialog));
+      document.querySelector('#requestForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.submitRequestForm();
+      });
+    },
+
+    submitRequestForm() {
+      const form = document.querySelector('#requestForm');
+      const dialog = document.querySelector('#requestFormModal');
+      const submitButton = document.querySelector('#requestFormSubmit');
+      const id = form.dataset.requestId;
+
+      const payload = {
+        title: document.querySelector('#requestFormTitle').value.trim(),
+        description: document.querySelector('#requestFormDescription').value.trim(),
+      };
+      if (id) payload.id = id;
+
+      Ui.setButtonLoading(submitButton, true, 'Ukládám…');
+      Ui.call('apiSaveRequest', payload, { silent: true })
+        .then(() => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.closeModal(dialog);
+          Ui.toast(id ? 'Požadavek upraven.' : 'Požadavek zadán.', 'success');
+          this.loadRequests();
+          // Když se upravoval právě otevřený detail, ať v něm rovnou sedí
+          // nový název a popis — jinak by uživatel viděl starou verzi.
+          if (id && this.currentRequestId === id) this.reloadOpenRequest();
+        })
+        .catch((error) => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    confirmDeleteRequest(request, originEl) {
+      this.confirmAction({
+        title: 'Smazat požadavek?',
+        body: '„' + request.title + '" se smaže i se všemi komentáři. Záznam v historii zůstane.',
+        okLabel: 'Smazat',
+        okIcon: 'ph-trash',
+        okClass: 'button-danger',
+        onConfirm: (okBtn, dialog) => {
+          Ui.setButtonLoading(okBtn, true, 'Mažu…');
+          Ui.call('apiDeleteRequest', { id: request.id }, { silent: true })
+            .then(() => {
+              Ui.closeModal(dialog);
+              Ui.toast('Požadavek smazán.', 'success');
+              if (this.currentRequestId === request.id) {
+                Ui.closeModal(document.querySelector('#requestModal'));
+                this.currentRequestId = null;
+              }
+              this.loadRequests();
+            })
+            .catch((error) => {
+              Ui.setButtonLoading(okBtn, false);
+              Ui.toast(error.message, 'error');
+            });
+        },
+      }, originEl);
+    },
+
+    /* ── Detail ────────────────────────────────────────────────────────── */
+
+    openRequestModal(id, originEl) {
+      const request = this.requestsCache.find((r) => r.id === id);
+      if (!request) {
+        Ui.toast('Požadavek nebyl nalezen — zkuste obnovit seznam.', 'error');
+        return;
+      }
+
+      this.currentRequestId = id;
+      const dialog = document.querySelector('#requestModal');
+
+      document.querySelector('#requestModalTitle').textContent = request.title;
+      document.querySelector('#requestModalKicker').textContent = 'Požadavek — ' + this.requestStep(request.status).label;
+      document.querySelector('#requestModalActions').innerHTML =
+        (request.canEdit
+          ? '<button type="button" class="event-modal-action" data-action="edit" title="Upravit" aria-label="Upravit požadavek">' +
+            '<i class="ph ph-pencil-simple" aria-hidden="true"></i></button>'
+          : '') +
+        (request.canDelete
+          ? '<button type="button" class="event-modal-action is-danger" data-action="delete" title="Smazat" aria-label="Smazat požadavek">' +
+            '<i class="ph ph-trash" aria-hidden="true"></i></button>'
+          : '');
+
+      this.renderRequestInfo(request);
+      document.querySelector('#requestCommentForm').dataset.requestId = id;
+      this.loadRequestComments(id);
+
+      this.setModalOrigin(dialog, originEl);
+      Ui.openModal(dialog);
+    },
+
+    /**
+     * Tělo detailu: kdo/kdy, pás průběhu, popis a historie.
+     *
+     * Pás průběhu vidí VŠICHNI — je to hlavní informace o požadavku.
+     * Kliknutelný je jen tomu, kdo má právo (canManageStatus ze serveru);
+     * ostatním se vykreslí jako prostý ukazatel, ne jako tlačítka, ať
+     * nenabízí akci, která by stejně skončila chybou.
+     */
+    renderRequestInfo(request) {
+      const canManage = request.canManageStatus === true;
+      const currentIndex = this.REQUEST_STATUS_STEPS.findIndex((s) => s.key === request.status);
+
+      const steps = this.REQUEST_STATUS_STEPS.map((step, index) => {
+        const state = index < currentIndex ? ' is-done' : (index === currentIndex ? ' is-current' : '');
+        const inner = '<span class="request-step-dot">' + (index + 1) + '</span>' +
+          '<span class="request-step-label">' + Ui.escape(step.label) + '</span>';
+        return canManage
+          ? '<button type="button" class="request-step is-clickable' + state + '" data-status="' + step.key + '">' + inner + '</button>'
+          : '<span class="request-step' + state + '">' + inner + '</span>';
+      }).join('');
+
+      // Procento se ručně zadává JEN ve stavu V procesu — u Nový/Dokončeno
+      // ho určuje sám stav (0/100, viz _requestProgressFor_ na serveru),
+      // takže posuvník by tam jen sliboval něco, co server stejně přepíše.
+      const slider = (canManage && request.status === 'in_progress')
+        ? '<div class="request-progress-edit">' +
+            '<label for="requestProgressInput">Pokrok</label>' +
+            '<input type="range" id="requestProgressInput" min="0" max="100" step="5" value="' + Number(request.progress || 0) + '">' +
+            '<output id="requestProgressOutput">' + Number(request.progress || 0) + ' %</output>' +
+          '</div>'
+        : '';
+
+      document.querySelector('#requestModalInfo').innerHTML =
+        '<div class="request-meta">' +
+          '<span><i class="ph ph-user" aria-hidden="true"></i> ' + Ui.escape(request.authorName) + '</span>' +
+          '<span><i class="ph ph-clock" aria-hidden="true"></i> ' + Ui.escape(this.formatTimestamp(request.createdAt)) + '</span>' +
+        '</div>' +
+        '<div class="field-group field-group-accent">' +
+          '<p class="kicker"><i class="ph ph-flow-arrow" aria-hidden="true"></i> Průběh</p>' +
+          '<div class="request-steps">' + steps + '</div>' +
+          this.renderRequestProgressBar(request.progress, 'is-detail') +
+          slider +
+        '</div>' +
+        '<div class="field-group field-group-accent">' +
+          '<p class="kicker"><i class="ph ph-text-align-left" aria-hidden="true"></i> Popis</p>' +
+          (request.description
+            ? '<p class="request-description">' + Ui.escape(request.description) + '</p>'
+            : '<p class="request-description is-empty">Bez popisu.</p>') +
+        '</div>' +
+        '<details class="request-history" id="requestHistory">' +
+          '<summary><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> Historie úprav</summary>' +
+          '<div class="request-history-list" id="requestHistoryList"></div>' +
+        '</details>';
+    },
+
+    bindRequestModal() {
+      const dialog = document.querySelector('#requestModal');
+      document.querySelector('#requestModalClose').addEventListener('click', () => Ui.closeModal(dialog));
+
+      document.querySelector('#requestModalActions').addEventListener('click', (e) => {
+        const btn = e.target.closest('.event-modal-action');
+        if (!btn) return;
+        const request = this.requestsCache.find((r) => r.id === this.currentRequestId);
+        if (!request) return;
+        if (btn.dataset.action === 'edit') this.openRequestFormModal(request, btn);
+        else if (btn.dataset.action === 'delete') this.confirmDeleteRequest(request, btn);
+      });
+
+      // Vše uvnitř těla detailu je delegované — renderRequestInfo přepisuje
+      // celý innerHTML při každé změně stavu, přímé listenery by nepřežily.
+      const info = document.querySelector('#requestModalInfo');
+      info.addEventListener('click', (e) => {
+        const step = e.target.closest('.request-step.is-clickable');
+        if (step) {
+          this.setRequestStatus(step.dataset.status, null);
+          return;
+        }
+        const history = e.target.closest('#requestHistory summary');
+        if (history) this.loadRequestHistory(this.currentRequestId);
+      });
+
+      // Posuvník: živě jen popisek, na server se ukládá až po puštění
+      // (change, ne input) — jinak by tažení myší poslalo desítky zápisů.
+      info.addEventListener('input', (e) => {
+        if (e.target.id !== 'requestProgressInput') return;
+        document.querySelector('#requestProgressOutput').textContent = e.target.value + ' %';
+      });
+      info.addEventListener('change', (e) => {
+        if (e.target.id !== 'requestProgressInput') return;
+        this.setRequestStatus('in_progress', Number(e.target.value));
+      });
+
+      document.querySelector('#requestCommentForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.submitRequestComment();
+      });
+
+      document.querySelector('#requestCommentsList').addEventListener('click', (e) => {
+        const btn = e.target.closest('.comment-item-delete');
+        if (btn) this.deleteRequestComment(btn.dataset.commentId);
+      });
+    },
+
+    /**
+     * Uloží stav (a případně procento) a překreslí detail i řádek v
+     * seznamu. `progress: null` = neposílá se, server si u Nový/Dokončeno
+     * procento stejně určí sám.
+     */
+    setRequestStatus(status, progress) {
+      const id = this.currentRequestId;
+      if (!id) return;
+
+      const payload = { id: id, status: status };
+      if (progress !== null && progress !== undefined) payload.progress = progress;
+
+      Ui.call('apiSetRequestStatus', payload, { silent: true })
+        .then((updated) => {
+          this.replaceRequestInCache(updated);
+          document.querySelector('#requestModalKicker').textContent =
+            'Požadavek — ' + this.requestStep(updated.status).label;
+          this.renderRequestInfo(updated);
+          this.renderRequests();
+        })
+        .catch((error) => Ui.toast(error.message, 'error'));
+    },
+
+    /** Nahradí jeden požadavek v cache čerstvou verzí ze serveru (beze změny pořadí). */
+    replaceRequestInCache(updated) {
+      const index = this.requestsCache.findIndex((r) => r.id === updated.id);
+      if (index !== -1) this.requestsCache[index] = updated;
+    },
+
+    /** Dotáhne čerstvý seznam a znovu vykreslí právě otevřený detail. */
+    reloadOpenRequest() {
+      Ui.call('apiGetRequests', null, { silent: true })
+        .then((items) => {
+          this.requestsCache = items;
+          this.renderRequests();
+          const request = items.find((r) => r.id === this.currentRequestId);
+          if (!request) return;
+          document.querySelector('#requestModalTitle').textContent = request.title;
+          this.renderRequestInfo(request);
+        })
+        .catch(() => {});
+    },
+
+    /* ── Historie ──────────────────────────────────────────────────────── */
+
+    /**
+     * Načte historii z auditního logu. Volá se až při rozkliknutí
+     * <details>, ne při otevření detailu — většinu času nikoho nezajímá
+     * a je to další dotaz na server.
+     */
+    loadRequestHistory(id) {
+      const list = document.querySelector('#requestHistoryList');
+      if (!list || !id) return;
+      list.innerHTML = '<p class="request-history-empty">Načítám historii…</p>';
+
+      Ui.call('apiGetRequestHistory', { requestId: id }, { silent: true })
+        .then((items) => {
+          list.innerHTML = items.length
+            ? items.map((h) =>
+              '<div class="request-history-item">' +
+                '<span class="request-history-time">' + Ui.escape(this.formatTimestamp(h.timestamp)) + '</span>' +
+                '<span class="request-history-text">' +
+                  '<strong>' + Ui.escape(h.userName) + '</strong> — ' + Ui.escape(h.detail) +
+                '</span>' +
+              '</div>').join('')
+            : '<p class="request-history-empty">Zatím žádné záznamy.</p>';
+        })
+        .catch(() => {
+          list.innerHTML = '<p class="request-history-empty">Historii se nepodařilo načíst.</p>';
+        });
+    },
+
+    /* ── Komentáře ─────────────────────────────────────────────────────── */
+
+    loadRequestComments(requestId) {
+      const list = document.querySelector('#requestCommentsList');
+      list.innerHTML = '<p class="comments-loading">Načítám komentáře…</p>';
+
+      Ui.call('apiGetRequestComments', { requestId: requestId }, { silent: true })
+        .then((comments) => {
+          // Sdílené vykreslení s komentáři událostí — stejná struktura dat
+          // ze serveru, takže i stejné renderCommentItem.
+          list.innerHTML = comments.length
+            ? comments.map((c) => this.renderCommentItem(c)).join('')
+            : this.commentsEmptyState('ph-chat-circle-dots', 'Zatím žádné komentáře.<br>Buďte první.');
+          list.scrollTop = list.scrollHeight;
+        })
+        .catch((error) => {
+          list.innerHTML = this.commentsEmptyState('ph-warning', 'Komentáře se nepodařilo načíst.');
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    submitRequestComment() {
+      const input = document.querySelector('#requestCommentInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const requestId = document.querySelector('#requestCommentForm').dataset.requestId;
+      const submitButton = document.querySelector('#requestCommentSubmit');
+      Ui.setButtonLoading(submitButton, true);
+
+      Ui.call('apiAddRequestComment', { requestId: requestId, text: text }, { silent: true })
+        .then((comment) => {
+          Ui.setButtonLoading(submitButton, false);
+          input.value = '';
+          input.focus();
+
+          const list = document.querySelector('#requestCommentsList');
+          const empty = list.querySelector('.comments-empty');
+          if (empty) list.innerHTML = '';
+          list.insertAdjacentHTML('beforeend', this.renderCommentItem(comment));
+          list.scrollTop = list.scrollHeight;
+
+          // Počet komentářů v přehledu ať sedí hned, bez znovunačtení sekce.
+          const cached = this.requestsCache.find((r) => r.id === requestId);
+          if (cached) {
+            cached.commentCount = (cached.commentCount || 0) + 1;
+            this.renderRequests();
+          }
+        })
+        .catch((error) => {
+          Ui.setButtonLoading(submitButton, false);
+          Ui.toast(error.message, 'error');
+        });
+    },
+
+    deleteRequestComment(commentId) {
+      Ui.call('apiDeleteRequestComment', { id: commentId }, { silent: true })
+        .then(() => {
+          this.loadRequestComments(this.currentRequestId);
+          const cached = this.requestsCache.find((r) => r.id === this.currentRequestId);
+          if (cached && cached.commentCount > 0) {
+            cached.commentCount -= 1;
+            this.renderRequests();
+          }
+        })
+        .catch((error) => Ui.toast(error.message, 'error'));
+    },
+
+    /* ── Nastavení → Požadavky ─────────────────────────────────────────── */
+
+    loadRequestSettings() {
+      Ui.call('apiGetRequestSettings', null, { silent: true })
+        .then((data) => {
+          this.fillRequestSettingsSelect('#requestSettingsLocation', data.locationOptions, data.location);
+          this.fillRequestSettingsSelect('#requestSettingsPosition', data.positionOptions, data.position);
+          this.renderRequestSettingsStatus(data);
+        })
+        .catch(() => {});
+    },
+
+    /**
+     * Naplní jeden select. Uložená hodnota, která v nabídce chybí (pozice
+     * se dá v Nastavení přejmenovat i smazat), se přidá jako položka
+     * „(mimo seznam)" — jinak by select tiše skočil na první možnost
+     * a příští uložení by nastavení nepozorovaně přepsalo. Stejný vzor
+     * jako fillLocationSelect u formuláře uživatele.
+     */
+    fillRequestSettingsSelect(selector, options, currentValue) {
+      const select = document.querySelector(selector);
+      let html = '<option value="">— nenastaveno —</option>' +
+        options.map((n) => '<option value="' + Ui.escape(n) + '">' + Ui.escape(n) + '</option>').join('');
+      if (currentValue && options.indexOf(currentValue) === -1) {
+        html += '<option value="' + Ui.escape(currentValue) + '">' + Ui.escape(currentValue) + ' (mimo seznam)</option>';
+      }
+      select.innerHTML = html;
+      select.value = currentValue || '';
+    },
+
+    renderRequestSettingsStatus(data) {
+      const status = document.querySelector('#requestSettingsStatus');
+      status.textContent = (data.location && data.position)
+        ? 'Stav požadavků teď smí měnit: ' + data.location + ' / ' + data.position + ' (a vždy správce aplikace).'
+        : 'Dokud není dvojice vyplněná, smí stav měnit jen správce aplikace.';
+    },
+
+    bindRequestSettings() {
+      document.querySelector('#requestSettingsSaveBtn').addEventListener('click', (e) => {
+        const button = e.currentTarget;
+        Ui.setButtonLoading(button, true, 'Ukládám…');
+        Ui.call('apiSetRequestSettings', {
+          location: document.querySelector('#requestSettingsLocation').value,
+          position: document.querySelector('#requestSettingsPosition').value,
+        }, { silent: true })
+          .then((data) => {
+            Ui.setButtonLoading(button, false);
+            Ui.toast('Nastavení uloženo.', 'success');
+            this.renderRequestSettingsStatus(data);
+          })
+          .catch((error) => {
+            Ui.setButtonLoading(button, false);
+            Ui.toast(error.message, 'error');
+          });
+      });
+    },
+
+    /**
+     * Skryje celou skupinu v menu, ve které uživateli nezbylo ani jedno
+     * viditelné tlačítko. Bez toho by po skrytí Uživatelů (nebo Nastavení)
+     * podle role zůstal v menu osiřelý oddělovač a prázdná mezera.
+     * Volá se jednou po bootstrapu, viditelnost se za běhu nemění.
+     */
+    syncNavGroups() {
+      document.querySelectorAll('.nav-group').forEach((group) => {
+        const hasVisible = Array.from(group.querySelectorAll('.nav-link'))
+          .some((link) => !link.classList.contains('is-hidden'));
+        group.classList.toggle('is-hidden', !hasVisible);
+      });
+    },
+
     showSection(name) {
       document.querySelectorAll('.nav-link').forEach((item) => {
         item.classList.toggle('is-active', item.dataset.section === name);
@@ -5395,9 +6140,11 @@
         this.loadImportTriggerStatus();
         this.loadImportLog();
         this.loadHolidaysSettings();
+        this.loadRequestSettings();
       }
       if (name === 'stores') this.loadStores();
       if (name === 'lc') this.loadLogisticCenters();
+      if (name === 'requests') this.loadRequests();
     },
 
     navigateMonth(delta) {

@@ -43,6 +43,10 @@ function apiGetBootstrap() {
         // události (viz canEditPastEvents_/nastavení pastEditAdminOnly) —
         // server si to i tak ověří znovu při každém uložení/smazání.
         canEditPastEvents: canEditPastEvents_(user, settings),
+        // Stav požadavku se neřídí rolí, ale dvojicí umístění+pozice
+        // z nastavení (viz canManageRequestStatus_ v 30_auth.js) — klient
+        // podle toho jen skrývá ovládání, server si to ověří znovu.
+        canManageRequestStatus: canManageRequestStatus_(user, settings),
       },
       settings: {
         appName: settings.appName,

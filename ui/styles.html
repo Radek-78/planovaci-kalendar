@@ -2052,11 +2052,30 @@
   /* Karta jedné sekce záložky. Vlastní třídu potřebuje jen kvůli tomu, že
      .field-group je grid s gap:10px — vlastní margin-bottom uvnitř by se
      ke gapu přičítal a mezery by se rozjely (viz nulování níže). */
-  .import-card > * {
+  .import-card > *,
+  .settings-card > * {
     margin-bottom: 0;
   }
 
-  .import-card-head {
+  /* Obal karet libovolné záložky Nastavení — .import-panel je totéž pro
+     Import dat filiálek, tohle je jeho obecná podoba pro ostatní. */
+  .settings-cards {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .settings-card-status {
+    color: var(--muted);
+    font-size: 12.5px;
+    margin: 0;
+  }
+
+  .import-card-head,
+  .settings-card-head {
     align-items: center;
     display: flex;
     gap: 8px;
@@ -2376,6 +2395,343 @@
     overflow-y: auto;
     padding: 10px 12px 10px 36px;
     white-space: pre-wrap;
+  }
+
+  /* ── Skupiny v postranním menu ───────────────────────────────────────
+     Menu je rozdělené na obsah appky / lidi / importovaná data, Nastavení
+     stojí samostatně dole. Skupina bez jediného viditelného tlačítka se
+     celá skryje (viz syncNavGroups) — jinak by po skrytí Uživatelů podle
+     role zbyl osiřelý oddělovač. ── */
+
+  .nav-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* Linka patří vždy VRCHU následující skupiny, ne spodku předchozí —
+     díky tomu ji nikdy nedostane ta první a skrytá skupina mezi nimi
+     nezanechá dvojitý oddělovač. */
+  .nav-group + .nav-group {
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+
+  /* .navigation je flex sloupec s flex:1, takže auto margin spolkne
+     všechno volné místo a odsune Nastavení na spodek panelu. Linku tu
+     rušíme — odděluje už ta mezera sama. */
+  .nav-group-bottom {
+    border-top: 0;
+    margin-top: auto;
+    padding-top: 0;
+  }
+
+  /* ── Požadavky: tabulka přehledu ─────────────────────────────────────
+     Mřížku i rámování dědí z obecných .data-table-head/.data-row, vlastní
+     je jen rozložení sloupců (Stav, Název, Zadal, Zadáno, Pokrok,
+     Komentáře, Akce). ── */
+
+  .requests-table-head,
+  .request-row {
+    grid-template-columns: 124px 1.6fr 1fr 150px 160px 96px 76px;
+  }
+
+  /* Celý řádek otevírá detail (stejně jako u filiálek); klik na tlačítko
+     Akce se zastaví dřív, viz bindRequests. */
+  .request-row {
+    cursor: pointer;
+  }
+
+  .request-cell-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── Stav požadavku ── */
+
+  /* Čtvereček s malým zaoblením, stejný tvar jako ostatní odznaky v appce. */
+  .request-status-chip {
+    border-radius: 3px;
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    white-space: nowrap;
+  }
+
+  .request-status-chip.is-new {
+    background: #e8eefc;
+    color: var(--lidl-blue);
+  }
+
+  .request-status-chip.is-progress {
+    background: #fdf1dc;
+    color: #b45309;
+  }
+
+  .request-status-chip.is-done {
+    background: #e5f5ea;
+    color: #16a34a;
+  }
+
+  /* ── Proužek pokroku (řádek tabulky i detail) ── */
+
+  .request-progress {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .request-progress-track {
+    background: var(--line);
+    border-radius: 999px;
+    flex: 1;
+    height: 6px;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .request-progress-fill {
+    background: var(--lidl-blue);
+    border-radius: 999px;
+    display: block;
+    height: 100%;
+    transition: width 0.2s ease;
+  }
+
+  .request-progress-value {
+    color: var(--muted);
+    flex-shrink: 0;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums; /* číslo neposkakuje při přetahování posuvníku */
+  }
+
+  .request-progress.is-detail .request-progress-track {
+    height: 8px;
+  }
+
+  .request-progress.is-detail .request-progress-value {
+    font-size: 12.5px;
+  }
+
+  /* ── Pás průběhu v detailu ───────────────────────────────────────────
+     Tři kroky vedle sebe. Kdo smí stav měnit, dostane je jako <button>
+     (.is-clickable), ostatní jako <span> — stejný vzhled, ale nenabízí
+     akci, která by stejně skončila chybou (viz renderRequestInfo). ── */
+
+  .request-steps {
+    display: grid;
+    gap: 8px;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+  }
+
+  .request-step {
+    align-items: center;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--muted);
+    display: flex;
+    font-family: inherit; /* <button> jinak nedědí písmo appky */
+    font-size: 12.5px;
+    gap: 8px;
+    padding: 8px 10px;
+    text-align: left;
+    width: 100%;
+  }
+
+  .request-step.is-clickable {
+    cursor: pointer;
+    transition: border-color 0.12s;
+  }
+
+  .request-step.is-clickable:hover {
+    border-color: var(--lidl-blue);
+  }
+
+  .request-step-dot {
+    align-items: center;
+    background: var(--line);
+    border-radius: 4px;
+    color: var(--white);
+    display: inline-flex;
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    height: 18px;
+    justify-content: center;
+    width: 18px;
+  }
+
+  .request-step-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Už proběhlé kroky zeleně, aktuální modře — barva tak nese i informaci
+     "kde to vázne", ne jen "kde to je". */
+  .request-step.is-done {
+    color: var(--text);
+  }
+
+  .request-step.is-done .request-step-dot {
+    background: #16a34a;
+  }
+
+  .request-step.is-current {
+    border-color: var(--lidl-blue);
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  .request-step.is-current .request-step-dot {
+    background: var(--lidl-blue);
+  }
+
+  /* Posuvník procenta — jen ve stavu V procesu (viz renderRequestInfo). */
+  .request-progress-edit {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+  }
+
+  .request-progress-edit label {
+    color: var(--muted);
+    flex-shrink: 0;
+    font-size: 12px;
+  }
+
+  .request-progress-edit input[type="range"] {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .request-progress-edit output {
+    flex-shrink: 0;
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    min-width: 48px;
+    text-align: right;
+  }
+
+  /* ── Detail požadavku ── */
+
+  .request-modal-info {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .request-meta {
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 12.5px;
+    gap: 16px;
+  }
+
+  .request-meta span {
+    align-items: center;
+    display: flex;
+    gap: 6px;
+  }
+
+  /* pre-wrap — popis se zadává jako víceřádkový text a odřádkování je jeho součástí */
+  .request-description {
+    font-size: 13.5px;
+    line-height: 1.55;
+    margin: 0;
+    white-space: pre-wrap;
+  }
+
+  .request-description.is-empty {
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .request-form-body {
+    display: grid;
+    gap: 16px;
+  }
+
+  /* ── Historie úprav (z auditního logu) ── */
+
+  .request-history {
+    border-top: 1px solid var(--line-soft);
+    padding-top: 10px;
+  }
+
+  .request-history summary {
+    align-items: center;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    font-size: 12px;
+    font-weight: 700;
+    gap: 6px;
+    letter-spacing: 0.03em;
+    list-style: none;
+    text-transform: uppercase;
+  }
+
+  .request-history summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .request-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 10px;
+  }
+
+  .request-history-item {
+    display: flex;
+    font-size: 12.5px;
+    gap: 10px;
+  }
+
+  .request-history-time {
+    color: var(--muted);
+    flex-shrink: 0;
+    width: 124px;
+  }
+
+  .request-history-text {
+    min-width: 0;
+  }
+
+  .request-history-empty {
+    color: var(--muted);
+    font-size: 12.5px;
+    margin: 10px 0 0;
+  }
+
+  /* ── Nastavení → Požadavky ── */
+
+  .request-settings-row {
+    align-items: end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .request-settings-row label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .request-settings-row select {
+    min-height: 38px;
+    min-width: 180px;
   }
 
   /* ── Formulář typu události — mřížka dlaždic s ikonou (výběr místo

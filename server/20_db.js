@@ -50,8 +50,13 @@ const DB_SCHEMA = {
     // hodnota je ale pořád jen text — žádná cizí klíč vazba, smazání
     // položky ze seznamu proto uživatele, kteří ji mají vyplněnou, nijak
     // nepostihne (viz apiDeleteDepartment/apiDeletePosition).
-    // Umístění se později nahradí výběrem z importovaného seznamu
-    // logistických center, zatím je to volný text.
+    // Umístění se vybírá ze zkratek aktivních LC (_logistic_centers) plus
+    // pevná hodnota "DL" pro centrálu — viz fillLocationSelect na
+    // klientovi. Platí pro něj ale totéž co pro oddělení/pozici: ukládá se
+    // jen TEXT zkratky, ne odkaz na řádek. Právě proto je dvojice
+    // "umístění + pozice", která řídí správu stavu požadavků, uložená jako
+    // NASTAVENÍ, a ne napevno v kódu (viz requestManagerPosition
+    // v DEFAULT_SETTINGS).
     'location', 'department', 'position',
     // Nový sloupec, proto AŽ NA KONCI (viz kritické pravidlo výše) — starší
     // řádky ho prostě mají prázdný, dokud se dotyčný příště nepřihlásí.
@@ -160,6 +165,23 @@ const DB_SCHEMA = {
     'id', 'label', 'type', 'all_day', 'start_time', 'end_time', 'duration_days', 'description',
     'created_at', 'created_by', 'updated_at', 'updated_by',
   ],
+  // Požadavky vedoucích pracovníků LC (sekce Požadavky, viz SPECIFIKACE.md
+  // 9.10). "Kdo zadal" a "kdy zadal" NEMAJÍ vlastní sloupce — pokrývá je
+  // created_by/created_at, které dbInsert_ vyplní samo.
+  //
+  // `status` je klíč z REQUEST_STATUSES (00_config.js), `progress` celé
+  // číslo 0-100. Historie úprav se NEUKLÁDÁ sem ani do vlastní tabulky —
+  // jde do `_audit_log` pod entity_id = id požadavku (viz
+  // apiGetRequestHistory), stejným způsobem, jakým se tam píšou i změny
+  // událostí.
+  requests: [
+    'id', 'title', 'description', 'status', 'progress',
+    'created_at', 'created_by', 'updated_at', 'updated_by',
+  ],
+  // Stejná stavba jako event_comments — záměrně vlastní tabulka, ne sdílená
+  // s komentáři událostí: smazání požadavku tak nemusí nic dohledávat mezi
+  // cizími řádky a obě části appky se můžou vyvíjet nezávisle.
+  request_comments: ['id', 'request_id', 'author_email', 'text', 'created_at'],
 };
 
 /**
@@ -233,6 +255,8 @@ const TEXT_COLUMNS = {
   // start_time/end_time (např. "9:00") by Sheets rádo převedlo na čas, stejný důvod jako u _stores otevírací doby výše.
   _event_templates: ['start_time', 'end_time', 'created_at', 'updated_at'],
   _event_views: ['last_seen_at'],
+  requests: ['created_at', 'updated_at'],
+  request_comments: ['created_at'],
 };
 
 /**

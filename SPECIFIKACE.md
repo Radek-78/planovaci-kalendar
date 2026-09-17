@@ -168,6 +168,12 @@ const DB_SCHEMA = {
   // Státní svátky ČR (viz kapitola 9.7) — plně editovatelný seznam, appka
   // pro nový rok jen JEDNOU naseje výchozí zákonnou sadu.
   '_holidays': ['id','date','name','created_at','created_by','updated_at','updated_by'],
+  // Požadavky vedoucích pracovníků LC (viz kapitola 9.10) — komentáře
+  // ve vlastní tabulce, historie úprav v _audit_log pod entity_id.
+  requests: ['id', 'title', 'description', 'status', 'progress',
+             'created_at', 'created_by', 'updated_at', 'updated_by'],
+  request_comments: ['id', 'request_id', 'author_email', 'text', 'created_at'],
+
   // Šablony událostí (viz kapitola 9.9) — jen výchozí obsah pro
   // předvyplnění formuláře nové události, appka je nikam neváže.
   // start_time/end_time prázdné u celodenní šablony (all_day=true).
@@ -419,6 +425,16 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiGetHolidays(payload)` | `calendar_read` | `{ year }` (nepovinné, výchozí aktuální rok) | `{ year, holidays }` — pole `{ id, date, name }` z `_holidays`; pro dosud nenavštívený rok appka nejdřív sama naseje výchozí sadu (viz 9.7); čtení smí každý přihlášený, ne jen SUPERADMIN |
 | `apiSaveHoliday(payload)` | `settings_manage` | `{ id?, date, name }` | uložený svátek — s `id` úprava, bez založení nového |
 | `apiDeleteHoliday(payload)` | `settings_manage` | `{ id }` | — |
+| `apiGetRequests()` | `calendar_read` | — | pole požadavků od nejnovějšího, každý včetně `canEdit`/`canManageStatus` a počtu komentářů (viz 9.10) |
+| `apiSaveRequest(payload)` | `calendar_read` | `{ id?, title, description }` | uložený požadavek — s `id` úprava (jen vlastní, nebo ADMIN+), bez `id` nový |
+| `apiSetRequestStatus(payload)` | `calendar_read` + `canManageRequestStatus_` | `{ id, status, progress? }` | uložený požadavek — jediná část s pravidlem umístění+pozice místo role |
+| `apiDeleteRequest(payload)` | `calendar_read` | `{ id }` | — smaže i komentáře, historie v auditu zůstává |
+| `apiGetRequestComments(payload)` | `calendar_read` | `{ requestId }` | pole komentářů od nejstaršího (stejný tvar jako u události) |
+| `apiAddRequestComment(payload)` | `calendar_read` | `{ requestId, text }` | vytvořený komentář |
+| `apiDeleteRequestComment(payload)` | `calendar_read` | `{ id }` | — jen vlastní, nebo ADMIN+ |
+| `apiGetRequestHistory(payload)` | `calendar_read` | `{ requestId }` | historie z `_audit_log` podle `entity_id`, od nejnovějšího |
+| `apiGetRequestSettings()` | `settings_manage` | — | `{ location, position, locationOptions, positionOptions }` pro Nastavení → Požadavky |
+| `apiSetRequestSettings(payload)` | `settings_manage` | `{ location, position }` | uložená dvojice + nabídky |
 
 **Rozsah v `apiGetEvents`** se vyhodnocuje jako **průnik**, ne jako „start
 uvnitř rozsahu" — jinak by vícedenní událost začínající minulý měsíc v aktuální
@@ -446,10 +462,11 @@ mřížce chyběla. Podmínka: `start <= to && end >= from`.
 | **Wizard** | úvodní průvodce (viz kapitola 10) |
 | **Bez přístupu** | pro přihlášeného, který není v `_users` nebo je neaktivní |
 | **Kalendář** | měsíční mřížka + panel detailu dne |
+| **Požadavky** | přehled požadavků vedoucích pracovníků LC (viz 9.10), detail na klik na řádek |
 | **Uživatelé** | tabulka, přidání, změna role/oprávnění, deaktivace |
 | **Filiálky** | čtecí přehled filiálek (import dat, viz 9.6), detail na klik na řádek |
 | **LC** | čtecí přehled logistických center (import dat, viz 9.6), editace čísla/zkratky |
-| **Nastavení** | záložky: Oddělení, Pracovní pozice, Typy událostí (viz 9.5), Šablony událostí (viz 9.9), Import dat filiálek (viz 9.6), Státní svátky ČR (viz 9.7) |
+| **Nastavení** | záložky: Oddělení, Pracovní pozice, Typy událostí (viz 9.5), Šablony událostí (viz 9.9), Import dat filiálek (viz 9.6), Státní svátky ČR (viz 9.7), Požadavky (viz 9.10) |
 
 **Verze appky v sidebaru** — `#sidebarVersion`, tichý řádek pod kartou
 přihlášeného uživatele (`.sidebar-user`), zapisuje ho `onBootstrap` z
@@ -1561,6 +1578,117 @@ události — obě komponenty se mezitím zobecnily, takže druhá instance
 znamená jen pár řádků navíc, ne duplicitní kód.
 
 ---
+
+### 9.10 Požadavky
+
+Samostatná sekce (`server/55_requests.js`) — přehled požadavků vedoucích
+pracovníků jednotlivých LC. Záměrně **jednoduchý seznam**, ne workflow
+nástroj: kdo zadal, kdy zadal, název, popis, k tomu komentáře, třístupňový
+stav a procento pokroku.
+
+**Data** — dvě tabulky:
+
+```js
+requests:         id, title, description, status, progress,
+                  created_at, created_by, updated_at, updated_by
+request_comments: id, request_id, author_email, text, created_at
+```
+
+„Kdo zadal" a „kdy zadal" nemají vlastní sloupce — pokrývá je
+`created_by`/`created_at`, které `dbInsert_` vyplní samo.
+
+**Stav a pokrok** jsou ZÁMĚRNĚ provázané, ne dvě nezávislá pole. Trojice
+stavů je pevně v kódu (`REQUEST_STATUSES` v 00_config.js), ne
+konfigurovatelný seznam jako typy událostí — průběh požadavku je pro
+všechna LC stejný a klíče řídí i dopočet procenta:
+
+| Stav | Procento |
+|---|---|
+| Nový | vždy 0 % |
+| V procesu | zadává uživatel (0–100) |
+| Dokončeno | vždy 100 % |
+
+`_requestProgressFor_` u stavů s pevným procentem poslanou hodnotu
+ignoruje, takže nejde uložit „Dokončeno, 40 %". Posuvník se proto v detailu
+vykresluje jen ve stavu V procesu — jinde by sliboval něco, co server
+stejně přepíše.
+
+**Práva**
+
+| Akce | Kdo |
+|---|---|
+| zadat požadavek, komentovat | každý přihlášený (i VIEWER — není to zápis do kalendáře) |
+| upravit / smazat požadavek | jeho zakladatel, nebo ADMIN/SUPERADMIN |
+| smazat komentář | jeho autor, nebo ADMIN/SUPERADMIN |
+| **změnit stav a procento** | uživatel s nastavenou dvojicí umístění+pozice, a vždy SUPERADMIN |
+
+**Proč je dvojice umístění+pozice NASTAVENÍ, a ne konstanta v kódu.**
+Zadání znělo „stav může měnit jen uživatel s location DL a position
+Vedoucí". Napsat ta dvě slova natvrdo do kódu by ale bylo křehké:
+`_users.location` i `_users.position` drží jen **text** názvu, žádnou vazbu
+na `_logistic_centers`/`_positions` (viz komentář u `_users` v 20_db.js).
+`apiSavePosition` při přejmenování sáhne jen na řádek v `_positions`,
+`_users` nechá být — a `apiDeletePosition` to i výslovně dokumentuje
+(„bez dopadu na uživatele, kteří ji mají vyplněnou").
+
+Rozbilo by se to tedy takhle: někdo přejmenuje pozici v Nastavení →
+uživatelům zůstane v `_users` původní text a právo jim funguje dál →
+jakmile ale někoho z nich kdokoli znovu uloží ve formuláři, select nabídne
+už jen nový název → **tomu jednomu člověku právo zmizí**. Ne naráz, ale
+postupně a nekonzistentně, podle toho, kdo byl kdy naposledy uložený. To se
+ladí mizerně.
+
+Dvojice proto žije v `DEFAULT_SETTINGS` (`requestManagerLocation`,
+`requestManagerPosition`) a mění se v **Nastavení → Požadavky** dvojicí
+selectů, plněných ze stejných zdrojů jako formulář uživatele (zkratky
+aktivních LC + pevné „DL", názvy z `_positions`). Tři pojistky:
+
+1. porovnává se bez ohledu na velikost písmen a okolní mezery,
+2. chybová hláška jmenuje požadovanou dvojici i to, kde se mění — bez toho
+   je selhání neodladitelné,
+3. **SUPERADMIN smí vždy**, i když dvojice nesedí nebo není vyplněná
+   (výchozí stav po instalaci) — pojistka proti sebe-uzamčení ve stejném
+   duchu jako `_activeSuperadminCount_` u uživatelů. Prázdná pozice tedy
+   neznamená „smí každý", ale „zatím jen SUPERADMIN".
+
+Uložená hodnota, která v nabídce chybí (pozice se dá přejmenovat i smazat),
+se do selectu přidá jako „(mimo seznam)" — jinak by select tiše skočil na
+první možnost a příští uložení by nastavení nepozorovaně přepsalo. Stejný
+vzor jako `fillLocationSelect` u uživatele. `apiSetRequestSettings` proto
+hodnoty ani nevaliduje proti seznamům — kontrola by v takové chvíli
+zablokovala i prosté znovuuložení.
+
+**Historie úprav** se neukládá do vlastní tabulky — jde do `_audit_log` pod
+`entity_id` = id požadavku (`request.create`/`update`/`status`/`delete`/
+`comment`), odkud ji `apiGetRequestHistory` čte zpátky. Audit log už umí
+„kdo/kdy/co", je trvalý a historie tak přežije i smazání požadavku. Do
+auditu se zapisuje jen SKUTEČNÁ změna (porovnávají se staré a nové
+hodnoty) — jinak by seznam zarostl prázdnými „upraveno" řádky od každého
+otevření a uložení formuláře. V detailu je historie v `<details>` a načítá
+se až při rozkliknutí, ne při otevření požadavku.
+
+**Vzhled** — přehled používá tutéž obecnou tabulku s filtrem a řazením
+v hlavičce jako Uživatelé a Filiálky (`DATA_TABLE_COLUMNS.requests` +
+`applyDataTableView`), takže filtrování nemá žádné vlastní ovládání, sedí
+v hlavičce sloupců. Výchozí pořadí je od nejnovějšího, včetně dokončených.
+Detail je ve stejném modal-jazyce jako událost — komentáře jsou dokonce
+doslova tytéž funkce (`renderCommentItem`/`commentsEmptyState`), liší se
+jen endpoint a cílový seznam. Pás průběhu vidí všichni; kdo nemá právo,
+dostane ho jako `<span>` místo `<button>`, aby appka nenabízela akci, která
+by stejně skončila chybou.
+
+**Menu** je kvůli téhle sekci rozdělené do skupin oddělených linkou:
+Kalendář + Požadavky / Uživatelé / Filiálky + LC, a Nastavení samostatně
+dole (`.nav-group-bottom` s `margin-top: auto`) — je to správa appky, ne
+každodenní práce. `syncNavGroups` skryje celou skupinu, ve které uživateli
+nezbylo ani jedno viditelné tlačítko; bez toho by po skrytí Uživatelů podle
+role zbyl v menu osiřelý oddělovač.
+
+**Co sekce zatím NEMÁ:** napojení na zvoneček s oznámeními. Celá ta
+mašinérie je postavená na `_event_views` a vázaná na události kalendáře
+(viz `NOTIFY_ACTIONS_EVENT_SCOPED`), rozšíření na požadavky je samostatný
+kus práce. Akce se ale do auditu píšou od začátku, takže to půjde doplnit
+bez zpětné migrace dat.
 
 ## 10. Wizard — detailní specifikace
 

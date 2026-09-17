@@ -66,6 +66,12 @@ function getCurrentUser_() {
     role: ROLES[String(user.role).trim().toUpperCase()] || ROLES.USER,
     permission: PERMISSIONS[String(user.permission).trim().toUpperCase()] || PERMISSIONS.VIEWER,
     active: true,
+    // Organizační údaje nese přihlášený uživatel s sebou kvůli
+    // _canManageRequestStatus_ — právo měnit stav požadavku se odvozuje
+    // z dvojice umístění+pozice, ne z role. Bez nich by se kvůli každé
+    // takové kontrole musel znovu dohledávat řádek v _users.
+    location: String(user.location || ''),
+    position: String(user.position || ''),
   };
 }
 
@@ -144,6 +150,35 @@ function isAllowed_(user, permissionKey) {
  */
 function canManageForeignEvents_(user) {
   return !!user && (user.role === ROLES.SUPERADMIN || user.role === ROLES.ADMIN);
+}
+
+/**
+ * Smí uživatel měnit stav a procento pokroku u požadavků?
+ *
+ * Pravidlo je dvojice "umístění + pozice" z NASTAVENÍ
+ * (requestManagerLocation/requestManagerPosition), ne z kódu — proč
+ * zrovna takhle, viz komentář u obou klíčů v DEFAULT_SETTINGS.
+ *
+ * Porovnává se bez ohledu na velikost písmen a okolní mezery: obě hodnoty
+ * jsou uložené jako prostý text zadaný člověkem, takže "Vedoucí " a
+ * "vedoucí" musí projít stejně.
+ *
+ * SUPERADMIN smí VŽDY — pojistka proti sebe-uzamčení appky ve stejném
+ * duchu jako _activeSuperadminCount_ u uživatelů. Bez ní stačí překlep
+ * v názvu pozice a se stavem požadavků by nehnul vůbec nikdo. Prázdná
+ * nastavená pozice (výchozí stav po instalaci) proto neznamená "smí
+ * každý", ale "zatím jen SUPERADMIN".
+ */
+function canManageRequestStatus_(user, settings) {
+  if (!user) return false;
+  if (user.role === ROLES.SUPERADMIN) return true;
+
+  const wantedLocation = String((settings && settings.requestManagerLocation) || '').trim().toLowerCase();
+  const wantedPosition = String((settings && settings.requestManagerPosition) || '').trim().toLowerCase();
+  if (!wantedLocation || !wantedPosition) return false;
+
+  return String(user.location || '').trim().toLowerCase() === wantedLocation &&
+    String(user.position || '').trim().toLowerCase() === wantedPosition;
 }
 
 /**
