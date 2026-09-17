@@ -1675,21 +1675,26 @@ zablokovala i prosté znovuuložení.
 „kdo/kdy/co", je trvalý a historie tak přežije i smazání požadavku. Do
 auditu se zapisuje jen SKUTEČNÁ změna (porovnávají se staré a nové
 hodnoty) — jinak by seznam zarostl prázdnými „upraveno" řádky od každého
-otevření a uložení formuláře. V detailu je historie v `<details>` a načítá
-se až při rozkliknutí, ne při otevření požadavku.
+otevření a uložení formuláře. V detailu je historie **rovnou vidět** — dřív byla schovaná v `<details>`
+a nikdo ji nenašel. Nadpis nese **počet úprav** a pod ním je posledních
+`REQUEST_HISTORY_PREVIEW` (5) záznamů; když je jich víc, přibude tlačítko
+na úplný přehled.
 
-Řádek `<summary>` nese **šipku** (`.request-history-caret`, otáčí se přes
-`[open]`) — nativní marker je schovaný a bez šipky nebylo poznat, že se pod
-nadpisem něco skrývá.
+Úplný přehled je **druhý pohled TÉHOŽ okna** (`#requestHistoryView`), ne
+další modal nad modalem — dva modaly na sobě se špatně zavírají Escapem
+a přetahují si fokus. Tělo detailu se schová, přehled zabere celou šířku
+okna (řádky historie jsou dlouhé, sloupec by je zbytečně lámal) a vrací se
+tlačítkem *Zpět na požadavek*. Otevření jiného požadavku okno z přehledu
+vždycky vrátí zpět.
 
-Rozbalení panelu **přežívá překreslení** (`App.requestHistoryOpen` mimo
-DOM): `renderRequestInfo` přepisuje celé tělo detailu při každé změně, takže
-se panel po každé úpravě sbalil a vyprázdnil — působilo to, jako by se
-změna do historie vůbec nezapsala (nahlášeno u úpravy požadavku jeho
-zakladatelem). Zůstane-li rozbalený, obsah se po překreslení dotáhne znovu.
-Zvlášť se musí ošetřit i případ, kdy server potvrdí optimistický odhad
-a k překreslení vůbec nedojde — historie se i tak obnoví, protože zápis na
-serveru proběhl až po vykreslení.
+Položky se drží v `App.requestHistoryItems` mimo DOM a panel se kreslí
+**z téhle cache**, ne novým dotazem: `renderRequestInfo` běží při každé
+změně (a při klikání na −/+ jich je hodně), server by se jinak ptal
+zbytečně. Dotahuje se jen při otevření požadavku a po každém POTVRZENÉM
+zápisu. `null` znamená „ještě se načítá" a `[]` „načteno a prázdné" — bez
+toho rozlišení by u čerstvě otevřeného požadavku chvíli svítila nula
+a hláška o prázdné historii. Pozdní odpověď na jiný požadavek se zahazuje
+porovnáním s `currentRequestId`.
 
 **Vzhled** — přehled používá tutéž obecnou tabulku s filtrem a řazením
 v hlavičce jako Uživatelé a Filiálky (`DATA_TABLE_COLUMNS.requests` +

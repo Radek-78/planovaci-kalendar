@@ -2784,41 +2784,42 @@
 
   .request-history {
     border-top: 1px solid var(--line-soft);
-    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 12px;
   }
 
-  .request-history summary {
+  /* Nadpis s počtem — dřív to bylo rozbalovátko, které nikdo nenašel,
+     takže je panel nově rovnou vidět a nadpis už není klikací. */
+  .request-history-head {
     align-items: center;
     color: var(--muted);
-    cursor: pointer;
     display: flex;
     font-size: 12px;
     font-weight: 700;
     gap: 6px;
     letter-spacing: 0.03em;
-    list-style: none;
+    margin: 0;
     text-transform: uppercase;
   }
 
-  .request-history summary::-webkit-details-marker {
-    display: none;
-  }
-
-  /* Otočí se dolů po rozbalení — stejný vzor jako u řádku Logu importu. */
-  .request-history-caret {
-    font-size: 13px;
-    transition: transform 0.15s ease;
-  }
-
-  .request-history[open] .request-history-caret {
-    transform: rotate(90deg);
+  /* Počet úprav — stejný čtvereček se zaoblením jako ostatní odznaky. */
+  .request-history-count {
+    background: var(--lidl-blue);
+    border-radius: 3px;
+    color: var(--white);
+    font-size: 10px;
+    letter-spacing: 0;
+    min-width: 18px;
+    padding: 2px 5px;
+    text-align: center;
   }
 
   .request-history-list {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    padding-top: 10px;
   }
 
   .request-history-item {
@@ -2840,7 +2841,32 @@
   .request-history-empty {
     color: var(--muted);
     font-size: 12.5px;
-    margin: 10px 0 0;
+    margin: 0;
+  }
+
+  /* Tlačítko na úplný přehled — jen když je záznamů víc, než se vejde
+     do náhledu (viz REQUEST_HISTORY_PREVIEW). */
+  .request-history-more {
+    align-self: flex-start;
+  }
+
+  /* ── Úplný přehled historie — druhý pohled TÉHOŽ okna ────────────────
+     Vystřídá tělo detailu (to se schová), takže se nad modalem neotvírá
+     další modal. Zabírá celou šířku okna, na rozdíl od dvousloupcového
+     detailu — řádky historie jsou dlouhé a sloupec by je zbytečně lámal. ── */
+
+  .request-history-view {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 18px 22px 20px;
+  }
+
+  .request-history-view-head {
+    flex-shrink: 0;
   }
 
   /* ── Nastavení → Požadavky ── */

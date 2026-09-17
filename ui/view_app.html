@@ -938,7 +938,7 @@
       <i class="ph ph-x" aria-hidden="true"></i>
     </button>
   </div>
-  <div class="modal-body">
+  <div class="modal-body" id="requestModalBody">
     <div class="request-modal-info" id="requestModalInfo"><!-- vykresleno JS --></div>
     <div class="event-modal-comments">
       <div class="event-comments-list request-comments-list" id="requestCommentsList"><!-- vykresleno JS --></div>
@@ -949,6 +949,18 @@
         </button>
       </form>
     </div>
+  </div>
+
+  <!-- Úplná historie — druhý "pohled" TÉHOŽ okna, ne další modal nad
+       modalem: vystřídá tělo detailu a vrací se tlačítkem zpět. Dva modaly
+       na sobě by se špatně zavíraly Escapem a braly by si fokus. -->
+  <div class="request-history-view is-hidden" id="requestHistoryView">
+    <div class="request-history-view-head">
+      <button class="button button-secondary" type="button" id="requestHistoryBack">
+        <i class="ph ph-arrow-left" aria-hidden="true"></i> Zpět na požadavek
+      </button>
+    </div>
+    <div class="request-history-list" id="requestHistoryFullList"><!-- vykresleno JS --></div>
   </div>
 </dialog>
 
@@ -5601,13 +5613,21 @@
     requestStateBeforeSave: null,
 
     /**
-     * Je v detailu rozbalená Historie úprav? Drží se mimo DOM, protože
-     * renderRequestInfo přepisuje celé tělo detailu při každé změně —
-     * bez toho se panel po každé úpravě sbalil a vyprázdnil, což působilo,
-     * jako by se změna do historie vůbec nezapsala (nahlášeno u úpravy
-     * požadavku jeho zakladatelem).
+     * Načtená historie právě otevřeného požadavku. Drží se mimo DOM,
+     * protože renderRequestInfo přepisuje celé tělo detailu při každé
+     * změně — bez toho by se panel po každé úpravě vyprázdnil a působilo
+     * by to, jako by se změna do historie vůbec nezapsala (nahlášeno).
+     * Panel se z téhle cache vykreslí znovu, bez dalšího dotazu na server;
+     * nové položky se dotahují jen po skutečném zápisu.
+     *
+     * `null` = ještě se načítá (panel ukáže „Načítám…"), `[]` = načteno
+     * a prázdné. Bez toho rozlišení by u čerstvě otevřeného požadavku na
+     * vteřinu svítila nula a hláška „žádné záznamy", než dorazí data.
      */
-    requestHistoryOpen: false,
+    requestHistoryItems: null,
+
+    /** Kolik posledních úprav se ukáže rovnou v detailu; zbytek až v úplném přehledu. */
+    REQUEST_HISTORY_PREVIEW: 5,
 
     /**
      * Popisky a barevné třídy stavů. Klíče MUSÍ sedět s REQUEST_STATUSES
@@ -5778,7 +5798,10 @@
           this.loadRequests();
           // Když se upravoval právě otevřený detail, ať v něm rovnou sedí
           // nový název a popis — jinak by uživatel viděl starou verzi.
-          if (id && this.currentRequestId === id) this.reloadOpenRequest();
+          if (id && this.currentRequestId === id) {
+            this.reloadOpenRequest();
+            this.loadRequestHistory(id); // úprava přibyla do historie
+          }
         })
         .catch((error) => {
           Ui.setButtonLoading(submitButton, false);
@@ -5822,9 +5845,9 @@
         return;
       }
 
-      // Jiný požadavek = jiná historie, začínáme sbalení (rozbalení se drží
-      // jen v rámci jednoho otevřeného detailu).
-      if (this.currentRequestId !== id) this.requestHistoryOpen = false;
+      // Jiný požadavek = jiná historie. Cache se maže hned, ať se v panelu
+      // neobjeví na okamžik záznamy toho předchozího.
+      if (this.currentRequestId !== id) this.requestHistoryItems = null;
       this.currentRequestId = id;
       const dialog = document.querySelector('#requestModal');
 
@@ -5839,9 +5862,11 @@
             '<i class="ph ph-trash" aria-hidden="true"></i></button>'
           : '');
 
+      this.closeRequestHistoryView(); // okno mohlo zůstat v přehledu historie
       this.renderRequestDetail(request);
       document.querySelector('#requestCommentForm').dataset.requestId = id;
       this.loadRequestComments(id);
+      this.loadRequestHistory(id);
 
       this.setModalOrigin(dialog, originEl);
       Ui.openModal(dialog);
@@ -5914,21 +5939,58 @@
             ? '<p class="request-description">' + Ui.escape(request.description) + '</p>'
             : '<p class="request-description is-empty">Bez popisu.</p>') +
         '</div>' +
-        '<details class="request-history" id="requestHistory"' + (this.requestHistoryOpen ? ' open' : '') + '>' +
-          // Šipka je jediná indicie, že řádek jde rozkliknout — nativní
-          // marker je schovaný a bez ní nebylo poznat, že se pod nadpisem
-          // něco skrývá (nahlášeno).
-          '<summary>' +
-            '<i class="ph ph-caret-right request-history-caret" aria-hidden="true"></i>' +
-            '<i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> Historie úprav' +
-          '</summary>' +
-          '<div class="request-history-list" id="requestHistoryList"></div>' +
-        '</details>';
+        '<div class="request-history" id="requestHistoryBox"></div>';
 
-      // Obsah panelu se překreslením ztratil — když zůstal rozbalený,
-      // dotáhne se znovu, takže je v něm čerstvě zapsaná změna vidět hned
-      // a uživatel kvůli ní nemusí historii zavírat a otevírat.
-      if (this.requestHistoryOpen) this.loadRequestHistory(request.id);
+      // Historie je rovnou rozbalená (dřív schovaná v <details>, což nikdo
+      // nenašel). Kreslí se z cache, ne novým dotazem — renderRequestInfo
+      // běží při každé změně a server by se jinak ptal zbytečně.
+      this.renderRequestHistoryBox();
+    },
+
+    /** Jeden řádek historie — sdílený mezi náhledem v detailu a úplným přehledem. */
+    renderRequestHistoryItem(h) {
+      return '<div class="request-history-item">' +
+        '<span class="request-history-time">' + Ui.escape(this.formatDateTime(h.timestamp)) + '</span>' +
+        '<span class="request-history-text">' +
+          '<strong>' + Ui.escape(h.userName) + '</strong> — ' + Ui.escape(h.detail) +
+        '</span>' +
+      '</div>';
+    },
+
+    /**
+     * Panel historie v detailu: nadpis s počtem úprav, posledních pár
+     * záznamů a tlačítko na úplný přehled. Delší historie se do detailu
+     * nevejde, aniž by zatlačila popis mimo dohled — proto náhled
+     * a samostatný pohled, ne jeden dlouhý seznam.
+     */
+    renderRequestHistoryBox() {
+      const box = document.querySelector('#requestHistoryBox');
+      if (!box) return;
+
+      const items = this.requestHistoryItems;
+      const heading = '<p class="request-history-head">' +
+        '<i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> Historie úprav' +
+        (items ? '<span class="request-history-count">' + items.length + '</span>' : '') +
+      '</p>';
+
+      if (items === null) {
+        box.innerHTML = heading + '<p class="request-history-empty">Načítám historii…</p>';
+        return;
+      }
+
+      const preview = items.slice(0, this.REQUEST_HISTORY_PREVIEW);
+
+      box.innerHTML = heading +
+        (items.length
+          ? '<div class="request-history-list">' +
+              preview.map((h) => this.renderRequestHistoryItem(h)).join('') +
+            '</div>'
+          : '<p class="request-history-empty">Zatím žádné záznamy.</p>') +
+        (items.length > preview.length
+          ? '<button type="button" class="button button-secondary request-history-more" id="requestHistoryMore">' +
+              '<i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> Zobrazit celou historii (' + items.length + ')' +
+            '</button>'
+          : '');
     },
 
     bindRequestModal() {
@@ -5974,12 +6036,7 @@
           this.saveRequestState(status, forcedProgress);
           return;
         }
-        const history = e.target.closest('#requestHistory summary');
-        if (history) {
-          // <details> se přepne až PO tomhle handleru, proto negace.
-          this.requestHistoryOpen = !document.querySelector('#requestHistory').open;
-          this.loadRequestHistory(this.currentRequestId);
-        }
+        if (e.target.closest('#requestHistoryMore')) this.openRequestHistoryView();
       });
 
       // Posuvník: živě jen popisek, na server se ukládá až po puštění
@@ -5997,6 +6054,9 @@
         if (e.target.id !== 'requestProgressInput') return;
         this.saveRequestState(null, Number(e.target.value));
       });
+
+      document.querySelector('#requestHistoryBack')
+        .addEventListener('click', () => this.closeRequestHistoryView());
 
       document.querySelector('#requestCommentForm').addEventListener('submit', (e) => {
         e.preventDefault();
@@ -6091,11 +6151,10 @@
               (updated.status !== current.status || updated.progress !== current.progress)) {
             this.renderRequestDetail(updated);
             this.renderRequests();
-          } else if (this.requestHistoryOpen && this.currentRequestId === id) {
-            // Překreslovat netřeba (server potvrdil odhad), ale historie má
-            // o záznam víc — vykreslení proběhlo dřív než zápis.
-            this.loadRequestHistory(id);
           }
+          // Historie má po zápisu o záznam víc — dotáhne se vždycky,
+          // protože panel je nově trvale vidět, ne schovaný v rozbalovátku.
+          if (this.currentRequestId === id) this.loadRequestHistory(id);
         })
         .catch((error) => {
           this.replaceRequestInCache(before);
@@ -6137,30 +6196,56 @@
     /* ── Historie ──────────────────────────────────────────────────────── */
 
     /**
-     * Načte historii z auditního logu. Volá se až při rozkliknutí
-     * <details>, ne při otevření detailu — většinu času nikoho nezajímá
-     * a je to další dotaz na server.
+     * Načte historii z auditního logu do cache a překreslí panel.
+     *
+     * Volá se při otevření požadavku a po každém POTVRZENÉM zápisu, ne při
+     * každém překreslení — panel se jinak kreslí z cache, takže optimistické
+     * překreslení (kterých je při klikání na -/+ spousta) server nezatěžuje.
      */
     loadRequestHistory(id) {
-      const list = document.querySelector('#requestHistoryList');
-      if (!list || !id) return;
-      list.innerHTML = '<p class="request-history-empty">Načítám historii…</p>';
+      if (!id) return;
 
       Ui.call('apiGetRequestHistory', { requestId: id }, { silent: true })
         .then((items) => {
-          list.innerHTML = items.length
-            ? items.map((h) =>
-              '<div class="request-history-item">' +
-                '<span class="request-history-time">' + Ui.escape(this.formatDateTime(h.timestamp)) + '</span>' +
-                '<span class="request-history-text">' +
-                  '<strong>' + Ui.escape(h.userName) + '</strong> — ' + Ui.escape(h.detail) +
-                '</span>' +
-              '</div>').join('')
-            : '<p class="request-history-empty">Zatím žádné záznamy.</p>';
+          // Mezitím mohl uživatel otevřít jiný požadavek — pozdní odpověď
+          // na ten předchozí by do panelu nasypala cizí historii.
+          if (this.currentRequestId !== id) return;
+          this.requestHistoryItems = items;
+          this.renderRequestHistoryBox();
+          this.renderRequestHistoryFull();
         })
-        .catch(() => {
-          list.innerHTML = '<p class="request-history-empty">Historii se nepodařilo načíst.</p>';
-        });
+        .catch(() => {});
+    },
+
+    /** Úplný přehled — druhý pohled téhož okna (viz openRequestHistoryView). */
+    renderRequestHistoryFull() {
+      const list = document.querySelector('#requestHistoryFullList');
+      if (!list) return;
+      const items = this.requestHistoryItems || [];
+      list.innerHTML = items.length
+        ? items.map((h) => this.renderRequestHistoryItem(h)).join('')
+        : '<p class="request-history-empty">Zatím žádné záznamy.</p>';
+    },
+
+    /** Přepne okno požadavku na úplný přehled historie. */
+    openRequestHistoryView() {
+      this.renderRequestHistoryFull();
+      document.querySelector('#requestModalBody').classList.add('is-hidden');
+      document.querySelector('#requestModalActions').classList.add('is-hidden');
+      document.querySelector('#requestHistoryView').classList.remove('is-hidden');
+      document.querySelector('#requestModalKicker').textContent = 'Historie úprav';
+    },
+
+    /** Zpátky na detail požadavku. Volá se i při otevření jiného požadavku, ať okno nezůstane v historii. */
+    closeRequestHistoryView() {
+      document.querySelector('#requestHistoryView').classList.add('is-hidden');
+      document.querySelector('#requestModalBody').classList.remove('is-hidden');
+      document.querySelector('#requestModalActions').classList.remove('is-hidden');
+      const request = this.requestsCache.find((r) => r.id === this.currentRequestId);
+      if (request) {
+        document.querySelector('#requestModalKicker').textContent =
+          'Požadavek — ' + this.requestStep(request.status).label;
+      }
     },
 
     /* ── Komentáře ─────────────────────────────────────────────────────── */
