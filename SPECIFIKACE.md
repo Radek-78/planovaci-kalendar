@@ -1678,6 +1678,15 @@ hodnoty) — jinak by seznam zarostl prázdnými „upraveno" řádky od každé
 otevření a uložení formuláře. V detailu je historie v `<details>` a načítá
 se až při rozkliknutí, ne při otevření požadavku.
 
+Rozbalení panelu **přežívá překreslení** (`App.requestHistoryOpen` mimo
+DOM): `renderRequestInfo` přepisuje celé tělo detailu při každé změně, takže
+se panel po každé úpravě sbalil a vyprázdnil — působilo to, jako by se
+změna do historie vůbec nezapsala (nahlášeno u úpravy požadavku jeho
+zakladatelem). Zůstane-li rozbalený, obsah se po překreslení dotáhne znovu.
+Zvlášť se musí ošetřit i případ, kdy server potvrdí optimistický odhad
+a k překreslení vůbec nedojde — historie se i tak obnoví, protože zápis na
+serveru proběhl až po vykreslení.
+
 **Vzhled** — přehled používá tutéž obecnou tabulku s filtrem a řazením
 v hlavičce jako Uživatelé a Filiálky (`DATA_TABLE_COLUMNS.requests` +
 `applyDataTableView`), takže filtrování nemá žádné vlastní ovládání, sedí
@@ -1753,20 +1762,19 @@ ani čerstvě založený na 80 % by nikomu nic neřekly. *V procesu* pokrok
 nechává být, tam dává smysl jakákoli hodnota. Obojí je zkratka čistě na
 klientovi, ne pravidlo dat — pokrok jde hned zase přenastavit.
 
-Opačná vazba je naopak **na serveru**: stažení pokroku dokončeného
-požadavku pod 100 % ho vrátí do stavu *V procesu* — „Dokončeno na 60 %" by
-byl vnitřně rozporný záznam. Uplatní se jen když volající stav NEPOSLAL
-(mění se samotný pokrok); výslovně zadaný stav se respektuje vždycky, jinak
-by nešlo označit za dokončený požadavek, který zůstal rozpracovaný. Sedí
-na serveru, aby platila při každém zápisu a rovnou se objevila v historii
-jako skutečná změna stavu; klient si ji jen zrcadlí, aby optimistický
-náhled neukázal na okamžik stav, který server vzápětí přepíše.
+Opačným směrem se **stav odvozuje z pokroku, a to na serveru**: mění-li se
+samotný pokrok (volající stav neposlal), platí 0 % = *Nový*, 100 % =
+*Dokončeno*, cokoli mezi = *V procesu*. Původně tu byl jen jeden směr
+(stažení pod 100 % vracelo *Dokončeno* na *V procesu*), takže naklikání
+pokroku tlačítky −/+ na 0 nebo 100 % nechalo stav viset, kde byl — hlášeno
+a opraveno; jedno pravidlo místo výčtu výjimek.
 
-Mimo tyhle vazby jsou stav a pokrok dál nezávislé. Opačný směr k pravidlu
-výše (tedy že zvýšení pokroku nad 0 % u stavu *Nový* by ho posunulo do
-*V procesu*) ZÁMĚRNĚ neexistuje — nebyl vyžádaný a na rozdíl od
-„Dokončeno na 60 %" není „Nový na 20 %" vnitřně rozporný záznam, jen
-neobvyklý.
+**Výslovně zadaný stav se respektuje vždycky**, i když pokroku neodpovídá —
+jinak by nešlo označit za dokončený požadavek, který zůstal rozpracovaný.
+Odvození sedí na serveru, aby platilo při každém zápisu a rovnou se
+objevilo v historii jako skutečná změna stavu; klient si ho jen zrcadlí,
+aby optimistický náhled neukázal na okamžik stav, který server vzápětí
+přepíše.
 
 **Menu** je kvůli téhle sekci rozdělené do skupin oddělených linkou:
 Kalendář + Požadavky / Uživatelé / Filiálky + LC, a Nastavení samostatně

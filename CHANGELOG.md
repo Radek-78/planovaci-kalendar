@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.12.7 - 17.09.2026 14:57
+- v0.12.7: Pokrok teď řídí stav v obou směrech a historie úprav se po změně sama obnoví. Naklikání pokroku tlačítky minus a plus na nulu nebo sto procent nechávalo stav viset tam, kde byl. Příčinou bylo, že pravidlo existovalo jen v jednom směru - stažení pod sto procent vracelo Dokončeno na V procesu, ale nic neřešilo opačnou stranu. Nově se při změně samotného pokroku stav odvodí z něj: nula procent je Nový, sto procent Dokončeno a cokoli mezi tím V procesu. Je to jedno pravidlo místo výčtu výjimek. Výslovně zadaný stav se respektuje dál, takže jde označit za dokončený i požadavek, který zůstal rozpracovaný. Úpravy požadavku se do historie zapisovaly správně, ale nebyly vidět: okno detailu se po každé změně překresluje celé, takže se panel historie pokaždé sbalil a vyprázdnil a působilo to, jako by se změna nikam nezapsala. Rozbalení teď překreslení přežije a obsah se dotáhne znovu, takže je nově zapsaná změna vidět okamžitě.
+
 ## v0.12.6 - 17.09.2026 14:52
 - v0.12.6: Kliknutí na Nový srazí pokrok na nulu. Doplnění protějšku k úpravě z minulé verze - krajní kroky průběhu teď rovnou srovnají i pokrok. Dokončeno ho dotáhne na sto procent, Nový ho srazí na nulu. Čerstvě založený požadavek na osmdesáti procentech by nikomu nic neřekl, stejně jako hotový na čtyřiceti. Prostřední stav V procesu pokrok dál nechává být, tam dává smysl jakákoli hodnota. Obojí je zkratka při kliknutí, ne pravidlo dat - pokrok jde hned zase přenastavit posuvníkem nebo tlačítky minus a plus.
 

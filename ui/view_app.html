@@ -5589,6 +5589,15 @@
     currentRequestId: null,
 
     /**
+     * Je v detailu rozbalená Historie úprav? Drží se mimo DOM, protože
+     * renderRequestInfo přepisuje celé tělo detailu při každé změně —
+     * bez toho se panel po každé úpravě sbalil a vyprázdnil, což působilo,
+     * jako by se změna do historie vůbec nezapsala (nahlášeno u úpravy
+     * požadavku jeho zakladatelem).
+     */
+    requestHistoryOpen: false,
+
+    /**
      * Popisky a barevné třídy stavů. Klíče MUSÍ sedět s REQUEST_STATUSES
      * na serveru (00_config.js) — server posílá i hotový `statusLabel`,
      * tohle je tu kvůli pořadí kroků v pásu průběhu a kvůli barvám, které
@@ -5801,6 +5810,9 @@
         return;
       }
 
+      // Jiný požadavek = jiná historie, začínáme sbalení (rozbalení se drží
+      // jen v rámci jednoho otevřeného detailu).
+      if (this.currentRequestId !== id) this.requestHistoryOpen = false;
       this.currentRequestId = id;
       const dialog = document.querySelector('#requestModal');
 
@@ -5890,10 +5902,15 @@
             ? '<p class="request-description">' + Ui.escape(request.description) + '</p>'
             : '<p class="request-description is-empty">Bez popisu.</p>') +
         '</div>' +
-        '<details class="request-history" id="requestHistory">' +
+        '<details class="request-history" id="requestHistory"' + (this.requestHistoryOpen ? ' open' : '') + '>' +
           '<summary><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> Historie úprav</summary>' +
           '<div class="request-history-list" id="requestHistoryList"></div>' +
         '</details>';
+
+      // Obsah panelu se překreslením ztratil — když zůstal rozbalený,
+      // dotáhne se znovu, takže je v něm čerstvě zapsaná změna vidět hned
+      // a uživatel kvůli ní nemusí historii zavírat a otevírat.
+      if (this.requestHistoryOpen) this.loadRequestHistory(request.id);
     },
 
     bindRequestModal() {
@@ -5936,7 +5953,11 @@
           return;
         }
         const history = e.target.closest('#requestHistory summary');
-        if (history) this.loadRequestHistory(this.currentRequestId);
+        if (history) {
+          // <details> se přepne až PO tomhle handleru, proto negace.
+          this.requestHistoryOpen = !document.querySelector('#requestHistory').open;
+          this.loadRequestHistory(this.currentRequestId);
+        }
       });
 
       // Posuvník: živě jen popisek, na server se ukládá až po puštění
@@ -5997,14 +6018,13 @@
       if (status !== null && status !== undefined) optimistic.status = status;
       if (progress !== null && progress !== undefined) optimistic.progress = progress;
 
-      // Stejná vazba, jakou uplatní server (viz apiSetRequestStatus):
-      // stažení pokroku dokončeného požadavku pod 100 % ho vrací do
-      // V procesu. Zrcadlí se tu jen proto, aby optimistický náhled
-      // neukázal na okamžik stav, který server vzápětí přepíše —
-      // rozhoduje server, ne tohle.
-      if ((status === null || status === undefined) &&
-          optimistic.status === 'done' && optimistic.progress < 100) {
-        optimistic.status = 'in_progress';
+      // Stejné odvození, jaké uplatní server (viz apiSetRequestStatus):
+      // mění-li se samotný pokrok, stav z něj plyne — 0 % Nový,
+      // 100 % Dokončeno, mezi tím V procesu. Zrcadlí se tu jen proto, aby
+      // optimistický náhled neukázal na okamžik stav, který server vzápětí
+      // přepíše; rozhoduje server, ne tohle.
+      if ((status === null || status === undefined) && progress !== null && progress !== undefined) {
+        optimistic.status = progress <= 0 ? 'new' : (progress >= 100 ? 'done' : 'in_progress');
       }
 
       this.replaceRequestInCache(optimistic);
@@ -6023,6 +6043,11 @@
           if (updated.status !== optimistic.status || updated.progress !== optimistic.progress) {
             this.renderRequestDetail(updated);
             this.renderRequests();
+          } else if (this.requestHistoryOpen) {
+            // Překreslovat netřeba (server potvrdil odhad), ale historie má
+            // o záznam víc — optimistické vykreslení proběhlo dřív, než se
+            // na server vůbec stihlo zapsat.
+            this.loadRequestHistory(id);
           }
         })
         .catch((error) => {

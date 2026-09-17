@@ -244,20 +244,24 @@ function apiSetRequestStatus(payload) {
     if (!def) throw userError_('Neznámý stav požadavku.');
     const progress = hasProgress ? _requestProgressFor_(data.progress) : oldProgress;
 
-    // Jediná automatická vazba pokroku na stav: stáhnout dokončenému
-    // požadavku pokrok pod 100 % ho vrátí do stavu V procesu. Dokončeno
-    // na 60 % by byl vnitřně rozporný záznam.
+    // Mění-li se SAMOTNÝ pokrok (volající stav neposlal), stav se z pokroku
+    // ODVODÍ: 0 % = Nový, 100 % = Dokončeno, cokoli mezi = V procesu.
     //
-    // Platí jen když volající stav NEPOSLAL (mění se samotný pokrok) —
-    // výslovně zadaný stav se respektuje vždycky, jinak by nešlo označit
-    // za dokončený požadavek, který zůstal rozpracovaný.
+    // Dřív tu byl jen jeden směr (stažení pod 100 % vracelo Dokončeno na
+    // V procesu), takže naklikání pokroku tlačítky -/+ na 0 nebo 100 %
+    // nechalo stav viset, kde byl — hlášeno. Teď platí obě strany a je
+    // to jedno pravidlo místo výčtu výjimek.
     //
-    // Sedí tady na serveru, ne jen na klientovi, aby se vazba uplatnila
-    // při každém zápisu a rovnou se objevila v historii jako skutečná
-    // změna stavu.
+    // Výslovně zadaný stav se respektuje VŽDYCKY, i když pokroku
+    // neodpovídá — jinak by nešlo označit za dokončený požadavek, který
+    // zůstal rozpracovaný.
+    //
+    // Sedí na serveru, ne jen na klientovi, aby se vazba uplatnila při
+    // každém zápisu a rovnou se objevila v historii jako skutečná změna
+    // stavu.
     let statusKeyToSave = def.key;
-    if (!hasStatus && progress < 100 && statusKeyToSave === 'done') {
-      statusKeyToSave = 'in_progress';
+    if (!hasStatus && hasProgress) {
+      statusKeyToSave = progress <= 0 ? 'new' : (progress >= 100 ? 'done' : 'in_progress');
     }
     const finalDef = _requestStatusDef_(statusKeyToSave);
 
