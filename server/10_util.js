@@ -141,8 +141,9 @@ function applySheetFont_(sheet) {
  * @param {string} action    krátký kód akce, např. 'setup', 'user.create', 'event.delete'
  * @param {string} detail    lidsky čitelný popis změny — bez ID
  * @param {string} [entityId] id záznamu, kterého se akce týká (u komentářů id UDÁLOSTI, ne komentáře — proklik vždy vede na událost)
+ * @param {string[]} [changeTypes] kódy toho, CO se změnilo (status/progress/title/…) — pro sloupec "Typ" v historii, viz komentář u _audit_log
  */
-function audit_(action, detail, entityId) {
+function audit_(action, detail, entityId, changeTypes) {
   try {
     dbAppend_(SHEETS.AUDIT, {
       timestamp: nowLocalIso_(),
@@ -150,6 +151,7 @@ function audit_(action, detail, entityId) {
       action: String(action || ''),
       detail: String(detail || ''),
       entity_id: entityId ? String(entityId) : '',
+      change_types: (changeTypes || []).join(','),
     });
   } catch (e) {
     console.error('Zápis do auditního logu selhal: ' + e);

@@ -1055,6 +1055,25 @@ opravdu proběhla. `formatDateTime` teď tvar rozpozná (`Z` nebo posun zóny
 na konci) a UTC převede přes `Date`; místní tvary krájí dál jako dřív.
 Převádět natvrdo všude by rozbilo právě ty správné volající.
 
+**Komentář u požadavku se odesílá optimisticky** — vykreslí se okamžitě,
+ještě než na něj server odpoví, takže psaní plyne jako v chatu místo
+čekání přes vteřinu. Dočasný komentář nese `tmp-` id, je ztlumený
+(`.comment-item.is-pending`) a nejde smazat; po odpovědi se nahradí
+skutečným, při chybě zmizí a text se vrátí do pole, ať uživatel nepřijde
+o napsané.
+
+**Toast a „top layer" (opraveno).** Modální `<dialog>` se vykresluje
+v top layer, tedy nad vším ostatním bez ohledu na `z-index` — hláška
+v běžném toku stránky proto skončila POD otevřeným modalem a pod jeho
+rozostřeným `::backdrop`, takže byla rozmazaná (nahlášeno). Oblast toastů
+je nově `popover="manual"`: popover se do top layer promotuje taky a pořadí
+v něm určuje pořadí promotování, ne `z-index`, takže `Ui.raiseToastRegion()`
+ji před každou hláškou schová a hned zase ukáže a tím ji dostane úplně
+nahoru. V prohlížeči bez Popover API se nestane nic a hláška se zobrazí
+jako dřív. Pozor: popover má výchozí styly prohlížeče (rámeček, podklad,
+`inset: 0`, `display: none`), které `.toast-region` musí přebít — jinak by
+se oblast roztáhla přes celou obrazovku, nebo by se nezobrazila vůbec.
+
 ### 9.7 Státní svátky ČR
 
 Svátky jsou **plně editovatelná tabulka** `_holidays` (id/date/name +
@@ -1687,6 +1706,15 @@ okna (řádky historie jsou dlouhé, sloupec by je zbytečně lámal) a vrací s
 tlačítkem *Zpět na požadavek*. Otevření jiného požadavku okno z přehledu
 vždycky vrátí zpět.
 
+Každý řádek historie nese **typ úpravy** (Stav / Procenta / Název / Popis /
+Komentář / Založení / Smazání). Typy posílá server v poli `types`, protože
+se čtou z nového sloupce `_audit_log.change_types` — ten `audit_()` plní
+kódy toho, co se skutečně změnilo. ZÁMĚRNĚ se nedolují z textu `detail`:
+to je věta psaná pro lidi a při každé změně formulace by se rozpadly.
+Řádky zapsané ještě před přidáním sloupce typ odvodí aspoň z `action`
+(`_requestChangeTypes_`); jediné, co se takhle odvodit nedá, je
+`request.update` — z něj není poznat, jestli šlo o název, nebo popis.
+
 Položky se drží v `App.requestHistoryItems` mimo DOM a panel se kreslí
 **z téhle cache**, ne novým dotazem: `renderRequestInfo` běží při každé
 změně (a při klikání na −/+ jich je hodně), server by se jinak ptal
@@ -1731,6 +1759,21 @@ požadavků po sobě, ale týkalo se každého potvrzovacího okna (smazání
 události, deaktivace uživatele, svátky, pozice, oddělení, typy, šablony).
 Opraveno v `confirmAction` jedním `Ui.setButtonLoading(okBtn, false)` před
 klonováním — tedy na jednom místě, ne u osmi volajících.
+
+**Filtr a řazení v hlavičce** (sdílené všemi tabulkami): obě možnosti
+řazení jsou vedle sebe (`.column-filter-sort-row`) — pod sebou vypadaly
+jako dvě nesouvisející akce. Ikona filtru je všude `ph-funnel` (nálevka),
+ne dřívější `ph-funnel-simple` (tři čárky pod sebou).
+
+Sloupec může nabídnout **víc věcí k filtrování** přes `filterModes` — dnes
+jen `requests.zadal`, kde jsou ve sloupci jméno i umístění. Uložený filtr
+má pak klíč `sloupec::režim`, takže můžou být aktivní oba naráz;
+`dataTableFilterGetter` klíč zase rozloží zpátky na funkci, která hodnotu
+z řádku vytáhne. Přepínač v okně filtru nese u režimu s aktivním filtrem
+**nálevku** — po přepnutí by jinak nebylo poznat, že je jinde něco
+zapnuté — a nálevka v hlavičce svítí, když filtruje kterýkoli režim.
+„Zrušit filtr" ruší filtr CELÉHO sloupce včetně režimu, který zrovna není
+vidět; jinak by tabulka nešla vrátit do původního stavu jedním tlačítkem.
 
 **Pozor na řetězy `if/else` podle názvu tabulky.** Obecná tabulka jich má
 několik (`dataTableSource`, `refreshDataTable`) a ty s pádem na poslední

@@ -1428,6 +1428,9 @@
     /** E-mail přihlášeného uživatele — řídí, aby si nemohl sám sobě zobrazit akci deaktivace (viz renderUserRow). */
     currentUserEmail: '',
 
+    /** Jméno přihlášeného — pro okamžité vykreslení vlastního komentáře, než ho potvrdí server. */
+    currentUserName: '',
+
     /** Poslední načtený seznam uživatelů — pro dohledání dat při otevření editace (viz openEditUserModal). */
     usersCache: [],
 
@@ -1451,6 +1454,7 @@
       Ui.setText('#sidebarUserName', data.user.fullName);
 
       this.currentUserEmail = data.user.email;
+      this.currentUserName = data.user.fullName;
       this.holidaysEnabled = data.settings.holidaysEnabled !== false;
 
       const roleLabel = this.ROLE_LABELS[data.user.role] || data.user.role;
@@ -3499,7 +3503,19 @@
           sortValue: (r) => r.createdAt,
           filterSort: 'text', sortAsc: 'Nejstarší nahoře', sortDesc: 'Nejnovější nahoře',
         },
-        { key: 'zadal', label: 'Zadal', filterValue: (r) => r.authorName, sortValue: (r) => r.authorName, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
+        {
+          // Ve sloupci jsou dvě různé věci (umístění + jméno), a filtrovat
+          // má smysl podle obou — proto filterModes a přepínač v okně
+          // filtru. Klíč uloženého filtru je pak "zadal::name" /
+          // "zadal::location", takže můžou být aktivní i oba najednou.
+          key: 'zadal', label: 'Zadal',
+          filterModes: [
+            { key: 'location', label: 'Umístění', value: (r) => r.authorLocation || '—' },
+            { key: 'name', label: 'Jméno', value: (r) => r.authorName },
+          ],
+          filterValue: (r) => r.authorName,
+          sortValue: (r) => r.authorName, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A',
+        },
         { key: 'nazev', label: 'Název', filterValue: (r) => r.title, sortValue: (r) => r.title, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
         // Popis je ZÁMĚRNĚ bez filtru a řazení (plain): je to dlouhý volný
         // text až 4000 znaků, nabídka filtru by byla seznam celých popisů
@@ -3559,7 +3575,11 @@
         }
         const sortEntry = state.sortOrder.find((s) => s.key === col.key);
         const rankIndex = sortEntry ? state.sortOrder.indexOf(sortEntry) : -1;
-        const hasFilter = !!state.filters[col.key];
+        // Sloupec může mít víc filtrovatelných věcí (viz filterModes),
+        // klíč filtru je pak "sloupec::režim" — nálevka v hlavičce svítí,
+        // když je aktivní kterákoli z nich.
+        const hasFilter = Object.keys(state.filters)
+          .some((k) => k === col.key || k.indexOf(col.key + '::') === 0);
 
         // Číslo ÚROVNĚ + malá šipka SMĚRU řazení pohromadě — jinak by
         // z pouhého čísla nebylo poznat, jestli je sloupec seřazený
@@ -3573,7 +3593,7 @@
           '" data-col="' + col.key + '" title="Řadit nebo filtrovat podle sloupce ' + Ui.escape(col.label) + '">' +
           '<span class="col-header-label">' + Ui.escape(col.label) + '</span>' +
           '<span class="col-rank-slot">' + rankBadge + '</span>' +
-          '<span class="col-filter-slot' + (hasFilter ? ' is-active' : '') + '"><i class="ph ph-funnel-simple" aria-hidden="true"></i></span>' +
+          '<span class="col-filter-slot' + (hasFilter ? ' is-active' : '') + '"><i class="ph ph-funnel" aria-hidden="true"></i></span>' +
         '</button>';
       }).join('');
     },
@@ -3599,10 +3619,11 @@
       const state = this.dataTableState[tableName];
       let result = rows;
 
-      Object.keys(state.filters).forEach((colKey) => {
-        const allowed = state.filters[colKey];
-        const col = cols.find((c) => c.key === colKey);
-        result = result.filter((row) => allowed.has(String(col.filterValue(row))));
+      Object.keys(state.filters).forEach((filterKey) => {
+        const allowed = state.filters[filterKey];
+        const getter = this.dataTableFilterGetter(cols, filterKey);
+        if (!getter) return; // neznámý klíč (např. po změně definice sloupců) filtr radši ignoruje
+        result = result.filter((row) => allowed.has(String(getter(row))));
       });
 
       if (state.sortOrder.length) {
@@ -3626,6 +3647,20 @@
       }
 
       return result;
+    },
+
+    /**
+     * Funkce, která z řádku vytáhne hodnotu pro daný filtrovací klíč.
+     * Klíč je buď jen název sloupce, nebo "sloupec::režim" u sloupců
+     * s víc filtrovatelnými věcmi (viz filterModes u Zadal).
+     */
+    dataTableFilterGetter(cols, filterKey) {
+      const parts = String(filterKey).split('::');
+      const col = cols.find((c) => c.key === parts[0]);
+      if (!col) return null;
+      if (parts.length === 1) return col.filterValue;
+      const mode = (col.filterModes || []).find((m) => m.key === parts[1]);
+      return mode ? mode.value : null;
     },
 
     /** Znovu vykreslí hlavičku i data dané tabulky — po každé změně řazení/filtru. */
@@ -3689,24 +3724,14 @@
      */
     openColumnFilterPopover(tableName, colKey, headerEl) {
       const col = this.DATA_TABLE_COLUMNS[tableName].find((c) => c.key === colKey);
-      const rows = this.dataTableSource(tableName);
       const state = this.dataTableState[tableName];
 
-      const seen = {};
-      const values = [];
-      rows.forEach((row) => {
-        const v = String(col.filterValue(row));
-        if (!(v in seen)) { seen[v] = true; values.push(v); }
-      });
-      if (col.filterOrder) {
-        values.sort((a, b) => col.filterOrder.indexOf(a) - col.filterOrder.indexOf(b));
-      } else if (col.filterSort === 'number') {
-        values.sort((a, b) => Number(a) - Number(b));
-      } else {
-        values.sort((a, b) => a.localeCompare(b, 'cs'));
-      }
-
-      const activeFilter = state.filters[colKey]; // Set povolených hodnot, nebo undefined = vše
+      // Výchozí režim filtru: ten, který už filtr má (ať se okno otevře
+      // tam, kde je něco nastavené), jinak první z nabídky.
+      const modes = col.filterModes || null;
+      const activeMode = modes
+        ? (modes.find((m) => state.filters[colKey + '::' + m.key]) || modes[0]).key
+        : null;
 
       // Je sloupec zrovna součástí aktivního (možná vícenásobného) řazení?
       // rankIndex/currentSort řídí zvýraznění tlačítek a popisek úrovně
@@ -3719,26 +3744,27 @@
       popover.className = 'column-filter-popover';
       popover.dataset.table = tableName;
       popover.dataset.col = colKey;
+      popover.dataset.mode = activeMode || '';
       popover.innerHTML =
         '<div class="column-filter-section">' +
           '<p class="column-filter-heading">Řadit' + levelLabel + '</p>' +
-          '<button type="button" class="column-filter-sort-btn' + (currentSort && currentSort.dir === 'asc' ? ' is-active' : '') + '" data-dir="asc">' +
-            '<i class="ph ph-sort-ascending" aria-hidden="true"></i> ' + Ui.escape(col.sortAsc) + '</button>' +
-          '<button type="button" class="column-filter-sort-btn' + (currentSort && currentSort.dir === 'desc' ? ' is-active' : '') + '" data-dir="desc">' +
-            '<i class="ph ph-sort-descending" aria-hidden="true"></i> ' + Ui.escape(col.sortDesc) + '</button>' +
+          // Obě možnosti VEDLE SEBE — jsou to dvě varianty téhož, pod sebou
+          // vypadaly jako dvě nesouvisející akce.
+          '<div class="column-filter-sort-row">' +
+            '<button type="button" class="column-filter-sort-btn' + (currentSort && currentSort.dir === 'asc' ? ' is-active' : '') + '" data-dir="asc">' +
+              '<i class="ph ph-sort-ascending" aria-hidden="true"></i> ' + Ui.escape(col.sortAsc) + '</button>' +
+            '<button type="button" class="column-filter-sort-btn' + (currentSort && currentSort.dir === 'desc' ? ' is-active' : '') + '" data-dir="desc">' +
+              '<i class="ph ph-sort-descending" aria-hidden="true"></i> ' + Ui.escape(col.sortDesc) + '</button>' +
+          '</div>' +
           (currentSort
             ? '<button type="button" class="column-filter-sort-remove" id="columnFilterClearSort"><i class="ph ph-x" aria-hidden="true"></i> Neřadit podle tohoto sloupce</button>'
             : '') +
         '</div>' +
         '<div class="column-filter-section">' +
           '<p class="column-filter-heading">Filtrovat</p>' +
-          '<label class="column-filter-check-all"><input type="checkbox" id="columnFilterCheckAll"' + (!activeFilter ? ' checked' : '') + '> Vybrat vše</label>' +
-          '<div class="column-filter-values">' +
-            values.map((v) => {
-              const checked = !activeFilter || activeFilter.has(v);
-              return '<label><input type="checkbox" class="column-filter-value" value="' + Ui.escape(v) + '"' + (checked ? ' checked' : '') + '> ' +
-                Ui.escape(col.filterLabel ? col.filterLabel(v) : v) + '</label>';
-            }).join('') +
+          this.renderColumnFilterModes(col, state, activeMode) +
+          '<div id="columnFilterValuesBox">' +
+            this.renderColumnFilterValues(tableName, col, activeMode) +
           '</div>' +
         '</div>' +
         '<div class="column-filter-actions">' +
@@ -3760,6 +3786,66 @@
       document.addEventListener('mousedown', this._columnFilterOutsideHandler);
     },
 
+    /**
+     * Přepínač toho, CO se ve sloupci filtruje (jen u sloupců s
+     * filterModes). Režim, který má aktivní filtr, nese nálevku — jinak by
+     * po přepnutí nebylo poznat, že je jinde něco nastavené.
+     */
+    renderColumnFilterModes(col, state, activeMode) {
+      if (!col.filterModes) return '';
+      return '<div class="column-filter-modes">' +
+        col.filterModes.map((m) =>
+          '<button type="button" class="column-filter-mode' + (m.key === activeMode ? ' is-active' : '') +
+            '" data-mode="' + Ui.escape(m.key) + '">' +
+            Ui.escape(m.label) +
+            (state.filters[col.key + '::' + m.key] ? '<i class="ph ph-funnel" aria-hidden="true"></i>' : '') +
+          '</button>').join('') +
+      '</div>';
+    },
+
+    /** Klíč, pod kterým je uložený filtr sloupce (u víc režimů i s režimem). */
+    columnFilterKey(colKey, mode) {
+      return mode ? colKey + '::' + mode : colKey;
+    },
+
+    /** Zaškrtávací seznam DISTINCT hodnot — překresluje se i při přepnutí režimu. */
+    renderColumnFilterValues(tableName, col, mode) {
+      const rows = this.dataTableSource(tableName);
+      const state = this.dataTableState[tableName];
+      const cols = this.DATA_TABLE_COLUMNS[tableName];
+      const filterKey = this.columnFilterKey(col.key, mode);
+      const getter = this.dataTableFilterGetter(cols, filterKey) || col.filterValue;
+
+      const seen = {};
+      const values = [];
+      rows.forEach((row) => {
+        const v = String(getter(row));
+        if (!(v in seen)) { seen[v] = true; values.push(v); }
+      });
+      if (col.filterOrder) {
+        values.sort((a, b) => col.filterOrder.indexOf(a) - col.filterOrder.indexOf(b));
+      } else if (col.filterSort === 'number') {
+        values.sort((a, b) => Number(a) - Number(b));
+      } else {
+        values.sort((a, b) => a.localeCompare(b, 'cs'));
+      }
+
+      const activeFilter = state.filters[filterKey]; // Set povolených hodnot, nebo undefined = vše
+      // filterLabel patří sloupci jako celku — u režimů (Jméno/Umístění)
+      // jsou hodnoty samy o sobě čitelné, převádět je není co.
+      const label = mode ? null : col.filterLabel;
+
+      return '<label class="column-filter-check-all"><input type="checkbox" id="columnFilterCheckAll"' +
+          (!activeFilter ? ' checked' : '') + '> Vybrat vše</label>' +
+        '<div class="column-filter-values">' +
+          values.map((v) => {
+            const checked = !activeFilter || activeFilter.has(v);
+            return '<label><input type="checkbox" class="column-filter-value" value="' + Ui.escape(v) + '"' +
+              (checked ? ' checked' : '') + '> ' + Ui.escape(label ? label(v) : v) + '</label>';
+          }).join('') +
+        '</div>';
+    },
+
     /** Umístí popover pod hlavičku sloupce, ať nepřeteče přes pravý okraj okna. */
     positionColumnFilterPopover(popover, headerEl) {
       const rect = headerEl.getBoundingClientRect();
@@ -3769,6 +3855,8 @@
     },
 
     bindColumnFilterPopover(popover, tableName, colKey) {
+      const col = this.DATA_TABLE_COLUMNS[tableName].find((c) => c.key === colKey);
+
       // Klik na "Vzestupně"/"Sestupně" sloupec buď PŘIDÁ na konec aktivního
       // vícenásobného řazení (ještě v něm není), nebo mu jen změní směr,
       // pokud v něm už je — pořadí ostatních úrovní se tím nemění.
@@ -3796,28 +3884,51 @@
         });
       }
 
-      const checkAll = popover.querySelector('#columnFilterCheckAll');
-      const valueBoxes = Array.from(popover.querySelectorAll('.column-filter-value'));
-      checkAll.addEventListener('change', () => {
-        valueBoxes.forEach((box) => { box.checked = checkAll.checked; });
-      });
-      valueBoxes.forEach((box) => {
-        box.addEventListener('change', () => {
-          checkAll.checked = valueBoxes.every((b) => b.checked);
-        });
+      // Zaškrtávátka se dohledávají AŽ V OBSLUZE, ne dopředu do proměnné —
+      // přepnutí režimu filtru celý seznam překreslí a uložené odkazy by
+      // ukazovaly na prvky, které už v dokumentu nejsou.
+      const boxes = () => Array.from(popover.querySelectorAll('.column-filter-value'));
+      const checkAllBox = () => popover.querySelector('#columnFilterCheckAll');
+
+      popover.addEventListener('change', (e) => {
+        if (e.target.id === 'columnFilterCheckAll') {
+          boxes().forEach((box) => { box.checked = e.target.checked; });
+        } else if (e.target.classList.contains('column-filter-value')) {
+          checkAllBox().checked = boxes().every((b) => b.checked);
+        }
       });
 
+      // Přepnutí toho, co se ve sloupci filtruje (Umístění/Jméno u Zadal).
+      popover.addEventListener('click', (e) => {
+        const modeBtn = e.target.closest('.column-filter-mode');
+        if (!modeBtn) return;
+        const mode = modeBtn.dataset.mode;
+        popover.dataset.mode = mode;
+        popover.querySelector('.column-filter-modes').outerHTML =
+          this.renderColumnFilterModes(col, this.dataTableState[tableName], mode);
+        popover.querySelector('#columnFilterValuesBox').innerHTML =
+          this.renderColumnFilterValues(tableName, col, mode);
+      });
+
+      // Ruší filtr celého sloupce, tedy i toho režimu, který zrovna není
+      // vidět — jinak by po zrušení zůstal schovaný filtr dál zapnutý
+      // a tabulka by nešla vrátit do původního stavu jedním tlačítkem.
       popover.querySelector('#columnFilterClear').addEventListener('click', () => {
-        delete this.dataTableState[tableName].filters[colKey];
+        const filters = this.dataTableState[tableName].filters;
+        Object.keys(filters)
+          .filter((k) => k === colKey || k.indexOf(colKey + '::') === 0)
+          .forEach((k) => { delete filters[k]; });
         this.closeColumnFilterPopover();
         this.refreshDataTable(tableName);
       });
 
       popover.querySelector('#columnFilterApply').addEventListener('click', () => {
-        const checked = valueBoxes.filter((b) => b.checked).map((b) => b.value);
+        const all = boxes();
+        const checked = all.filter((b) => b.checked).map((b) => b.value);
         const state = this.dataTableState[tableName];
-        if (checked.length === valueBoxes.length) delete state.filters[colKey]; // vše zaškrtnuté = žádný filtr
-        else state.filters[colKey] = new Set(checked);
+        const filterKey = this.columnFilterKey(colKey, popover.dataset.mode || null);
+        if (checked.length === all.length) delete state.filters[filterKey]; // vše zaškrtnuté = žádný filtr
+        else state.filters[filterKey] = new Set(checked);
         this.closeColumnFilterPopover();
         this.refreshDataTable(tableName);
       });
@@ -5947,10 +6058,31 @@
       this.renderRequestHistoryBox();
     },
 
+    /**
+     * Popisky typů úprav. Klíče posílá server ve `types` (sloupec
+     * change_types v auditním logu) — nedolují se z textu, ten je psaný
+     * pro lidi a při každé změně formulace by se rozbily.
+     */
+    REQUEST_CHANGE_TYPES: {
+      status: { label: 'Stav', cls: 'is-status' },
+      progress: { label: 'Procenta', cls: 'is-progress' },
+      title: { label: 'Název', cls: 'is-title' },
+      description: { label: 'Popis', cls: 'is-description' },
+      comment: { label: 'Komentář', cls: 'is-comment' },
+      create: { label: 'Založení', cls: 'is-create' },
+      delete: { label: 'Smazání', cls: 'is-delete' },
+    },
+
     /** Jeden řádek historie — sdílený mezi náhledem v detailu a úplným přehledem. */
     renderRequestHistoryItem(h) {
+      const types = (h.types || []).map((t) => this.REQUEST_CHANGE_TYPES[t]).filter((t) => t);
       return '<div class="request-history-item">' +
         '<span class="request-history-time">' + Ui.escape(this.formatDateTime(h.timestamp)) + '</span>' +
+        '<span class="request-history-types">' +
+          (types.length
+            ? types.map((t) => '<span class="request-type-chip ' + t.cls + '">' + Ui.escape(t.label) + '</span>').join('')
+            : '<span class="request-type-chip is-other">Úprava</span>') +
+        '</span>' +
         '<span class="request-history-text">' +
           '<strong>' + Ui.escape(h.userName) + '</strong> — ' + Ui.escape(h.detail) +
         '</span>' +
@@ -6269,35 +6401,58 @@
         });
     },
 
+    /**
+     * Odešle komentář. Vykreslí se OKAMŽITĚ, ještě než na něj server
+     * odpoví — psaní tak plyne jako v chatu místo čekání přes vteřinu na
+     * kolečko do Apps Scriptu. Dočasný komentář nese `tmp-` id, je
+     * vizuálně ztlumený a nejde smazat (mazalo by se něco, co na serveru
+     * ještě není). Po odpovědi se nahradí skutečným, při chybě zmizí
+     * a text se vrátí do pole, ať uživatel nepřijde o napsané.
+     */
     submitRequestComment() {
       const input = document.querySelector('#requestCommentInput');
       const text = input.value.trim();
       if (!text) return;
 
       const requestId = document.querySelector('#requestCommentForm').dataset.requestId;
-      const submitButton = document.querySelector('#requestCommentSubmit');
-      Ui.setButtonLoading(submitButton, true);
+      const tempId = 'tmp-' + Date.now();
+      const list = document.querySelector('#requestCommentsList');
+
+      input.value = '';
+      input.focus();
+
+      const empty = list.querySelector('.comments-empty');
+      if (empty) list.innerHTML = '';
+      list.insertAdjacentHTML('beforeend', this.renderCommentItem({
+        id: tempId,
+        authorName: this.currentUserName || this.currentUserEmail,
+        text: text,
+        createdAt: new Date().toISOString(),
+        canDelete: false,
+      }, 'is-pending'));
+      list.scrollTop = list.scrollHeight;
 
       Ui.call('apiAddRequestComment', { requestId: requestId, text: text }, { silent: true })
         .then((comment) => {
-          Ui.setButtonLoading(submitButton, false);
-          input.value = '';
-          input.focus();
-
-          const list = document.querySelector('#requestCommentsList');
-          const empty = list.querySelector('.comments-empty');
-          if (empty) list.innerHTML = '';
-          list.insertAdjacentHTML('beforeend', this.renderCommentItem(comment));
-          list.scrollTop = list.scrollHeight;
+          const pending = list.querySelector('[data-comment-id="' + tempId + '"]');
+          if (pending) pending.outerHTML = this.renderCommentItem(comment);
 
           // Počet v cache držíme dál (posílá ho server, může se hodit),
           // ale seznam se kvůli němu nepřekresluje — sloupec s komentáři
           // v přehledu není.
           const cached = this.requestsCache.find((r) => r.id === requestId);
           if (cached) cached.commentCount = (cached.commentCount || 0) + 1;
+
+          // Komentář je taky záznam v historii.
+          if (this.currentRequestId === requestId) this.loadRequestHistory(requestId);
         })
         .catch((error) => {
-          Ui.setButtonLoading(submitButton, false);
+          const pending = list.querySelector('[data-comment-id="' + tempId + '"]');
+          if (pending) pending.remove();
+          if (!list.children.length) {
+            list.innerHTML = this.commentsEmptyState('ph-chat-circle-dots', 'Zatím žádné komentáře.<br>Buďte první.');
+          }
+          input.value = text;
           Ui.toast(error.message, 'error');
         });
     },
@@ -7081,8 +7236,14 @@
       return '<div class="comments-empty"><i class="ph ' + icon + '" aria-hidden="true"></i><p>' + html + '</p></div>';
     },
 
-    renderCommentItem(comment) {
-      return '<div class="comment-item" data-comment-id="' + Ui.escape(comment.id) + '">' +
+    /**
+     * Jeden komentář. `extraClass` je nepovinná — používá ji zatím jen
+     * optimisticky vykreslený komentář u požadavku (.is-pending), dokud ho
+     * server nepotvrdí.
+     */
+    renderCommentItem(comment, extraClass) {
+      return '<div class="comment-item' + (extraClass ? ' ' + extraClass : '') +
+        '" data-comment-id="' + Ui.escape(comment.id) + '">' +
         '<div class="comment-item-header">' +
           '<strong>' + Ui.escape(comment.authorName) + '</strong>' +
           '<span class="comment-item-meta">' +

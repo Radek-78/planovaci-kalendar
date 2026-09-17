@@ -66,7 +66,13 @@ const DB_SCHEMA = {
   // entity_id = id záznamu, ke kterému se akce vztahuje (u komentářů id
   // UDÁLOSTI, ne komentáře) — proklik ze zvonečku s oznámeními vždy vede
   // na konkrétní událost, viz audit_() v 10_util.js a apiGetBootstrap.
-  _audit_log: ['timestamp', 'user', 'action', 'detail', 'entity_id'],
+  // change_types = čárkou oddělené kódy toho, CO se změnilo (status,
+  // progress, title, description, comment…). Přibylo kvůli sloupci "Typ"
+  // v historii úprav požadavku — bez něj by se typ musel dolovat z textu
+  // `detail`, což je lidská věta a při každé změně formulace by se to
+  // rozbilo. Nový sloupec, proto AŽ NA KONCI (viz kritické pravidlo výše);
+  // starší řádky ho mají prázdný a typ se u nich odvodí z `action`.
+  _audit_log: ['timestamp', 'user', 'action', 'detail', 'entity_id', 'change_types'],
   // recurrence_id: prázdné u běžné (jednorázové) události, jinak sdílené
   // UUID napříč všemi výskyty jedné opakující se série (viz apiSaveEvent/
   // _saveRecurringEvent_ v 50_api.js) — každý výskyt je ale ÚPLNÝ,

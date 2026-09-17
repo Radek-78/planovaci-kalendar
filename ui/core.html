@@ -98,9 +98,43 @@
       // serveru a nesmí se interpretovat jako HTML.
       node.textContent = message;
       this.toastRegion.appendChild(node);
+      this.raiseToastRegion();
 
       // Chybu necháme na obrazovce déle — uživatel si ji má stihnout přečíst.
-      setTimeout(() => node.remove(), type === 'error' ? 7000 : 3600);
+      setTimeout(() => {
+        node.remove();
+        // Prázdný popover v top layer nechávat nemá smysl.
+        if (!this.toastRegion.children.length) this.hideToastRegion();
+      }, type === 'error' ? 7000 : 3600);
+    },
+
+    /**
+     * Vytáhne oblast toastů nahoru nad případný otevřený modal.
+     *
+     * Modální <dialog> žije v "top layer" — je nad vším ostatním bez ohledu
+     * na z-index, takže hláška v běžném toku stránky skončila pod ním a pod
+     * jeho rozostřeným pozadím (nahlášeno). Popover se do top layer
+     * promotuje taky a pořadí v něm určuje POŘADÍ PROMOTOVÁNÍ, ne z-index —
+     * proto se schová a hned zase ukáže, čímž se dostane úplně nahoru.
+     *
+     * Ve starším prohlížeči bez Popover API se nestane nic a toast se
+     * zobrazí jako dřív (pod modalem, ale zobrazí se).
+     */
+    raiseToastRegion() {
+      if (!this.toastRegion.showPopover) return;
+      try {
+        if (this.toastRegion.matches(':popover-open')) this.toastRegion.hidePopover();
+        this.toastRegion.showPopover();
+      } catch (e) {
+        // Neúspěch nesmí shodit akci, kvůli které se hláška ukazuje.
+      }
+    },
+
+    hideToastRegion() {
+      if (!this.toastRegion.hidePopover) return;
+      try {
+        if (this.toastRegion.matches(':popover-open')) this.toastRegion.hidePopover();
+      } catch (e) { /* viz raiseToastRegion */ }
     },
 
     /* ── Modal (nativní <dialog>) ─────────────────────────────────────────

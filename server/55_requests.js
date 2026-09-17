@@ -168,7 +168,7 @@ function apiSaveRequest(payload) {
         status: REQUEST_STATUSES[0].key,
         progress: 0,
       });
-      audit_('request.create', 'Nový požadavek „' + title + '"', String(created.id));
+      audit_('request.create', 'Nový požadavek „' + title + '"', String(created.id), ['create']);
       return _publicRequest_(created, user, settings, {}, {});
     }
 
@@ -184,16 +184,19 @@ function apiSaveRequest(payload) {
     // nic, do auditu se nezapisuje vůbec, jinak by historie zarostla
     // prázdnými „upraveno" řádky od každého otevření a uložení formuláře.
     const changes = [];
+    const types = [];
     if (String(existing.title || '') !== title) {
       changes.push('název: „' + String(existing.title || '') + '" → „' + title + '"');
+      types.push('title');
     }
     if (String(existing.description || '') !== description) {
       changes.push('upraven popis');
+      types.push('description');
     }
 
     const updated = dbUpdate_(SHEETS.REQUESTS, id, { title: title, description: description, updated_by: user.email });
     if (changes.length) {
-      audit_('request.update', 'Upraven požadavek „' + title + '" — ' + changes.join('; '), id);
+      audit_('request.update', 'Upraven požadavek „' + title + '" — ' + changes.join('; '), id, types);
     }
 
     return _publicRequest_(updated, user, settings, {}, _requestCommentCounts_());
@@ -268,10 +271,17 @@ function apiSetRequestStatus(payload) {
     const updated = dbUpdate_(SHEETS.REQUESTS, id, { status: finalDef.key, progress: progress, updated_by: user.email });
 
     const changes = [];
-    if (oldDef.key !== finalDef.key) changes.push('stav: ' + oldDef.label + ' → ' + finalDef.label);
-    if (oldProgress !== progress) changes.push('pokrok: ' + oldProgress + ' % → ' + progress + ' %');
+    const types = [];
+    if (oldDef.key !== finalDef.key) {
+      changes.push('stav: ' + oldDef.label + ' → ' + finalDef.label);
+      types.push('status');
+    }
+    if (oldProgress !== progress) {
+      changes.push('pokrok: ' + oldProgress + ' % → ' + progress + ' %');
+      types.push('progress');
+    }
     if (changes.length) {
-      audit_('request.status', 'Požadavek „' + String(existing.title || '') + '" — ' + changes.join('; '), id);
+      audit_('request.status', 'Požadavek „' + String(existing.title || '') + '" — ' + changes.join('; '), id, types);
     }
 
     return _publicRequest_(updated, user, settings, {}, _requestCommentCounts_());
@@ -303,7 +313,7 @@ function apiDeleteRequest(payload) {
       .forEach((row) => dbDelete_(SHEETS.REQUEST_COMMENTS, String(row.id)));
 
     dbDelete_(SHEETS.REQUESTS, id);
-    audit_('request.delete', 'Smazán požadavek „' + String(existing.title || '') + '"', id);
+    audit_('request.delete', 'Smazán požadavek „' + String(existing.title || '') + '"', id, ['delete']);
     return null;
   });
 }
@@ -344,7 +354,7 @@ function apiAddRequestComment(payload) {
       text: text,
     });
 
-    audit_('request.comment', 'Nový komentář k požadavku „' + String(request.title || '') + '": ' + text.slice(0, 80), requestId);
+    audit_('request.comment', 'Nový komentář k požadavku „' + String(request.title || '') + '": ' + text.slice(0, 80), requestId, ['comment']);
 
     return _publicRequestComment_(comment, user, {});
   });
@@ -370,7 +380,7 @@ function apiDeleteRequestComment(payload) {
     const title = parent ? String(parent.title || '') : '(smazaný požadavek)';
 
     dbDelete_(SHEETS.REQUEST_COMMENTS, id);
-    audit_('request.comment.delete', 'Smazán komentář k požadavku „' + title + '"', String(comment.request_id));
+    audit_('request.comment.delete', 'Smazán komentář k požadavku „' + title + '"', String(comment.request_id), ['comment']);
     return null;
   });
 }
@@ -410,12 +420,32 @@ function apiGetRequestHistory(payload) {
       .map((row) => ({
         action: String(row.action),
         detail: String(row.detail || ''),
+        types: _requestChangeTypes_(row),
         userName: _resolveUserName_(row.user, nameCache),
         timestamp: String(row.timestamp || ''),
       }))
       .sort((a, b) => (a.timestamp < b.timestamp ? 1 : a.timestamp > b.timestamp ? -1 : 0))
       .slice(0, LIMITS.REQUEST_HISTORY_MAX);
   });
+}
+
+/**
+ * Kódy toho, CO se v daném řádku auditu změnilo — pro sloupec „Typ"
+ * v historii. Primárně z `change_types`; u řádků zapsaných JEŠTĚ PŘED
+ * přidáním toho sloupce se typ odvodí aspoň z `action`, ať stará historie
+ * nezůstane úplně bez typu. Jediné, co se takhle odvodit nedá, je
+ * `request.update` — z něj není poznat, jestli šlo o název, nebo popis.
+ */
+function _requestChangeTypes_(row) {
+  const stored = String(row.change_types || '').split(',').filter((t) => t);
+  if (stored.length) return stored;
+
+  const action = String(row.action || '');
+  if (action === 'request.create') return ['create'];
+  if (action === 'request.delete') return ['delete'];
+  if (action === 'request.status') return ['status'];
+  if (action.indexOf('request.comment') === 0) return ['comment'];
+  return [];
 }
 
 /* ══════════════════════════════════════════════════════════════════════════

@@ -127,7 +127,12 @@
     </div>
 
     <!-- Místo pro krátké hlášky (toasty). -->
-    <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+    <!-- popover="manual" — modální <dialog> se vykresluje v "top layer",
+         tedy nad vším ostatním bez ohledu na z-index. Toast v běžném toku
+         stránky proto skončil POD otevřeným modalem i pod jeho rozostřeným
+         pozadím. Popover se do top layer promotuje taky a Ui.toast() ho
+         při každé hlášce promotuje znovu, takže leží nad dialogem. -->
+    <div class="toast-region" id="toastRegion" popover="manual" aria-live="polite" aria-atomic="true"></div>
 
     <?!= include('ui/core'); ?>
   </body>
