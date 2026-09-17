@@ -244,10 +244,27 @@ function apiSetRequestStatus(payload) {
     if (!def) throw userError_('Neznámý stav požadavku.');
     const progress = hasProgress ? _requestProgressFor_(data.progress) : oldProgress;
 
-    const updated = dbUpdate_(SHEETS.REQUESTS, id, { status: def.key, progress: progress, updated_by: user.email });
+    // Jediná automatická vazba pokroku na stav: stáhnout dokončenému
+    // požadavku pokrok pod 100 % ho vrátí do stavu V procesu. Dokončeno
+    // na 60 % by byl vnitřně rozporný záznam.
+    //
+    // Platí jen když volající stav NEPOSLAL (mění se samotný pokrok) —
+    // výslovně zadaný stav se respektuje vždycky, jinak by nešlo označit
+    // za dokončený požadavek, který zůstal rozpracovaný.
+    //
+    // Sedí tady na serveru, ne jen na klientovi, aby se vazba uplatnila
+    // při každém zápisu a rovnou se objevila v historii jako skutečná
+    // změna stavu.
+    let statusKeyToSave = def.key;
+    if (!hasStatus && progress < 100 && statusKeyToSave === 'done') {
+      statusKeyToSave = 'in_progress';
+    }
+    const finalDef = _requestStatusDef_(statusKeyToSave);
+
+    const updated = dbUpdate_(SHEETS.REQUESTS, id, { status: finalDef.key, progress: progress, updated_by: user.email });
 
     const changes = [];
-    if (oldDef.key !== def.key) changes.push('stav: ' + oldDef.label + ' → ' + def.label);
+    if (oldDef.key !== finalDef.key) changes.push('stav: ' + oldDef.label + ' → ' + finalDef.label);
     if (oldProgress !== progress) changes.push('pokrok: ' + oldProgress + ' % → ' + progress + ' %');
     if (changes.length) {
       audit_('request.status', 'Požadavek „' + String(existing.title || '') + '" — ' + changes.join('; '), id);

@@ -2704,21 +2704,40 @@
     text-align: right;
   }
 
-  /* Komentáře mají REZERVOVANOU výšku od začátku. Dřív měl seznam jen
-     flex:1 bez pevné výšky, takže modal po dotažení komentářů povyrostl
-     a celé okno poskočilo (nahlášeno). Pevná výška znamená, že načítání,
-     prázdný stav i plný seznam zaberou pokaždé stejné místo. */
-  .request-comments-list {
-    flex: none;
-    height: 200px;
+  /* ── Detail požadavku — dva sloupce ──────────────────────────────────
+     Stejné rozvržení jako detail události: vlevo všechno okolo požadavku,
+     vpravo komentáře. Každý sloupec se posouvá zvlášť, takže dlouhý popis
+     nikdy neodsune komentáře z dohledu — okno samo drží pevnou velikost
+     (.modal-fixed-tall), jen obsah uvnitř se scrolluje.
+     Sloupec s komentáři je sám o sobě flex, aby se seznam mohl posouvat
+     a formulář zůstal přilepený dole — jako běžné chatovací okno. ── */
+
+  #requestModal .modal-body {
+    border-top: none;
+    display: grid;
+    flex: 1;
+    grid-template-columns: 1.1fr 0.9fr;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0;
   }
 
-  /* ── Detail požadavku ── */
-
   .request-modal-info {
+    border-right: 1px solid var(--line-soft);
+    border-top: 3px solid var(--lidl-blue);
     display: flex;
     flex-direction: column;
     gap: 14px;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 18px 20px;
+  }
+
+  /* Seznam komentářů vyplní zbytek svého sloupce. Dřív měl pevných 200 px,
+     aby okno po dotažení komentářů nepovyrostlo — to teď hlídá pevná
+     velikost celého okna, takže smí zase růst do dostupného místa. */
+  .request-comments-list {
+    min-height: 0;
   }
 
   .request-meta {
@@ -2741,14 +2760,13 @@
   }
 
   /* pre-wrap — popis se zadává jako víceřádkový text a odřádkování je jeho součástí */
-  /* Vlastní scroll místo neomezeného růstu — jinak by 4000 znaků popisu
-     odsunulo komentáře tak hluboko, že by se k nim muselo dlouho rolovat. */
+  /* Bez vlastního stropu výšky — od dvousloupcového rozvržení už dlouhý
+     popis nemá koho odsunout, komentáře jsou ve vedlejším sloupci a scroll
+     si řeší celý levý sloupec. */
   .request-description {
     font-size: 13.5px;
     line-height: 1.55;
     margin: 0;
-    max-height: 220px;
-    overflow-y: auto;
     white-space: pre-wrap;
   }
 

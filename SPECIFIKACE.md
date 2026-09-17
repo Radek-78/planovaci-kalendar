@@ -1696,7 +1696,7 @@ textový sloupec musí zůstat v `fr`, jinak by měla tabulka pevný součet
 šířek a při jiné velikosti okna by buď zbývalo prázdné místo, nebo by
 naskočil vodorovný posuvník.
 
-U zadavatele se vedle jména ukazuje **malý štítek umístění** (DL nebo
+U zadavatele se **před jménem** ukazuje malý štítek umístění (DL nebo
 zkratka LC, `authorLocation` ze serveru). Ve zúženém sloupci se zkracuje
 jméno, štítek nikdy — ze kterého LC požadavek přišel je důležitější než
 celé jméno, to je stejně vidět po rozkliknutí. Kvůli tomu má sekce vlastní
@@ -1735,18 +1735,33 @@ Seznam komentářů v detailu má **rezervovanou výšku** (`.request-comments-l
 Dřív měl jen `flex: 1`, takže modal po dotažení komentářů povyrostl a celé
 okno poskočilo.
 
-Celý modal má navíc **pevnou velikost** (`.modal-fixed-tall`) od prvního
-zobrazení — popis může mít pár slov i 4000 znaků, takže se okno pokaždé
-otevíralo jinak velké. Dlouhý popis se scrolluje uvnitř své karty
-(`max-height` na `.request-description`), aby neodsunul komentáře mimo
-dohled.
+Celý modal má navíc **pevnou velikost** (`.modal-fixed-tall`, šířka
+`.modal-xwide`) od prvního zobrazení — popis může mít pár slov i 4000
+znaků, takže se okno pokaždé otevíralo jinak velké.
+
+Tělo je **dvousloupcové**, stejným vzorem jako detail události
+(`#requestModal .modal-body` = grid `1.1fr 0.9fr`): vlevo všechno okolo
+požadavku, vpravo komentáře. Každý sloupec se posouvá zvlášť, takže dlouhý
+popis nemá koho odsunout — proto `.request-description` nemá vlastní strop
+výšky a `.request-comments-list` zase vlastní pevnou výšku, obojí bylo
+potřeba jen v jednosloupcové podobě.
 
 Posuvník pokroku má po stranách krokovací tlačítka **− a +** (po 20 %),
 na krajích rozsahu zakázaná. Klik na krok **Dokončeno** navíc rovnou
 dotáhne pokrok na 100 % — hotový požadavek na 40 % by nikomu nic neřekl.
-Je to jediná vazba mezi stavem a pokrokem a je čistě na klientovi jako
-zkratka; server obě hodnoty dál bere nezávisle, ostatní stavy pokrok
-nemění.
+Je to zkratka čistě na klientovi; ostatní stavy pokrok nemění.
+
+Opačná vazba je naopak **na serveru**: stažení pokroku dokončeného
+požadavku pod 100 % ho vrátí do stavu *V procesu* — „Dokončeno na 60 %" by
+byl vnitřně rozporný záznam. Uplatní se jen když volající stav NEPOSLAL
+(mění se samotný pokrok); výslovně zadaný stav se respektuje vždycky, jinak
+by nešlo označit za dokončený požadavek, který zůstal rozpracovaný. Sedí
+na serveru, aby platila při každém zápisu a rovnou se objevila v historii
+jako skutečná změna stavu; klient si ji jen zrcadlí, aby optimistický
+náhled neukázal na okamžik stav, který server vzápětí přepíše.
+
+Mimo tyhle dvě vazby jsou stav a pokrok dál nezávislé — klik na *Nový*
+například pokrok nenuluje.
 
 **Menu** je kvůli téhle sekci rozdělené do skupin oddělených linkou:
 Kalendář + Požadavky / Uživatelé / Filiálky + LC, a Nastavení samostatně

@@ -926,7 +926,7 @@
      nekliknutelný ukazatel, ať je průběh vidět všem. Historie se načítá
      z auditního logu (apiGetRequestHistory), proto je v <details> —
      zajímá až při dohledávání, ne pokaždé. ══ -->
-<dialog class="modal modal-wide modal-grow modal-fixed-tall" id="requestModal">
+<dialog class="modal modal-xwide modal-grow modal-fixed-tall" id="requestModal">
   <div class="modal-header">
     <span class="modal-icon"><i class="ph ph-clipboard-text" aria-hidden="true"></i></span>
     <div class="modal-header-text">
@@ -5650,8 +5650,8 @@
       return '<div class="data-row request-row" data-id="' + Ui.escape(r.id) + '">' +
         '<span class="user-cell-muted">' + Ui.escape(this.formatDateTime(r.createdAt)) + '</span>' +
         '<span class="user-cell-muted request-cell-author">' +
-          '<span class="request-author-name">' + Ui.escape(r.authorName) + '</span>' +
           (r.authorLocation ? '<span class="request-author-loc">' + Ui.escape(r.authorLocation) + '</span>' : '') +
+          '<span class="request-author-name">' + Ui.escape(r.authorName) + '</span>' +
         '</span>' +
         '<span class="user-cell-name request-cell-title">' + Ui.escape(r.title) + '</span>' +
         '<span class="user-cell-muted request-cell-desc">' + Ui.escape(r.description || '—') + '</span>' +
@@ -5873,8 +5873,9 @@
 
       document.querySelector('#requestModalInfo').innerHTML =
         '<div class="request-meta">' +
-          '<span><i class="ph ph-user" aria-hidden="true"></i> ' + Ui.escape(request.authorName) +
+          '<span><i class="ph ph-user" aria-hidden="true"></i> ' +
             (request.authorLocation ? '<span class="request-author-loc">' + Ui.escape(request.authorLocation) + '</span>' : '') +
+            Ui.escape(request.authorName) +
           '</span>' +
           '<span><i class="ph ph-clock" aria-hidden="true"></i> ' + Ui.escape(this.formatDateTime(request.createdAt)) + '</span>' +
         '</div>' +
@@ -5989,6 +5990,16 @@
       const optimistic = Object.assign({}, previous);
       if (status !== null && status !== undefined) optimistic.status = status;
       if (progress !== null && progress !== undefined) optimistic.progress = progress;
+
+      // Stejná vazba, jakou uplatní server (viz apiSetRequestStatus):
+      // stažení pokroku dokončeného požadavku pod 100 % ho vrací do
+      // V procesu. Zrcadlí se tu jen proto, aby optimistický náhled
+      // neukázal na okamžik stav, který server vzápětí přepíše —
+      // rozhoduje server, ne tohle.
+      if ((status === null || status === undefined) &&
+          optimistic.status === 'done' && optimistic.progress < 100) {
+        optimistic.status = 'in_progress';
+      }
 
       this.replaceRequestInCache(optimistic);
       this.renderRequestDetail(optimistic);
