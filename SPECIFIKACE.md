@@ -1682,12 +1682,35 @@ se až při rozkliknutí, ne při otevření požadavku.
 v hlavičce jako Uživatelé a Filiálky (`DATA_TABLE_COLUMNS.requests` +
 `applyDataTableView`), takže filtrování nemá žádné vlastní ovládání, sedí
 v hlavičce sloupců. Výchozí pořadí je od nejnovějšího, včetně dokončených.
+
+Sloupce: **Zadáno, Zadal, Název, Popis, Stav, Pokrok, Akce.** Popis je
+jediný `plain` (bez filtru a řazení) — je to volný text až 4000 znaků,
+nabídka filtru by byla seznam celých popisů a řazení podle popisu nedává
+smysl. Sloupec s počtem komentářů v přehledu není; `commentCount` ze
+serveru se dál drží v cache, ale nic se kvůli němu nepřekresluje.
+
+**Barevná škála pokroku** — šest kroků po 20 % od červené přes žlutou po
+zelenou. Barvu drží jedna CSS proměnná `--request-progress-color`, ze které
+čte proužek v přehledu i posuvník v detailu (`accent-color`), takže obě
+podoby ukazatele nikdy neukážou pro tutéž hodnotu jinou barvu. Při tažení
+posuvníku se třída přepíná už při `input`, ne až po puštění.
 Detail je ve stejném modal-jazyce jako událost — komentáře jsou dokonce
 doslova tytéž funkce (`renderCommentItem`/`commentsEmptyState`), liší se
 jen endpoint a cílový seznam. Pás průběhu vidí všichni; kdo nemá právo,
 dostane ho jako `<span>` místo `<button>`, aby appka nenabízela akci, která
-by stejně skončila chybou. Posuvník pokroku se ukazuje ve všech třech
-stavech, ne jen v jednom — je na stavu nezávislý.
+by stejně skončila chybou. Pokrok má v detailu **jediný** ukazatel: kdo smí
+měnit, dostane posuvník (ten hodnotu i ukazuje), ostatní jen proužek. Dřív
+tam byly oba naráz a působily jako dvě různá čísla.
+
+Změna stavu i pokroku se překresluje **optimisticky** — appka rovnou
+zobrazí výsledek a teprve pak čeká na server. Kolečko na Apps Script trvá
+i přes vteřinu a po tu dobu se dřív vůbec nic nedělo, takže klik na krok
+průběhu působil, jako by nezabral. Když zápis selže, appka vrátí původní
+hodnoty a řekne proč, takže nepravdivý stav na obrazovce nezůstane.
+
+Seznam komentářů v detailu má **rezervovanou výšku** (`.request-comments-list`).
+Dřív měl jen `flex: 1`, takže modal po dotažení komentářů povyrostl a celé
+okno poskočilo.
 
 **Menu** je kvůli téhle sekci rozdělené do skupin oddělených linkou:
 Kalendář + Požadavky / Uživatelé / Filiálky + LC, a Nastavení samostatně

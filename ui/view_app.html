@@ -941,7 +941,7 @@
   <div class="modal-body">
     <div class="request-modal-info" id="requestModalInfo"><!-- vykresleno JS --></div>
     <div class="event-modal-comments">
-      <div class="event-comments-list" id="requestCommentsList"><!-- vykresleno JS --></div>
+      <div class="event-comments-list request-comments-list" id="requestCommentsList"><!-- vykresleno JS --></div>
       <form class="event-comment-form" id="requestCommentForm">
         <textarea id="requestCommentInput" placeholder="Napište komentář…" maxlength="500" rows="1"></textarea>
         <button type="submit" class="button-icon" id="requestCommentSubmit" aria-label="Odeslat komentář">
@@ -3470,16 +3470,6 @@
       ],
       requests: [
         {
-          key: 'stav', label: 'Stav',
-          filterValue: (r) => r.status,
-          filterLabel: (v) => ({ new: 'Nový', in_progress: 'V procesu', done: 'Dokončeno' }[v] || v),
-          filterOrder: ['new', 'in_progress', 'done'],
-          sortValue: (r) => ({ new: 0, in_progress: 1, done: 2 }[r.status]),
-          sortAsc: 'Nové nahoře', sortDesc: 'Dokončené nahoře',
-        },
-        { key: 'nazev', label: 'Název', filterValue: (r) => r.title, sortValue: (r) => r.title, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
-        { key: 'zadal', label: 'Zadal', filterValue: (r) => r.authorName, sortValue: (r) => r.authorName, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
-        {
           // Filtruje se podle DNE (ne přesného času) — jinak by měl každý
           // požadavek vlastní, nikdy se neopakující hodnotu a filtr by
           // nedával smysl. Řadí se přitom podle úplného razítka.
@@ -3489,8 +3479,21 @@
           sortValue: (r) => r.createdAt,
           filterSort: 'text', sortAsc: 'Nejstarší nahoře', sortDesc: 'Nejnovější nahoře',
         },
+        { key: 'zadal', label: 'Zadal', filterValue: (r) => r.authorName, sortValue: (r) => r.authorName, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
+        { key: 'nazev', label: 'Název', filterValue: (r) => r.title, sortValue: (r) => r.title, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
+        // Popis je ZÁMĚRNĚ bez filtru a řazení (plain): je to dlouhý volný
+        // text až 4000 znaků, nabídka filtru by byla seznam celých popisů
+        // a řazení podle popisu nedává smysl.
+        { key: 'popis', label: 'Popis', plain: true },
+        {
+          key: 'stav', label: 'Stav',
+          filterValue: (r) => r.status,
+          filterLabel: (v) => ({ new: 'Nový', in_progress: 'V procesu', done: 'Dokončeno' }[v] || v),
+          filterOrder: ['new', 'in_progress', 'done'],
+          sortValue: (r) => ({ new: 0, in_progress: 1, done: 2 }[r.status]),
+          sortAsc: 'Nové nahoře', sortDesc: 'Dokončené nahoře',
+        },
         { key: 'pokrok', label: 'Pokrok', filterValue: (r) => r.progress + ' %', sortValue: (r) => r.progress, filterSort: 'number', sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší' },
-        { key: 'komentare', label: 'Komentáře', filterValue: (r) => String(r.commentCount), sortValue: (r) => r.commentCount, filterSort: 'number', sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší' },
         { key: 'akce', label: 'Akce', actionsOnly: true },
       ],
     },
@@ -5629,26 +5632,38 @@
           : '');
 
       return '<div class="data-row request-row" data-id="' + Ui.escape(r.id) + '">' +
-        '<span><span class="request-status-chip ' + step.cls + '">' + Ui.escape(step.label) + '</span></span>' +
-        '<span class="user-cell-name request-cell-title">' + Ui.escape(r.title) + '</span>' +
-        '<span class="user-cell-muted">' + Ui.escape(r.authorName) + '</span>' +
         '<span class="user-cell-muted">' + Ui.escape(this.formatDateTime(r.createdAt)) + '</span>' +
+        '<span class="user-cell-muted">' + Ui.escape(r.authorName) + '</span>' +
+        '<span class="user-cell-name request-cell-title">' + Ui.escape(r.title) + '</span>' +
+        '<span class="user-cell-muted request-cell-desc">' + Ui.escape(r.description || '—') + '</span>' +
+        '<span><span class="request-status-chip ' + step.cls + '">' + Ui.escape(step.label) + '</span></span>' +
         this.renderRequestProgressBar(r.progress, 'is-row') +
-        '<span class="user-cell-muted">' + (r.commentCount ? r.commentCount : '—') + '</span>' +
         '<span class="user-actions">' + actions + '</span>' +
       '</div>';
+    },
+
+    /**
+     * Barevný stupeň pokroku — od červené přes žlutou po zelenou.
+     * Vrací třídu podle dvacetiprocentního kroku (odpovídá
+     * REQUEST_PROGRESS_STEP na serveru, takže tříd je přesně šest).
+     * Samotné barvy jsou v CSS, ne tady — ať jdou ladit na jednom místě.
+     */
+    requestProgressClass(value) {
+      const step = Math.round((Number(value) || 0) / 20) * 20;
+      return 'is-p' + step;
     },
 
     /** Proužek pokroku — sdílený mezi řádkem tabulky a detailem, liší se jen třídou velikosti. */
     renderRequestProgressBar(progress, extraClass) {
       const value = Math.max(0, Math.min(100, Number(progress) || 0));
-      return '<span class="request-progress ' + extraClass + '">' +
+      return '<span class="request-progress ' + extraClass + ' ' + this.requestProgressClass(value) + '">' +
         '<span class="request-progress-track"><span class="request-progress-fill" style="width: ' + value + '%"></span></span>' +
         '<span class="request-progress-value">' + value + ' %</span>' +
       '</span>';
     },
 
     bindRequests() {
+      this.renderDataTableHead('requests');
       document.querySelector('#requestsCreateBtn')
         .addEventListener('click', (e) => this.openRequestFormModal(null, e.currentTarget));
 
@@ -5771,7 +5786,6 @@
       const dialog = document.querySelector('#requestModal');
 
       document.querySelector('#requestModalTitle').textContent = request.title;
-      document.querySelector('#requestModalKicker').textContent = 'Požadavek — ' + this.requestStep(request.status).label;
       document.querySelector('#requestModalActions').innerHTML =
         (request.canEdit
           ? '<button type="button" class="user-action-btn" data-action="edit" title="Upravit" aria-label="Upravit požadavek">' +
@@ -5782,7 +5796,7 @@
             '<i class="ph ph-trash" aria-hidden="true"></i></button>'
           : '');
 
-      this.renderRequestInfo(request);
+      this.renderRequestDetail(request);
       document.querySelector('#requestCommentForm').dataset.requestId = id;
       this.loadRequestComments(id);
 
@@ -5811,18 +5825,23 @@
           : '<span class="request-step' + state + '">' + inner + '</span>';
       }).join('');
 
-      // Posuvník je NEZÁVISLÝ na stavu (zadání) — ukazuje se ve všech třech
-      // stavech, ne jen ve V procesu, a stav ho nijak nepřepisuje. Krok
-      // 20 % musí sedět s REQUEST_PROGRESS_STEP na serveru; ten jiné
-      // hodnoty odmítne, aby v datech nevznikla hodnota, kterou by
+      // JEDEN ukazatel pokroku, ne dva. Dřív tu byl vedle sebe nekliknutelný
+      // proužek I posuvník a působily jako dvě různá čísla. Kdo smí měnit,
+      // dostane posuvník (ten hodnotu i ukazuje), ostatní jen proužek —
+      // pokrok má vidět každý.
+      //
+      // Posuvník je NEZÁVISLÝ na stavu (zadání), ukazuje se ve všech třech
+      // stavech. Krok 20 % musí sedět s REQUEST_PROGRESS_STEP na serveru;
+      // ten jiné hodnoty odmítne, aby v datech nevznikla hodnota, kterou by
       // posuvník neuměl zobrazit zpátky.
-      const slider = canManage
-        ? '<div class="request-progress-edit">' +
+      const progress = Number(request.progress || 0);
+      const progressControl = canManage
+        ? '<div class="request-progress-edit ' + this.requestProgressClass(progress) + '">' +
             '<label for="requestProgressInput">Pokrok</label>' +
-            '<input type="range" id="requestProgressInput" min="0" max="100" step="20" value="' + Number(request.progress || 0) + '">' +
-            '<output id="requestProgressOutput">' + Number(request.progress || 0) + ' %</output>' +
+            '<input type="range" id="requestProgressInput" min="0" max="100" step="20" value="' + progress + '">' +
+            '<output id="requestProgressOutput">' + progress + ' %</output>' +
           '</div>'
-        : '';
+        : this.renderRequestProgressBar(progress, 'is-detail');
 
       document.querySelector('#requestModalInfo').innerHTML =
         '<div class="request-meta">' +
@@ -5832,8 +5851,7 @@
         '<div class="field-group field-group-accent">' +
           '<p class="kicker"><i class="ph ph-flow-arrow" aria-hidden="true"></i> Průběh</p>' +
           '<div class="request-steps">' + steps + '</div>' +
-          this.renderRequestProgressBar(request.progress, 'is-detail') +
-          slider +
+          progressControl +
         '</div>' +
         '<div class="field-group field-group-accent">' +
           '<p class="kicker"><i class="ph ph-text-align-left" aria-hidden="true"></i> Popis</p>' +
@@ -5877,7 +5895,12 @@
       // (change, ne input) — jinak by tažení myší poslalo desítky zápisů.
       info.addEventListener('input', (e) => {
         if (e.target.id !== 'requestProgressInput') return;
-        document.querySelector('#requestProgressOutput').textContent = e.target.value + ' %';
+        const value = Number(e.target.value);
+        document.querySelector('#requestProgressOutput').textContent = value + ' %';
+        // Barva se přebarvuje UŽ při tažení, ne až po puštění — jinak by
+        // číslo a barva na chvíli říkaly každá něco jiného.
+        e.target.closest('.request-progress-edit').className =
+          'request-progress-edit ' + this.requestProgressClass(value);
       });
       info.addEventListener('change', (e) => {
         if (e.target.id !== 'requestProgressInput') return;
@@ -5895,16 +5918,40 @@
       });
     },
 
+    /** Popisek v hlavičce detailu + tělo — vždycky pohromadě, ať nezůstanou rozejité. */
+    renderRequestDetail(request) {
+      document.querySelector('#requestModalKicker').textContent =
+        'Požadavek — ' + this.requestStep(request.status).label;
+      this.renderRequestInfo(request);
+    },
+
     /**
      * Uloží stav NEBO procento a překreslí detail i řádek v seznamu.
      *
      * Posílá se jen to, co se skutečně mění (`null` = neposílat) — stav
      * a procento jsou nezávislé, takže klik na krok průběhu nesmí přepsat
      * nastavené procento a naopak.
+     *
+     * Překresluje se OPTIMISTICKY: appka rovnou zobrazí, jak to bude
+     * vypadat, a teprve pak čeká na server. Kolečko na Apps Script trvá
+     * i přes vteřinu a po tu dobu se dřív vůbec nic nedělo, takže klik na
+     * krok průběhu působil, jako by nezabral (nahlášeno). Když zápis
+     * selže, appka vrátí původní hodnoty a řekne proč — nepravdivý stav
+     * na obrazovce tedy nezůstane.
      */
     saveRequestState(status, progress) {
       const id = this.currentRequestId;
       if (!id) return;
+      const previous = this.requestsCache.find((r) => r.id === id);
+      if (!previous) return;
+
+      const optimistic = Object.assign({}, previous);
+      if (status !== null && status !== undefined) optimistic.status = status;
+      if (progress !== null && progress !== undefined) optimistic.progress = progress;
+
+      this.replaceRequestInCache(optimistic);
+      this.renderRequestDetail(optimistic);
+      this.renderRequests();
 
       const payload = { id: id };
       if (status !== null && status !== undefined) payload.status = status;
@@ -5913,12 +5960,19 @@
       Ui.call('apiSetRequestStatus', payload, { silent: true })
         .then((updated) => {
           this.replaceRequestInCache(updated);
-          document.querySelector('#requestModalKicker').textContent =
-            'Požadavek — ' + this.requestStep(updated.status).label;
-          this.renderRequestInfo(updated);
-          this.renderRequests();
+          // Překreslovat znovu má smysl, jen když se server v něčem liší od
+          // odhadu — jinak by uživateli zbytečně poskočil rozdělaný detail.
+          if (updated.status !== optimistic.status || updated.progress !== optimistic.progress) {
+            this.renderRequestDetail(updated);
+            this.renderRequests();
+          }
         })
-        .catch((error) => Ui.toast(error.message, 'error'));
+        .catch((error) => {
+          this.replaceRequestInCache(previous);
+          this.renderRequestDetail(previous);
+          this.renderRequests();
+          Ui.toast(error.message, 'error');
+        });
     },
 
     /** Nahradí jeden požadavek v cache čerstvou verzí ze serveru (beze změny pořadí). */
@@ -5936,7 +5990,7 @@
           const request = items.find((r) => r.id === this.currentRequestId);
           if (!request) return;
           document.querySelector('#requestModalTitle').textContent = request.title;
-          this.renderRequestInfo(request);
+          this.renderRequestDetail(request);
         })
         .catch(() => {});
     },
@@ -6012,12 +6066,11 @@
           list.insertAdjacentHTML('beforeend', this.renderCommentItem(comment));
           list.scrollTop = list.scrollHeight;
 
-          // Počet komentářů v přehledu ať sedí hned, bez znovunačtení sekce.
+          // Počet v cache držíme dál (posílá ho server, může se hodit),
+          // ale seznam se kvůli němu nepřekresluje — sloupec s komentáři
+          // v přehledu není.
           const cached = this.requestsCache.find((r) => r.id === requestId);
-          if (cached) {
-            cached.commentCount = (cached.commentCount || 0) + 1;
-            this.renderRequests();
-          }
+          if (cached) cached.commentCount = (cached.commentCount || 0) + 1;
         })
         .catch((error) => {
           Ui.setButtonLoading(submitButton, false);
@@ -6030,10 +6083,7 @@
         .then(() => {
           this.loadRequestComments(this.currentRequestId);
           const cached = this.requestsCache.find((r) => r.id === this.currentRequestId);
-          if (cached && cached.commentCount > 0) {
-            cached.commentCount -= 1;
-            this.renderRequests();
-          }
+          if (cached && cached.commentCount > 0) cached.commentCount -= 1;
         })
         .catch((error) => Ui.toast(error.message, 'error'));
     },

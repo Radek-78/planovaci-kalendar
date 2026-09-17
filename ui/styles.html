@@ -2434,7 +2434,7 @@
 
   .requests-table-head,
   .request-row {
-    grid-template-columns: 124px 1.6fr 1fr 150px 160px 96px 76px;
+    grid-template-columns: 132px 1fr 1.4fr 1.6fr 116px 140px 76px;
   }
 
   /* Celý řádek otevírá detail (stejně jako u filiálek); klik na tlačítko
@@ -2443,7 +2443,8 @@
     cursor: pointer;
   }
 
-  .request-cell-title {
+  .request-cell-title,
+  .request-cell-desc {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -2494,8 +2495,25 @@
     overflow: hidden;
   }
 
+  /* Barevné odstupňování pokroku — od červené přes žlutou po zelenou.
+     Šest tříd = šest kroků po 20 % (REQUEST_PROGRESS_STEP na serveru).
+     Barvu drží jedna proměnná, kterou pak čte proužek i posuvník, takže
+     obě podoby ukazatele nikdy neukážou jinou barvu pro tutéž hodnotu. */
+  .request-progress.is-p0,
+  .request-progress-edit.is-p0 { --request-progress-color: #dc2626; }
+  .request-progress.is-p20,
+  .request-progress-edit.is-p20 { --request-progress-color: #ea580c; }
+  .request-progress.is-p40,
+  .request-progress-edit.is-p40 { --request-progress-color: #f59e0b; }
+  .request-progress.is-p60,
+  .request-progress-edit.is-p60 { --request-progress-color: #eab308; }
+  .request-progress.is-p80,
+  .request-progress-edit.is-p80 { --request-progress-color: #84cc16; }
+  .request-progress.is-p100,
+  .request-progress-edit.is-p100 { --request-progress-color: #16a34a; }
+
   .request-progress-fill {
-    background: var(--lidl-blue);
+    background: var(--request-progress-color, var(--lidl-blue));
     border-radius: 999px;
     display: block;
     height: 100%;
@@ -2503,10 +2521,11 @@
   }
 
   .request-progress-value {
-    color: var(--muted);
+    color: var(--request-progress-color, var(--muted));
     flex-shrink: 0;
     font-size: 11px;
     font-variant-numeric: tabular-nums; /* číslo neposkakuje při přetahování posuvníku */
+    font-weight: 700;
   }
 
   .request-progress.is-detail .request-progress-track {
@@ -2607,18 +2626,31 @@
     font-size: 12px;
   }
 
+  /* accent-color obarví v prohlížeči jezdce i vyplněnou část dráhy jednou
+     vlastností — žádné kreslení dráhy vlastními pseudoelementy. */
   .request-progress-edit input[type="range"] {
+    accent-color: var(--request-progress-color, var(--lidl-blue));
     flex: 1;
     min-width: 0;
   }
 
   .request-progress-edit output {
+    color: var(--request-progress-color, var(--text));
     flex-shrink: 0;
     font-size: 12.5px;
     font-variant-numeric: tabular-nums;
     font-weight: 700;
     min-width: 48px;
     text-align: right;
+  }
+
+  /* Komentáře mají REZERVOVANOU výšku od začátku. Dřív měl seznam jen
+     flex:1 bez pevné výšky, takže modal po dotažení komentářů povyrostl
+     a celé okno poskočilo (nahlášeno). Pevná výška znamená, že načítání,
+     prázdný stav i plný seznam zaberou pokaždé stejné místo. */
+  .request-comments-list {
+    flex: none;
+    height: 200px;
   }
 
   /* ── Detail požadavku ── */
