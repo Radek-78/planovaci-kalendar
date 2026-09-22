@@ -1488,10 +1488,16 @@
 	/* Vyhrazený prostor pro číslo úrovně řazení — pevná šířka, i prázdný
 		 (stejný princip jako trojúhelníky pokračování u vícedenní události
 		 v kalendáři — vždycky rezervované místo, i když se zrovna nevyužije). */
+	/* Pevná výška, i když je slot prázdný — stejný důvod jako u vyhrazené
+		 šířky: bez ní se slot smrskne na nulu a hlavička povyroste ve chvíli,
+		 kdy se na sloupci zapne řazení a odznak se objeví (nahlášeno).
+		 Hodnota je shodná s .col-filter-slot, takže ani jeden ze slotů nikdy
+		 nepřeroste ten druhý. */
 	.col-rank-slot {
 		align-items: center;
 		display: inline-flex;
 		flex-shrink: 0;
+		height: 14px;
 		justify-content: center;
 		width: 22px;
 	}
@@ -1511,7 +1517,7 @@
 		font-size: 9px;
 		font-weight: 700;
 		gap: 1px;
-		height: 15px;
+		height: 14px; /* shodné se slotem — odznak ho nesmí přerůst */
 		justify-content: center;
 		padding: 0 3px;
 	}

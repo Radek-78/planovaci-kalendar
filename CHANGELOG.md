@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.14.5 - 22.09.2026 08:32
+- v0.14.5: Výška hlavičky zůstává stejná i při zapnutém řazení. Minule jsem opravil růst hlavičky jen u filtru, ale stejnou vadu měl i odznak řazení - jeho slot neměl určenou výšku, takže se prázdný smrskl na nulu a ve chvíli, kdy se na sloupci zapnulo řazení, hlavička povyrostla. Oba sloty i odznak řazení mají nově pevných čtrnáct pixelů, takže si slot drží výšku i když je prázdný, stejně jako si vždycky držel šířku. Výška hlavičky je tím stejná ve všech kombinacích: bez ničeho, jen s filtrem, jen s řazením i s obojím.
+
 ## v0.14.4 - 22.09.2026 08:25
 - v0.14.4: Značka aktivního filtru už nezvětšuje hlavičku. Zvýraznění celé buňky z minulé verze - žlutý popisek sloupce a žlutá linka pod ním - se ruší. Zůstal jen žlutý odznak s ikonou filtru, ten stačí. Aby zapnutí filtru výšku hlavičky neměnilo vůbec, má odznak nově shodný rozměr s klidovým stavem, tedy čtrnáct krát čtrnáct pixelů v obou případech. Aktivní stav tak jen přebarví, nic nezvětšuje.
 

@@ -1844,11 +1844,16 @@ klonováním — tedy na jednom místě, ne u osmi volajících.
 
 **Hlavička tabulky** je ve firemní modré s bílým textem a jemnými bílými
 předěly sloupců (`rgba(255,255,255,0.22)` — světle šedá z řádků by na
-modrém podkladu nebyla vidět). Sloupec s aktivním filtrem značí **plný žlutý odznak** s tmavou ikonou —
-samotný obarvený glyf se v řadě hlaviček ztrácel. Odznak má SHODNÝ rozměr
-s klidovým stavem (obojí 14 × 14 px), takže zapnutí filtru nezvětší výšku
-hlavičky; zvýraznění celé buňky (žlutý popisek a linka pod ní) se proto
-zrušilo, výšku hlavičky měnit nemá.
+modrém podkladu nebyla vidět). Sloupec s aktivním filtrem značí **plný žlutý odznak** s tmavou ikonou,
+sloupec s aktivním řazením žlutý odznak s číslem úrovně a šipkou směru.
+
+**Výška hlavičky musí zůstat stejná ve všech stavech.** Oba sloty
+(`.col-filter-slot`, `.col-rank-slot`) i odznak řazení mají proto pevných
+14 px — slot si výšku drží, i když je prázdný, stejně jako si vždycky drží
+šířku. Bez toho se slot smrskl na nulu a hlavička povyrostla ve chvíli, kdy
+se filtr nebo řazení zaplo (nahlášeno dvakrát: nejdřív u filtru, pak
+u řazení). Zvýraznění celé buňky (žlutý popisek a linka pod ní) se ze
+stejného důvodu zrušilo.
 
 **Filtr a řazení v hlavičce** (sdílené všemi tabulkami): nadpisy v okně se
 píšou tak, jak jsou zadané — bez verzálek (písmo se kvůli tomu muselo
