@@ -9,19 +9,19 @@
  */
 
 /* ══════════════════════════════════════════════════════════════════════════
-   ODPOVĚDNÍ OBÁLKA
+	 ODPOVĚDNÍ OBÁLKA
 
-   Každý veřejný endpoint vrací klientovi { ok: true, data } nebo
-   { ok: false, error }. Klient to rozbaluje v Ui.call() (ui/core.html).
+	 Každý veřejný endpoint vrací klientovi { ok: true, data } nebo
+	 { ok: false, error }. Klient to rozbaluje v Ui.call() (ui/core.html).
 
-   Proč obálka a ne prosté vyhození výjimky: google.script.run předává výjimky
-   klientovi v ořezané podobě a s textem, který nemáme pod kontrolou. Obálkou
-   máme jistotu, co se k uživateli dostane.
-   ══════════════════════════════════════════════════════════════════════════ */
+	 Proč obálka a ne prosté vyhození výjimky: google.script.run předává výjimky
+	 klientovi v ořezané podobě a s textem, který nemáme pod kontrolou. Obálkou
+	 máme jistotu, co se k uživateli dostane.
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /** Úspěšná odpověď. */
 function ok_(data) {
-  return { ok: true, data: data === undefined ? null : data };
+	return { ok: true, data: data === undefined ? null : data };
 }
 
 /**
@@ -34,37 +34,37 @@ function ok_(data) {
  *   - cokoliv jiné  → do logu jde vše, uživateli jen obecná věta
  */
 function userError_(message) {
-  const error = new Error(message);
-  error.isUserError = true;
-  return error;
+	const error = new Error(message);
+	error.isUserError = true;
+	return error;
 }
 
 /** Chybová odpověď. Technické detaily zůstávají v logu, ven jde bezpečný text. */
 function fail_(error) {
-  // Do serverového logu vždy celá chyba i se stackem — tam ji smí vidět jen správce.
-  console.error(error && error.stack ? error.stack : error);
+	// Do serverového logu vždy celá chyba i se stackem — tam ji smí vidět jen správce.
+	console.error(error && error.stack ? error.stack : error);
 
-  const isUserError = !!(error && error.isUserError);
-  return {
-    ok: false,
-    error: isUserError
-      ? String(error.message)
-      : 'Došlo k neočekávané chybě. Zkuste akci zopakovat, případně kontaktujte správce aplikace.',
-  };
+	const isUserError = !!(error && error.isUserError);
+	return {
+		ok: false,
+		error: isUserError
+			? String(error.message)
+			: 'Došlo k neočekávané chybě. Zkuste akci zopakovat, případně kontaktujte správce aplikace.',
+	};
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   IDENTIFIKÁTORY A ČAS
-   ══════════════════════════════════════════════════════════════════════════ */
+	 IDENTIFIKÁTORY A ČAS
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /** Nové unikátní ID záznamu. */
 function uuid_() {
-  return Utilities.getUuid();
+	return Utilities.getUuid();
 }
 
 /** Aktuální čas v ISO 8601 — jednotný formát pro všechny sloupce *_at. */
 function nowIso_() {
-  return new Date().toISOString();
+	return new Date().toISOString();
 }
 
 /**
@@ -75,12 +75,12 @@ function nowIso_() {
  * každý jiný a nesmí rozhodovat o platnosti zápisu.
  */
 function todayIso_() {
-  return Utilities.formatDate(new Date(), TIMEZONE, 'yyyy-MM-dd');
+	return Utilities.formatDate(new Date(), TIMEZONE, 'yyyy-MM-dd');
 }
 
 /** Aktuální datum a čas v aplikační zóně jako `YYYY-MM-DDTHH:mm`. */
 function nowLocalIso_() {
-  return Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd'T'HH:mm");
+	return Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd'T'HH:mm");
 }
 
 /**
@@ -97,7 +97,7 @@ function nowLocalIso_() {
  * vyjdou dřív) a zobrazení si u nich doplní „:00".
  */
 function nowLocalIsoSeconds_() {
-  return Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd'T'HH:mm:ss");
+	return Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd'T'HH:mm:ss");
 }
 
 /**
@@ -108,14 +108,14 @@ function nowLocalIsoSeconds_() {
  * v nich není syrové ISO.
  */
 function formatDateTimeCz_(localIso) {
-  const text = String(localIso);
-  const dateParts = text.slice(0, 10).split('-');
-  return Number(dateParts[2]) + '.' + Number(dateParts[1]) + '.' + dateParts[0] + ' ' + text.slice(11, 16);
+	const text = String(localIso);
+	const dateParts = text.slice(0, 10).split('-');
+	return Number(dateParts[2]) + '.' + Number(dateParts[1]) + '.' + dateParts[0] + ' ' + text.slice(11, 16);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   FORMÁTOVÁNÍ LISTŮ
-   ══════════════════════════════════════════════════════════════════════════ */
+	 FORMÁTOVÁNÍ LISTŮ
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /**
  * Nastaví celému listu firemní font (CONFIG.sheetFont).
@@ -125,18 +125,18 @@ function formatDateTimeCz_(localIso) {
  * zůstane v Arialu.
  */
 function applySheetFont_(sheet) {
-  try {
-    sheet
-      .getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns())
-      .setFontFamily(CONFIG.sheetFont);
-  } catch (e) {
-    console.error('Nastavení fontu listu selhalo: ' + e);
-  }
+	try {
+		sheet
+			.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns())
+			.setFontFamily(CONFIG.sheetFont);
+	} catch (e) {
+		console.error('Nastavení fontu listu selhalo: ' + e);
+	}
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   AUDITNÍ LOG
-   ══════════════════════════════════════════════════════════════════════════ */
+	 AUDITNÍ LOG
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /**
  * Zapíše řádek do listu `_audit_log` — kdo, kdy, co (a k čemu — entityId).
@@ -161,26 +161,26 @@ function applySheetFont_(sheet) {
  * @param {string[]} [changeTypes] kódy toho, CO se změnilo (status/progress/title/…) — pro sloupec "Typ" v historii, viz komentář u _audit_log
  */
 function audit_(action, detail, entityId, changeTypes) {
-  try {
-    dbAppend_(SHEETS.AUDIT, {
-      timestamp: nowLocalIsoSeconds_(),
-      user: currentEmail_() || 'system',
-      action: String(action || ''),
-      detail: String(detail || ''),
-      entity_id: entityId ? String(entityId) : '',
-      change_types: (changeTypes || []).join(','),
-    });
-  } catch (e) {
-    console.error('Zápis do auditního logu selhal: ' + e);
-  }
+	try {
+		dbAppend_(SHEETS.AUDIT, {
+			timestamp: nowLocalIsoSeconds_(),
+			user: currentEmail_() || 'system',
+			action: String(action || ''),
+			detail: String(detail || ''),
+			entity_id: entityId ? String(entityId) : '',
+			change_types: (changeTypes || []).join(','),
+		});
+	} catch (e) {
+		console.error('Zápis do auditního logu selhal: ' + e);
+	}
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   NORMALIZACE VSTUPŮ
+	 NORMALIZACE VSTUPŮ
 
-   Používá se ve validační vrstvě 50_api.js. Cílem je, aby se do databáze
-   nikdy nedostal neořezaný, příliš dlouhý nebo neočekávaný text.
-   ══════════════════════════════════════════════════════════════════════════ */
+	 Používá se ve validační vrstvě 50_api.js. Cílem je, aby se do databáze
+	 nikdy nedostal neořezaný, příliš dlouhý nebo neočekávaný text.
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /**
  * Ořeže text a ověří délku. Vyhodí srozumitelnou chybu, když je pole
@@ -192,15 +192,15 @@ function audit_(action, detail, entityId, changeTypes) {
  * @param {boolean} required true = prázdná hodnota je chyba
  */
 function cleanText_(value, fieldName, maxLength, required) {
-  const text = String(value === null || value === undefined ? '' : value).trim();
+	const text = String(value === null || value === undefined ? '' : value).trim();
 
-  if (required && !text) {
-    throw userError_('Pole „' + fieldName + '" je povinné.');
-  }
-  if (text.length > maxLength) {
-    throw userError_('Pole „' + fieldName + '" může mít nejvýše ' + maxLength + ' znaků.');
-  }
-  return text;
+	if (required && !text) {
+		throw userError_('Pole „' + fieldName + '" je povinné.');
+	}
+	if (text.length > maxLength) {
+		throw userError_('Pole „' + fieldName + '" může mít nejvýše ' + maxLength + ' znaků.');
+	}
+	return text;
 }
 
 /**
@@ -209,7 +209,7 @@ function cleanText_(value, fieldName, maxLength, required) {
  * jinak by „Jan.Novak@…" a „jan.novak@…" byli dva různí lidé.
  */
 function cleanEmail_(value) {
-  return String(value === null || value === undefined ? '' : value).trim().toLowerCase();
+	return String(value === null || value === undefined ? '' : value).trim().toLowerCase();
 }
 
 /**
@@ -217,11 +217,11 @@ function cleanEmail_(value) {
  * Použití: role, oprávnění, typ události, klíče nastavení.
  */
 function pickFrom_(value, allowedValues, fieldName) {
-  const text = String(value === null || value === undefined ? '' : value).trim();
-  if (allowedValues.indexOf(text) === -1) {
-    throw userError_('Neplatná hodnota pole „' + fieldName + '".');
-  }
-  return text;
+	const text = String(value === null || value === undefined ? '' : value).trim();
+	if (allowedValues.indexOf(text) === -1) {
+		throw userError_('Neplatná hodnota pole „' + fieldName + '".');
+	}
+	return text;
 }
 
 /**
@@ -231,18 +231,18 @@ function pickFrom_(value, allowedValues, fieldName) {
  * splní, ale zpětné složení z Date objektu se neshoduje — takže neprojde).
  */
 function cleanDateOnly_(value, fieldName) {
-  const text = String(value === null || value === undefined ? '' : value).trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-    throw userError_('Pole „' + fieldName + '" musí být datum ve tvaru RRRR-MM-DD.');
-  }
+	const text = String(value === null || value === undefined ? '' : value).trim();
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+		throw userError_('Pole „' + fieldName + '" musí být datum ve tvaru RRRR-MM-DD.');
+	}
 
-  const parts = text.split('-').map(Number);
-  const year = parts[0], month = parts[1], day = parts[2];
-  const date = new Date(year, month - 1, day);
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
-    throw userError_('Pole „' + fieldName + '" obsahuje neplatné datum.');
-  }
-  return text;
+	const parts = text.split('-').map(Number);
+	const year = parts[0], month = parts[1], day = parts[2];
+	const date = new Date(year, month - 1, day);
+	if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+		throw userError_('Pole „' + fieldName + '" obsahuje neplatné datum.');
+	}
+	return text;
 }
 
 /**
@@ -251,21 +251,21 @@ function cleanDateOnly_(value, fieldName) {
  * navíc s kontrolou hodin a minut.
  */
 function cleanDateTime_(value, fieldName) {
-  const text = String(value === null || value === undefined ? '' : value).trim();
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(text);
-  if (!match) {
-    throw userError_('Pole „' + fieldName + '" musí být ve tvaru RRRR-MM-DDTHH:mm.');
-  }
+	const text = String(value === null || value === undefined ? '' : value).trim();
+	const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(text);
+	if (!match) {
+		throw userError_('Pole „' + fieldName + '" musí být ve tvaru RRRR-MM-DDTHH:mm.');
+	}
 
-  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
-  const hour = Number(match[4]), minute = Number(match[5]);
-  const date = new Date(year, month - 1, day, hour, minute);
-  const valid = date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
-    && date.getHours() === hour && date.getMinutes() === minute;
-  if (!valid) {
-    throw userError_('Pole „' + fieldName + '" obsahuje neplatné datum nebo čas.');
-  }
-  return text;
+	const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+	const hour = Number(match[4]), minute = Number(match[5]);
+	const date = new Date(year, month - 1, day, hour, minute);
+	const valid = date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+		&& date.getHours() === hour && date.getMinutes() === minute;
+	if (!valid) {
+		throw userError_('Pole „' + fieldName + '" obsahuje neplatné datum nebo čas.');
+	}
+	return text;
 }
 
 /**
@@ -273,10 +273,10 @@ function cleanDateTime_(value, fieldName) {
  * dne, bez data (viz šablony událostí, _event_templates.start_time/end_time).
  */
 function cleanTimeOnly_(value, fieldName) {
-  const text = String(value === null || value === undefined ? '' : value).trim();
-  const match = /^(\d{2}):(\d{2})$/.exec(text);
-  if (!match || Number(match[1]) > 23 || Number(match[2]) > 59) {
-    throw userError_('Pole „' + fieldName + '" musí být čas ve tvaru HH:mm.');
-  }
-  return text;
+	const text = String(value === null || value === undefined ? '' : value).trim();
+	const match = /^(\d{2}):(\d{2})$/.exec(text);
+	if (!match || Number(match[1]) > 23 || Number(match[2]) > 59) {
+		throw userError_('Pole „' + fieldName + '" musí být čas ve tvaru HH:mm.');
+	}
+	return text;
 }

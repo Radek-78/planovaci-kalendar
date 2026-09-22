@@ -35,8 +35,8 @@
 
 /** Názvy listů, které appka ve zdrojovém souboru čte. Pevné, dané formátem cizího systému. */
 const IMPORT_SHEET_NAMES = {
-  STORES: 'Organizace_Detail',
-  CLOSURES: 'Zavrene_Openings',
+	STORES: 'Organizace_Detail',
+	CLOSURES: 'Zavrene_Openings',
 };
 
 /**
@@ -46,48 +46,48 @@ const IMPORT_SHEET_NAMES = {
  * viz _importCellTime_.
  */
 const IMPORT_STORE_COLUMNS = [
-  { header: 'Číslo', field: 'id' },
-  { header: 'ID', field: 'kod' },
-  { header: 'Název', field: 'nazev' },
-  { header: 'LC', field: 'lc' },
-  { header: 'Telefon prodejny', field: 'telefon_prodejny' },
-  { header: 'VT', field: 'vt' },
-  { header: 'Telefon VT', field: 'telefon_vt' },
-  { header: 'RM', field: 'rm' },
-  { header: 'Telefon RM', field: 'telefon_rm' },
-  { header: 'Zástupce RM', field: 'zastupce_rm' },
-  { header: 'Telefon zástupce', field: 'telefon_zastupce' },
-  { header: 'Ulice', field: 'ulice' },
-  { header: 'Město', field: 'mesto' },
-  { header: 'PSČ', field: 'psc' },
-  { header: 'Pondělí otevřeno', field: 'po_otevreno', time: true },
-  { header: 'Pondělí zavřeno', field: 'po_zavreno', time: true },
-  { header: 'Úterý otevřeno', field: 'ut_otevreno', time: true },
-  { header: 'Úterý zavřeno', field: 'ut_zavreno', time: true },
-  { header: 'Středa otevřeno', field: 'st_otevreno', time: true },
-  { header: 'Středa zavřeno', field: 'st_zavreno', time: true },
-  { header: 'Čtvrtek otevřeno', field: 'ct_otevreno', time: true },
-  { header: 'Čtvrtek zavřeno', field: 'ct_zavreno', time: true },
-  { header: 'Pátek otevřeno', field: 'pa_otevreno', time: true },
-  { header: 'Pátek zavřeno', field: 'pa_zavreno', time: true },
-  { header: 'Sobota otevřeno', field: 'so_otevreno', time: true },
-  { header: 'Sobota zavřeno', field: 'so_zavreno', time: true },
-  { header: 'Neděle otevřeno', field: 'ne_otevreno', time: true },
-  { header: 'Neděle zavřeno', field: 'ne_zavreno', time: true },
+	{ header: 'Číslo', field: 'id' },
+	{ header: 'ID', field: 'kod' },
+	{ header: 'Název', field: 'nazev' },
+	{ header: 'LC', field: 'lc' },
+	{ header: 'Telefon prodejny', field: 'telefon_prodejny' },
+	{ header: 'VT', field: 'vt' },
+	{ header: 'Telefon VT', field: 'telefon_vt' },
+	{ header: 'RM', field: 'rm' },
+	{ header: 'Telefon RM', field: 'telefon_rm' },
+	{ header: 'Zástupce RM', field: 'zastupce_rm' },
+	{ header: 'Telefon zástupce', field: 'telefon_zastupce' },
+	{ header: 'Ulice', field: 'ulice' },
+	{ header: 'Město', field: 'mesto' },
+	{ header: 'PSČ', field: 'psc' },
+	{ header: 'Pondělí otevřeno', field: 'po_otevreno', time: true },
+	{ header: 'Pondělí zavřeno', field: 'po_zavreno', time: true },
+	{ header: 'Úterý otevřeno', field: 'ut_otevreno', time: true },
+	{ header: 'Úterý zavřeno', field: 'ut_zavreno', time: true },
+	{ header: 'Středa otevřeno', field: 'st_otevreno', time: true },
+	{ header: 'Středa zavřeno', field: 'st_zavreno', time: true },
+	{ header: 'Čtvrtek otevřeno', field: 'ct_otevreno', time: true },
+	{ header: 'Čtvrtek zavřeno', field: 'ct_zavreno', time: true },
+	{ header: 'Pátek otevřeno', field: 'pa_otevreno', time: true },
+	{ header: 'Pátek zavřeno', field: 'pa_zavreno', time: true },
+	{ header: 'Sobota otevřeno', field: 'so_otevreno', time: true },
+	{ header: 'Sobota zavřeno', field: 'so_zavreno', time: true },
+	{ header: 'Neděle otevřeno', field: 'ne_otevreno', time: true },
+	{ header: 'Neděle zavřeno', field: 'ne_zavreno', time: true },
 ];
 
 /** Mapování hlaviček listu Zavrene_Openings na pole záznamu uzavírky (_store_closures). */
 const IMPORT_CLOSURE_COLUMNS = [
-  { header: 'Číslo', field: 'id' },
-  { header: 'Název', field: 'nazev' },
-  { header: 'Od', field: 'od', date: true },
-  { header: 'Do', field: 'do', date: true },
-  { header: 'Celkem dní', field: 'celkem_dni' },
+	{ header: 'Číslo', field: 'id' },
+	{ header: 'Název', field: 'nazev' },
+	{ header: 'Od', field: 'od', date: true },
+	{ header: 'Do', field: 'do', date: true },
+	{ header: 'Celkem dní', field: 'celkem_dni' },
 ];
 
 /* ══════════════════════════════════════════════════════════════════════════
-   ČTENÍ ZDROJOVÉHO SOUBORU
-   ══════════════════════════════════════════════════════════════════════════ */
+	 ČTENÍ ZDROJOVÉHO SOUBORU
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /**
  * Prostý text buňky, ořezaný. `null`/`undefined` → prázdný řetězec.
@@ -108,20 +108,20 @@ const IMPORT_CLOSURE_COLUMNS = [
  * u _importCellTime_/_importCellDate_ níže, jen jiný cílový formát.
  */
 function _importCellText_(value) {
-  if (value instanceof Date) return Utilities.formatDate(value, TIMEZONE, 'dd.MM.yyyy');
-  return String(value === null || value === undefined ? '' : value).trim();
+	if (value instanceof Date) return Utilities.formatDate(value, TIMEZONE, 'dd.MM.yyyy');
+	return String(value === null || value === undefined ? '' : value).trim();
 }
 
 /** Buňka otevírací doby — Sheets ji může vrátit jako Date (čas), appka chce vždy "HH:mm". */
 function _importCellTime_(value) {
-  if (value instanceof Date) return Utilities.formatDate(value, TIMEZONE, 'HH:mm');
-  return _importCellText_(value);
+	if (value instanceof Date) return Utilities.formatDate(value, TIMEZONE, 'HH:mm');
+	return _importCellText_(value);
 }
 
 /** Buňka data (Od/Do uzavírky) — Sheets ji může vrátit jako Date, appka chce vždy "YYYY-MM-DD". */
 function _importCellDate_(value) {
-  if (value instanceof Date) return Utilities.formatDate(value, TIMEZONE, 'yyyy-MM-dd');
-  return _importCellText_(value);
+	if (value instanceof Date) return Utilities.formatDate(value, TIMEZONE, 'yyyy-MM-dd');
+	return _importCellText_(value);
 }
 
 /**
@@ -130,78 +130,78 @@ function _importCellDate_(value) {
  * ne tichý prázdný sloupec někde hluboko v importu.
  */
 function _importHeaderIndex_(sheet, columns, sheetLabel) {
-  const lastCol = sheet.getLastColumn();
-  const headerRow = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map((h) => String(h).trim());
+	const lastCol = sheet.getLastColumn();
+	const headerRow = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map((h) => String(h).trim());
 
-  const index = {};
-  columns.forEach((col) => {
-    const at = headerRow.indexOf(col.header);
-    if (at === -1) {
-      throw userError_('List „' + sheetLabel + '" ve zdrojovém souboru neobsahuje očekávaný sloupec „' +
-        col.header + '". Zkontrolujte formát souboru.');
-    }
-    index[col.field] = at;
-  });
-  return index;
+	const index = {};
+	columns.forEach((col) => {
+		const at = headerRow.indexOf(col.header);
+		if (at === -1) {
+			throw userError_('List „' + sheetLabel + '" ve zdrojovém souboru neobsahuje očekávaný sloupec „' +
+				col.header + '". Zkontrolujte formát souboru.');
+		}
+		index[col.field] = at;
+	});
+	return index;
 }
 
 /** Přečte list Organizace_Detail a vrátí pole záznamů pro _stores. */
 function _importReadStores_(spreadsheet) {
-  const sheet = spreadsheet.getSheetByName(IMPORT_SHEET_NAMES.STORES);
-  if (!sheet) {
-    throw userError_('Zdrojový soubor neobsahuje list „' + IMPORT_SHEET_NAMES.STORES + '".');
-  }
+	const sheet = spreadsheet.getSheetByName(IMPORT_SHEET_NAMES.STORES);
+	if (!sheet) {
+		throw userError_('Zdrojový soubor neobsahuje list „' + IMPORT_SHEET_NAMES.STORES + '".');
+	}
 
-  const index = _importHeaderIndex_(sheet, IMPORT_STORE_COLUMNS, IMPORT_SHEET_NAMES.STORES);
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return [];
+	const index = _importHeaderIndex_(sheet, IMPORT_STORE_COLUMNS, IMPORT_SHEET_NAMES.STORES);
+	const lastRow = sheet.getLastRow();
+	if (lastRow < 2) return [];
 
-  const values = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
-  const records = [];
-  values.forEach((row) => {
-    const id = _importCellText_(row[index.id]);
-    if (!id) return; // prázdný řádek (chybí Číslo)
+	const values = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+	const records = [];
+	values.forEach((row) => {
+		const id = _importCellText_(row[index.id]);
+		if (!id) return; // prázdný řádek (chybí Číslo)
 
-    const record = {};
-    IMPORT_STORE_COLUMNS.forEach((col) => {
-      const raw = row[index[col.field]];
-      record[col.field] = col.time ? _importCellTime_(raw) : _importCellText_(raw);
-    });
-    records.push(record);
-  });
-  return records;
+		const record = {};
+		IMPORT_STORE_COLUMNS.forEach((col) => {
+			const raw = row[index[col.field]];
+			record[col.field] = col.time ? _importCellTime_(raw) : _importCellText_(raw);
+		});
+		records.push(record);
+	});
+	return records;
 }
 
 /** Přečte list Zavrene_Openings a vrátí pole záznamů pro _store_closures. */
 function _importReadClosures_(spreadsheet) {
-  const sheet = spreadsheet.getSheetByName(IMPORT_SHEET_NAMES.CLOSURES);
-  if (!sheet) {
-    throw userError_('Zdrojový soubor neobsahuje list „' + IMPORT_SHEET_NAMES.CLOSURES + '".');
-  }
+	const sheet = spreadsheet.getSheetByName(IMPORT_SHEET_NAMES.CLOSURES);
+	if (!sheet) {
+		throw userError_('Zdrojový soubor neobsahuje list „' + IMPORT_SHEET_NAMES.CLOSURES + '".');
+	}
 
-  const index = _importHeaderIndex_(sheet, IMPORT_CLOSURE_COLUMNS, IMPORT_SHEET_NAMES.CLOSURES);
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return [];
+	const index = _importHeaderIndex_(sheet, IMPORT_CLOSURE_COLUMNS, IMPORT_SHEET_NAMES.CLOSURES);
+	const lastRow = sheet.getLastRow();
+	if (lastRow < 2) return [];
 
-  const values = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
-  const records = [];
-  values.forEach((row) => {
-    const id = _importCellText_(row[index.id]);
-    if (!id) return;
+	const values = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+	const records = [];
+	values.forEach((row) => {
+		const id = _importCellText_(row[index.id]);
+		if (!id) return;
 
-    const record = {};
-    IMPORT_CLOSURE_COLUMNS.forEach((col) => {
-      const raw = row[index[col.field]];
-      record[col.field] = col.date ? _importCellDate_(raw) : _importCellText_(raw);
-    });
-    records.push(record);
-  });
-  return records;
+		const record = {};
+		IMPORT_CLOSURE_COLUMNS.forEach((col) => {
+			const raw = row[index[col.field]];
+			record[col.field] = col.date ? _importCellDate_(raw) : _importCellText_(raw);
+		});
+		records.push(record);
+	});
+	return records;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   VYHLEDÁNÍ SOUBORU NA DISKU
-   ══════════════════════════════════════════════════════════════════════════ */
+	 VYHLEDÁNÍ SOUBORU NA DISKU
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /**
  * Vytáhne ID složky ze vstupu — appka přijímá jak URL
@@ -210,15 +210,15 @@ function _importReadClosures_(spreadsheet) {
  * chybu odhalí hned při hledání, ne až při synchronizaci.
  */
 function _importResolveFolder_(input) {
-  const text = cleanText_(input, 'Složka', LIMITS.IMPORT_FOLDER_MAX, true);
-  const match = text.match(/[-\w]{25,}/);
-  const folderId = match ? match[0] : text;
+	const text = cleanText_(input, 'Složka', LIMITS.IMPORT_FOLDER_MAX, true);
+	const match = text.match(/[-\w]{25,}/);
+	const folderId = match ? match[0] : text;
 
-  try {
-    return DriveApp.getFolderById(folderId);
-  } catch (e) {
-    throw userError_('Složku se nepodařilo najít. Zkontrolujte URL nebo ID a přístupová práva.');
-  }
+	try {
+		return DriveApp.getFolderById(folderId);
+	} catch (e) {
+		throw userError_('Složku se nepodařilo najít. Zkontrolujte URL nebo ID a přístupová práva.');
+	}
 }
 
 /**
@@ -227,13 +227,13 @@ function _importResolveFolder_(input) {
  * nemusí URL/výraz psát pokaždé znovu.
  */
 function apiGetImportSettings() {
-  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
-    const settings = settingsAll_();
-    return {
-      folderInput: settings.importFolderId,
-      searchTerm: settings.importSearchTerm,
-    };
-  });
+	return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+		const settings = settingsAll_();
+		return {
+			folderInput: settings.importFolderId,
+			searchTerm: settings.importSearchTerm,
+		};
+	});
 }
 
 /**
@@ -243,24 +243,24 @@ function apiGetImportSettings() {
  * triggerem (_importRunScheduledSync_, ten prostě vezme první/nejnovější).
  */
 function _importFindFiles_(folder, searchTerm) {
-  const term = searchTerm.toLowerCase();
-  const files = [];
-  const iterator = folder.getFilesByType(MimeType.GOOGLE_SHEETS);
-  while (iterator.hasNext()) {
-    const file = iterator.next();
-    if (file.getName().toLowerCase().indexOf(term) === -1) continue;
-    files.push({
-      id: file.getId(),
-      name: file.getName(),
-      modifiedAt: Utilities.formatDate(file.getLastUpdated(), TIMEZONE, "yyyy-MM-dd'T'HH:mm"),
-    });
-  }
-  // Řadit AŽ PO projití celé složky — jinak by případný limit počtu
-  // výsledků mohl vyřadit zrovna ten nejnovější soubor, který appka chce
-  // rovnou předvybrat (viz App.searchImportFiles na klientovi) / na který
-  // se má noční trigger sám spolehnout beze zbytku (žádný člověk k výběru).
-  files.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt));
-  return files;
+	const term = searchTerm.toLowerCase();
+	const files = [];
+	const iterator = folder.getFilesByType(MimeType.GOOGLE_SHEETS);
+	while (iterator.hasNext()) {
+		const file = iterator.next();
+		if (file.getName().toLowerCase().indexOf(term) === -1) continue;
+		files.push({
+			id: file.getId(),
+			name: file.getName(),
+			modifiedAt: Utilities.formatDate(file.getLastUpdated(), TIMEZONE, "yyyy-MM-dd'T'HH:mm"),
+		});
+	}
+	// Řadit AŽ PO projití celé složky — jinak by případný limit počtu
+	// výsledků mohl vyřadit zrovna ten nejnovější soubor, který appka chce
+	// rovnou předvybrat (viz App.searchImportFiles na klientovi) / na který
+	// se má noční trigger sám spolehnout beze zbytku (žádný člověk k výběru).
+	files.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt));
+	return files;
 }
 
 /**
@@ -269,12 +269,12 @@ function _importFindFiles_(folder, searchTerm) {
  * ať se do `_settings` nedostane neověřený pokus.
  */
 function apiSearchImportFiles(payload) {
-  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
-    const data = payload || {};
-    const folder = _importResolveFolder_(data.folderInput);
-    const searchTerm = cleanText_(data.searchTerm, 'Hledaný výraz', LIMITS.IMPORT_SEARCH_MAX, true);
-    return { files: _importFindFiles_(folder, searchTerm).slice(0, 25) };
-  });
+	return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+		const data = payload || {};
+		const folder = _importResolveFolder_(data.folderInput);
+		const searchTerm = cleanText_(data.searchTerm, 'Hledaný výraz', LIMITS.IMPORT_SEARCH_MAX, true);
+		return { files: _importFindFiles_(folder, searchTerm).slice(0, 25) };
+	});
 }
 
 /**
@@ -283,20 +283,20 @@ function apiSearchImportFiles(payload) {
  * to appku ujistit PŘED synchronizací, ne nahrazovat ji).
  */
 function _importValidateSheet_(spreadsheet, sheetName, columns) {
-  const sheet = spreadsheet.getSheetByName(sheetName);
-  if (!sheet) {
-    return { name: sheetName, found: false, ok: false, missingColumns: [] };
-  }
+	const sheet = spreadsheet.getSheetByName(sheetName);
+	if (!sheet) {
+		return { name: sheetName, found: false, ok: false, missingColumns: [] };
+	}
 
-  const lastCol = sheet.getLastColumn();
-  const headerRow = lastCol > 0
-    ? sheet.getRange(1, 1, 1, lastCol).getValues()[0].map((h) => String(h).trim())
-    : [];
-  const missingColumns = columns
-    .filter((c) => headerRow.indexOf(c.header) === -1)
-    .map((c) => c.header);
+	const lastCol = sheet.getLastColumn();
+	const headerRow = lastCol > 0
+		? sheet.getRange(1, 1, 1, lastCol).getValues()[0].map((h) => String(h).trim())
+		: [];
+	const missingColumns = columns
+		.filter((c) => headerRow.indexOf(c.header) === -1)
+		.map((c) => c.header);
 
-  return { name: sheetName, found: true, ok: missingColumns.length === 0, missingColumns: missingColumns };
+	return { name: sheetName, found: true, ok: missingColumns.length === 0, missingColumns: missingColumns };
 }
 
 /**
@@ -307,28 +307,28 @@ function _importValidateSheet_(spreadsheet, sheetName, columns) {
  * ne až při skutečném kliknutí na Synchronizovat.
  */
 function apiValidateImportFile(payload) {
-  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
-    const data = payload || {};
-    const fileId = cleanText_(data.fileId, 'ID souboru', 200, true);
+	return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+		const data = payload || {};
+		const fileId = cleanText_(data.fileId, 'ID souboru', 200, true);
 
-    let spreadsheet;
-    try {
-      spreadsheet = SpreadsheetApp.openById(fileId);
-    } catch (e) {
-      return { ok: false, sheets: [] };
-    }
+		let spreadsheet;
+		try {
+			spreadsheet = SpreadsheetApp.openById(fileId);
+		} catch (e) {
+			return { ok: false, sheets: [] };
+		}
 
-    const sheets = [
-      _importValidateSheet_(spreadsheet, IMPORT_SHEET_NAMES.STORES, IMPORT_STORE_COLUMNS),
-      _importValidateSheet_(spreadsheet, IMPORT_SHEET_NAMES.CLOSURES, IMPORT_CLOSURE_COLUMNS),
-    ];
-    return { ok: sheets.every((s) => s.ok), sheets: sheets };
-  });
+		const sheets = [
+			_importValidateSheet_(spreadsheet, IMPORT_SHEET_NAMES.STORES, IMPORT_STORE_COLUMNS),
+			_importValidateSheet_(spreadsheet, IMPORT_SHEET_NAMES.CLOSURES, IMPORT_CLOSURE_COLUMNS),
+		];
+		return { ok: sheets.every((s) => s.ok), sheets: sheets };
+	});
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   SYNCHRONIZACE
-   ══════════════════════════════════════════════════════════════════════════ */
+	 SYNCHRONIZACE
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /**
  * Provede samotnou synchronizaci pro daný soubor — přečte ho a nahradí
@@ -341,30 +341,30 @@ function apiValidateImportFile(payload) {
  * (_importRunScheduledSync_), ať tahle logika existuje jen jednou.
  */
 function _importPerformSync_(fileId) {
-  let spreadsheet;
-  try {
-    spreadsheet = SpreadsheetApp.openById(fileId);
-  } catch (e) {
-    throw userError_('Zdrojový soubor se nepodařilo otevřít. Zkuste vyhledat znovu.');
-  }
+	let spreadsheet;
+	try {
+		spreadsheet = SpreadsheetApp.openById(fileId);
+	} catch (e) {
+		throw userError_('Zdrojový soubor se nepodařilo otevřít. Zkuste vyhledat znovu.');
+	}
 
-  const storeRows = _importReadStores_(spreadsheet);
-  const closureRows = _importReadClosures_(spreadsheet);
+	const storeRows = _importReadStores_(spreadsheet);
+	const closureRows = _importReadClosures_(spreadsheet);
 
-  const storesResult = _importSyncStores_(storeRows);
-  const lcResult = _importSyncLogisticCenters_(storeRows);
-  const closuresResult = _importSyncClosures_(closureRows);
+	const storesResult = _importSyncStores_(storeRows);
+	const lcResult = _importSyncLogisticCenters_(storeRows);
+	const closuresResult = _importSyncClosures_(closureRows);
 
-  const diffData = { fileName: spreadsheet.getName(), stores: storesResult, logisticCenters: lcResult, closures: closuresResult };
-  const logEntry = _importWriteLog_(diffData);
-  audit_('import.sync', logEntry.summary, logEntry.id);
+	const diffData = { fileName: spreadsheet.getName(), stores: storesResult, logisticCenters: lcResult, closures: closuresResult };
+	const logEntry = _importWriteLog_(diffData);
+	audit_('import.sync', logEntry.summary, logEntry.id);
 
-  return {
-    fileName: spreadsheet.getName(),
-    stores: { total: storesResult.total, added: storesResult.added.length, changed: storesResult.changed.length, removed: storesResult.removed.length },
-    logisticCenters: { total: lcResult.total, added: lcResult.added.length, removed: lcResult.removed.length },
-    closures: { total: closuresResult.total, added: closuresResult.added.length, removed: closuresResult.removed.length },
-  };
+	return {
+		fileName: spreadsheet.getName(),
+		stores: { total: storesResult.total, added: storesResult.added.length, changed: storesResult.changed.length, removed: storesResult.removed.length },
+		logisticCenters: { total: lcResult.total, added: lcResult.added.length, removed: lcResult.removed.length },
+		closures: { total: closuresResult.total, added: closuresResult.added.length, removed: closuresResult.removed.length },
+	};
 }
 
 /**
@@ -373,17 +373,17 @@ function _importPerformSync_(fileId) {
  * navazuje na tuhle odsouhlasenou konfiguraci.
  */
 function apiSyncImportFile(payload) {
-  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
-    const data = payload || {};
-    const fileId = cleanText_(data.fileId, 'ID souboru', 200, true);
+	return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+		const data = payload || {};
+		const fileId = cleanText_(data.fileId, 'ID souboru', 200, true);
 
-    const result = _importPerformSync_(fileId);
+		const result = _importPerformSync_(fileId);
 
-    if (data.folderInput) settingsSet_('importFolderId', String(data.folderInput).trim());
-    if (data.searchTerm) settingsSet_('importSearchTerm', String(data.searchTerm).trim());
+		if (data.folderInput) settingsSet_('importFolderId', String(data.folderInput).trim());
+		if (data.searchTerm) settingsSet_('importSearchTerm', String(data.searchTerm).trim());
 
-    return result;
-  });
+		return result;
+	});
 }
 
 /**
@@ -406,45 +406,45 @@ function apiSyncImportFile(payload) {
  * od úspěšné synchronizace, ta jde do Logu importu i zvonečku).
  */
 function _importRunScheduledSync_() {
-  const settings = settingsAll_();
-  const folderInput = String(settings.importFolderId || '').trim();
-  const searchTerm = String(settings.importSearchTerm || '').trim();
+	const settings = settingsAll_();
+	const folderInput = String(settings.importFolderId || '').trim();
+	const searchTerm = String(settings.importSearchTerm || '').trim();
 
-  if (!folderInput || !searchTerm) {
-    console.log('Noční synchronizace přeskočena — v Nastavení ještě neproběhla první ruční synchronizace (chybí složka nebo hledaný výraz).');
-    return;
-  }
+	if (!folderInput || !searchTerm) {
+		console.log('Noční synchronizace přeskočena — v Nastavení ještě neproběhla první ruční synchronizace (chybí složka nebo hledaný výraz).');
+		return;
+	}
 
-  let folder;
-  try {
-    folder = _importResolveFolder_(folderInput);
-  } catch (e) {
-    console.error('Noční synchronizace selhala — složku se nepodařilo otevřít: ' + e);
-    return;
-  }
+	let folder;
+	try {
+		folder = _importResolveFolder_(folderInput);
+	} catch (e) {
+		console.error('Noční synchronizace selhala — složku se nepodařilo otevřít: ' + e);
+		return;
+	}
 
-  const files = _importFindFiles_(folder, searchTerm);
-  if (!files.length) {
-    console.log('Noční synchronizace přeskočena — ve složce nebyl nalezen žádný soubor odpovídající výrazu „' + searchTerm + '".');
-    return;
-  }
+	const files = _importFindFiles_(folder, searchTerm);
+	if (!files.length) {
+		console.log('Noční synchronizace přeskočena — ve složce nebyl nalezen žádný soubor odpovídající výrazu „' + searchTerm + '".');
+		return;
+	}
 
-  try {
-    const result = _importPerformSync_(files[0].id);
-    console.log('Noční synchronizace dokončena: „' + result.fileName + '".');
-  } catch (e) {
-    console.error('Noční synchronizace selhala: ' + (e && e.stack ? e.stack : e));
-  }
+	try {
+		const result = _importPerformSync_(files[0].id);
+		console.log('Noční synchronizace dokončena: „' + result.fileName + '".');
+	} catch (e) {
+		console.error('Noční synchronizace selhala: ' + (e && e.stack ? e.stack : e));
+	}
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   TRIGGER — zapnutí/vypnutí a hodina nočního běhu
+	 TRIGGER — zapnutí/vypnutí a hodina nočního běhu
 
-   Appka zakládá/ruší trigger bezpečně přímo z webového rozhraní — běží
-   jako "Execute as me" (viz appsscript.json), takže webový požadavek od
-   SUPERADMINa má STEJNÁ oprávnění ScriptApp jako ruční spuštění z editoru
-   (obojí ve skutečnosti běží pod účtem vlastníka skriptu).
-   ══════════════════════════════════════════════════════════════════════════ */
+	 Appka zakládá/ruší trigger bezpečně přímo z webového rozhraní — běží
+	 jako "Execute as me" (viz appsscript.json), takže webový požadavek od
+	 SUPERADMINa má STEJNÁ oprávnění ScriptApp jako ruční spuštění z editoru
+	 (obojí ve skutečnosti běží pod účtem vlastníka skriptu).
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /** Název handler funkce triggeru — na jednom místě, ať appka na něj vždy odkazuje stejně. */
 const IMPORT_TRIGGER_HANDLER = '_importRunScheduledSync_';
@@ -458,16 +458,16 @@ const IMPORT_TRIGGER_HANDLER = '_importRunScheduledSync_';
  * @param {number} hour  0-23, trigger poběží někdy v tuto hodinu
  */
 function _importSetTrigger_(enabled, hour) {
-  ScriptApp.getProjectTriggers()
-    .filter((t) => t.getHandlerFunction() === IMPORT_TRIGGER_HANDLER)
-    .forEach((t) => ScriptApp.deleteTrigger(t));
+	ScriptApp.getProjectTriggers()
+		.filter((t) => t.getHandlerFunction() === IMPORT_TRIGGER_HANDLER)
+		.forEach((t) => ScriptApp.deleteTrigger(t));
 
-  if (enabled) {
-    ScriptApp.newTrigger(IMPORT_TRIGGER_HANDLER).timeBased().atHour(hour).everyDays(1).create();
-  }
+	if (enabled) {
+		ScriptApp.newTrigger(IMPORT_TRIGGER_HANDLER).timeBased().atHour(hour).everyDays(1).create();
+	}
 
-  settingsSet_('importTriggerEnabled', enabled);
-  settingsSet_('importTriggerHour', hour);
+	settingsSet_('importTriggerEnabled', enabled);
+	settingsSet_('importTriggerHour', hour);
 }
 
 /**
@@ -479,35 +479,35 @@ function _importSetTrigger_(enabled, hour) {
  * bere z posledního uloženého nastavení.
  */
 function _importTriggerStatus_() {
-  const exists = ScriptApp.getProjectTriggers().some((t) => t.getHandlerFunction() === IMPORT_TRIGGER_HANDLER);
-  const settings = settingsAll_();
-  return { enabled: exists, hour: Number(settings.importTriggerHour) || 6 };
+	const exists = ScriptApp.getProjectTriggers().some((t) => t.getHandlerFunction() === IMPORT_TRIGGER_HANDLER);
+	const settings = settingsAll_();
+	return { enabled: exists, hour: Number(settings.importTriggerHour) || 6 };
 }
 
 function apiGetImportTriggerStatus() {
-  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => _importTriggerStatus_());
+	return guard_(PERM_KEYS.SETTINGS_MANAGE, () => _importTriggerStatus_());
 }
 
 /**
  * @param {Object} payload  { enabled, hour }
  */
 function apiSetImportTrigger(payload) {
-  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
-    const data = payload || {};
-    const enabled = data.enabled === true;
-    const hour = Math.round(Number(data.hour));
-    if (isNaN(hour) || hour < 0 || hour > 23) {
-      throw userError_('Hodina spuštění musí být číslo 0–23.');
-    }
+	return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+		const data = payload || {};
+		const enabled = data.enabled === true;
+		const hour = Math.round(Number(data.hour));
+		if (isNaN(hour) || hour < 0 || hour > 23) {
+			throw userError_('Hodina spuštění musí být číslo 0–23.');
+		}
 
-    _importSetTrigger_(enabled, hour);
-    audit_(enabled ? 'importTrigger.enable' : 'importTrigger.disable',
-      enabled
-        ? 'Zapnuta noční synchronizace dat filiálek (' + hour + ':00–' + ((hour + 1) % 24) + ':00)'
-        : 'Vypnuta noční synchronizace dat filiálek');
+		_importSetTrigger_(enabled, hour);
+		audit_(enabled ? 'importTrigger.enable' : 'importTrigger.disable',
+			enabled
+				? 'Zapnuta noční synchronizace dat filiálek (' + hour + ':00–' + ((hour + 1) % 24) + ':00)'
+				: 'Vypnuta noční synchronizace dat filiálek');
 
-    return _importTriggerStatus_();
-  });
+		return _importTriggerStatus_();
+	});
 }
 
 /**
@@ -518,14 +518,14 @@ function apiSetImportTrigger(payload) {
  * a zbytečně by to zaplavovalo Log importu). Prázdné pole = beze změny.
  */
 function _storeRowChanges_(existing, incoming) {
-  const changes = [];
-  DB_SCHEMA[SHEETS.STORES].forEach((field) => {
-    if (field === 'id' || field === 'updated_at' || field === 'active') return;
-    const from = String(existing[field] || '');
-    const to = String(incoming[field] || '');
-    if (from !== to) changes.push({ field: field, from: from, to: to });
-  });
-  return changes;
+	const changes = [];
+	DB_SCHEMA[SHEETS.STORES].forEach((field) => {
+		if (field === 'id' || field === 'updated_at' || field === 'active') return;
+		const from = String(existing[field] || '');
+		const to = String(incoming[field] || '');
+		if (from !== to) changes.push({ field: field, from: from, to: to });
+	});
+	return changes;
 }
 
 /**
@@ -536,30 +536,30 @@ function _storeRowChanges_(existing, incoming) {
  * i tuhle synchronizaci.
  */
 function _importSyncStores_(storeRows) {
-  const before = dbGetAll_(SHEETS.STORES);
-  const beforeMap = {};
-  before.forEach((row) => { beforeMap[String(row.id)] = row; });
+	const before = dbGetAll_(SHEETS.STORES);
+	const beforeMap = {};
+	before.forEach((row) => { beforeMap[String(row.id)] = row; });
 
-  const afterIds = {};
-  const added = [];
-  const changed = [];
-  const records = storeRows.map((row) => {
-    afterIds[row.id] = true;
-    const existing = beforeMap[row.id];
-    if (!existing) {
-      added.push({ id: row.id, nazev: row.nazev });
-      return Object.assign({}, row, { active: true });
-    }
-    const fields = _storeRowChanges_(existing, row);
-    if (fields.length) changed.push({ id: row.id, nazev: row.nazev, fields: fields });
-    return Object.assign({}, row, { active: existing.active });
-  });
-  const removed = before
-    .filter((row) => !afterIds[String(row.id)])
-    .map((row) => ({ id: String(row.id), nazev: String(row.nazev) }));
+	const afterIds = {};
+	const added = [];
+	const changed = [];
+	const records = storeRows.map((row) => {
+		afterIds[row.id] = true;
+		const existing = beforeMap[row.id];
+		if (!existing) {
+			added.push({ id: row.id, nazev: row.nazev });
+			return Object.assign({}, row, { active: true });
+		}
+		const fields = _storeRowChanges_(existing, row);
+		if (fields.length) changed.push({ id: row.id, nazev: row.nazev, fields: fields });
+		return Object.assign({}, row, { active: existing.active });
+	});
+	const removed = before
+		.filter((row) => !afterIds[String(row.id)])
+		.map((row) => ({ id: String(row.id), nazev: String(row.nazev) }));
 
-  dbReplaceAll_(SHEETS.STORES, records);
-  return { total: records.length, added: added, changed: changed, removed: removed };
+	dbReplaceAll_(SHEETS.STORES, records);
+	return { total: records.length, added: added, changed: changed, removed: removed };
 }
 
 /**
@@ -573,63 +573,63 @@ function _importSyncStores_(storeRows) {
  * stejné pravidlo jako u filiálek výše (i deaktivované).
  */
 function _importSyncLogisticCenters_(storeRows) {
-  const names = {};
-  storeRows.forEach((row) => {
-    const name = String(row.lc || '').trim();
-    if (name) names[name] = true;
-  });
+	const names = {};
+	storeRows.forEach((row) => {
+		const name = String(row.lc || '').trim();
+		if (name) names[name] = true;
+	});
 
-  const before = dbGetAll_(SHEETS.LOGISTIC_CENTERS);
-  const beforeByName = {};
-  before.forEach((row) => { beforeByName[String(row.nazev)] = row; });
+	const before = dbGetAll_(SHEETS.LOGISTIC_CENTERS);
+	const beforeByName = {};
+	before.forEach((row) => { beforeByName[String(row.nazev)] = row; });
 
-  const added = [];
-  const records = Object.keys(names).sort().map((name) => {
-    const existing = beforeByName[name];
-    if (existing) return Object.assign({}, existing, { nazev: name });
-    added.push(name);
-    return { nazev: name, cislo: '', zkratka: '', active: true };
-  });
-  const removed = before.filter((row) => !names[String(row.nazev)]).map((row) => String(row.nazev));
+	const added = [];
+	const records = Object.keys(names).sort().map((name) => {
+		const existing = beforeByName[name];
+		if (existing) return Object.assign({}, existing, { nazev: name });
+		added.push(name);
+		return { nazev: name, cislo: '', zkratka: '', active: true };
+	});
+	const removed = before.filter((row) => !names[String(row.nazev)]).map((row) => String(row.nazev));
 
-  dbReplaceAll_(SHEETS.LOGISTIC_CENTERS, records);
-  return { total: records.length, added: added, removed: removed };
+	dbReplaceAll_(SHEETS.LOGISTIC_CENTERS, records);
+	return { total: records.length, added: added, removed: removed };
 }
 
 /** Kompletně nahradí _store_closures aktuálním snímkem uzavírek ze zdroje, vrátí PODROBNÝ rozdíl (nově zavřené/už neuzavřené). */
 function _importSyncClosures_(closureRows) {
-  const before = dbGetAll_(SHEETS.STORE_CLOSURES);
-  const beforeIds = {};
-  before.forEach((row) => { beforeIds[String(row.id)] = row; });
-  const afterIds = {};
-  closureRows.forEach((row) => { afterIds[row.id] = true; });
+	const before = dbGetAll_(SHEETS.STORE_CLOSURES);
+	const beforeIds = {};
+	before.forEach((row) => { beforeIds[String(row.id)] = row; });
+	const afterIds = {};
+	closureRows.forEach((row) => { afterIds[row.id] = true; });
 
-  const added = closureRows
-    .filter((row) => !beforeIds[row.id])
-    .map((row) => ({ id: row.id, nazev: row.nazev, od: row.od, do: row.do }));
-  const removed = before
-    .filter((row) => !afterIds[String(row.id)])
-    .map((row) => ({ id: String(row.id), nazev: String(row.nazev) }));
+	const added = closureRows
+		.filter((row) => !beforeIds[row.id])
+		.map((row) => ({ id: row.id, nazev: row.nazev, od: row.od, do: row.do }));
+	const removed = before
+		.filter((row) => !afterIds[String(row.id)])
+		.map((row) => ({ id: String(row.id), nazev: String(row.nazev) }));
 
-  dbReplaceAll_(SHEETS.STORE_CLOSURES, closureRows);
-  return { total: closureRows.length, added: added, removed: removed };
+	dbReplaceAll_(SHEETS.STORE_CLOSURES, closureRows);
+	return { total: closureRows.length, added: added, removed: removed };
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   LOG IMPORTU (_import_log) — trvalá historie synchronizací + oznámení
-   ══════════════════════════════════════════════════════════════════════════ */
+	 LOG IMPORTU (_import_log) — trvalá historie synchronizací + oznámení
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /** Popisek sloupce filiálky pro člověka (Log importu) — odvozený z IMPORT_STORE_COLUMNS, ať se popisky nepíšou dvakrát. */
 function _importFieldLabel_(field) {
-  const col = IMPORT_STORE_COLUMNS.find((c) => c.field === field);
-  return col ? col.header : field;
+	const col = IMPORT_STORE_COLUMNS.find((c) => c.field === field);
+	return col ? col.header : field;
 }
 
 /** Prvních `limit` položek zformátovaných přes formatFn, zbytek shrne jako "… a dalších N" — ať detail nikdy neroste bez mezí. */
 function _importDetailLines_(items, formatFn, limit) {
-  const lines = items.slice(0, limit).map(formatFn);
-  if (items.length > limit) lines.push('… a dalších ' + (items.length - limit));
-  return lines;
+	const lines = items.slice(0, limit).map(formatFn);
+	if (items.length > limit) lines.push('… a dalších ' + (items.length - limit));
+	return lines;
 }
 
 /**
@@ -638,100 +638,100 @@ function _importDetailLines_(items, formatFn, limit) {
  * něco skutečně stalo — „beze změn" se nerozepisuje na nulové položky.
  */
 function _importBuildSummary_(data) {
-  const parts = [];
+	const parts = [];
 
-  const storeParts = [];
-  if (data.stores.added.length) storeParts.push(data.stores.added.length + ' nových');
-  if (data.stores.changed.length) storeParts.push(data.stores.changed.length + ' změněných');
-  if (data.stores.removed.length) storeParts.push(data.stores.removed.length + ' smazaných');
-  if (storeParts.length) parts.push('filiálky: ' + storeParts.join(', '));
+	const storeParts = [];
+	if (data.stores.added.length) storeParts.push(data.stores.added.length + ' nových');
+	if (data.stores.changed.length) storeParts.push(data.stores.changed.length + ' změněných');
+	if (data.stores.removed.length) storeParts.push(data.stores.removed.length + ' smazaných');
+	if (storeParts.length) parts.push('filiálky: ' + storeParts.join(', '));
 
-  const lcParts = [];
-  if (data.logisticCenters.added.length) lcParts.push(data.logisticCenters.added.length + ' nových');
-  if (data.logisticCenters.removed.length) lcParts.push(data.logisticCenters.removed.length + ' smazaných');
-  if (lcParts.length) parts.push('LC: ' + lcParts.join(', '));
+	const lcParts = [];
+	if (data.logisticCenters.added.length) lcParts.push(data.logisticCenters.added.length + ' nových');
+	if (data.logisticCenters.removed.length) lcParts.push(data.logisticCenters.removed.length + ' smazaných');
+	if (lcParts.length) parts.push('LC: ' + lcParts.join(', '));
 
-  const closureParts = [];
-  if (data.closures.added.length) closureParts.push(data.closures.added.length + ' nových');
-  if (data.closures.removed.length) closureParts.push(data.closures.removed.length + ' skončených');
-  if (closureParts.length) parts.push('uzavírky: ' + closureParts.join(', '));
+	const closureParts = [];
+	if (data.closures.added.length) closureParts.push(data.closures.added.length + ' nových');
+	if (data.closures.removed.length) closureParts.push(data.closures.removed.length + ' skončených');
+	if (closureParts.length) parts.push('uzavírky: ' + closureParts.join(', '));
 
-  if (!parts.length) return 'Synchronizace „' + data.fileName + '" — beze změn oproti minulému syncu.';
-  return 'Synchronizace „' + data.fileName + '" — ' + parts.join('; ');
+	if (!parts.length) return 'Synchronizace „' + data.fileName + '" — beze změn oproti minulému syncu.';
+	return 'Synchronizace „' + data.fileName + '" — ' + parts.join('; ');
 }
 
 /** Podrobný, itemizovaný výpis změn — pro rozkliknutí přímo v Logu importu (ne pro zvoneček, ten dostává jen _importBuildSummary_). */
 function _importBuildDetailText_(data) {
-  const lines = [];
+	const lines = [];
 
-  if (data.stores.added.length) {
-    lines.push('NOVÉ FILIÁLKY:');
-    Array.prototype.push.apply(lines, _importDetailLines_(data.stores.added, (s) => '- ' + s.id + ' ' + s.nazev, 30));
-  }
-  if (data.stores.removed.length) {
-    lines.push('SMAZANÉ FILIÁLKY:');
-    Array.prototype.push.apply(lines, _importDetailLines_(data.stores.removed, (s) => '- ' + s.id + ' ' + s.nazev, 30));
-  }
-  if (data.stores.changed.length) {
-    lines.push('ZMĚNĚNÉ FILIÁLKY:');
-    Array.prototype.push.apply(lines, _importDetailLines_(data.stores.changed, (s) =>
-      '- ' + s.id + ' ' + s.nazev + ': ' + s.fields.map((f) =>
-        _importFieldLabel_(f.field) + ' „' + f.from + '" → „' + f.to + '"'
-      ).join(', '), 30));
-  }
-  if (data.logisticCenters.added.length) {
-    lines.push('NOVÁ LC: ' + data.logisticCenters.added.join(', '));
-  }
-  if (data.logisticCenters.removed.length) {
-    lines.push('SMAZANÁ LC: ' + data.logisticCenters.removed.join(', '));
-  }
-  if (data.closures.added.length) {
-    lines.push('NOVĚ ZAVŘENO:');
-    Array.prototype.push.apply(lines, _importDetailLines_(data.closures.added, (c) =>
-      '- ' + c.id + ' ' + c.nazev + ' (' + c.od + '–' + c.do + ')', 30));
-  }
-  if (data.closures.removed.length) {
-    lines.push('JIŽ NEZAVŘENO: ' + data.closures.removed.map((c) => c.id + ' ' + c.nazev).join(', '));
-  }
+	if (data.stores.added.length) {
+		lines.push('NOVÉ FILIÁLKY:');
+		Array.prototype.push.apply(lines, _importDetailLines_(data.stores.added, (s) => '- ' + s.id + ' ' + s.nazev, 30));
+	}
+	if (data.stores.removed.length) {
+		lines.push('SMAZANÉ FILIÁLKY:');
+		Array.prototype.push.apply(lines, _importDetailLines_(data.stores.removed, (s) => '- ' + s.id + ' ' + s.nazev, 30));
+	}
+	if (data.stores.changed.length) {
+		lines.push('ZMĚNĚNÉ FILIÁLKY:');
+		Array.prototype.push.apply(lines, _importDetailLines_(data.stores.changed, (s) =>
+			'- ' + s.id + ' ' + s.nazev + ': ' + s.fields.map((f) =>
+				_importFieldLabel_(f.field) + ' „' + f.from + '" → „' + f.to + '"'
+			).join(', '), 30));
+	}
+	if (data.logisticCenters.added.length) {
+		lines.push('NOVÁ LC: ' + data.logisticCenters.added.join(', '));
+	}
+	if (data.logisticCenters.removed.length) {
+		lines.push('SMAZANÁ LC: ' + data.logisticCenters.removed.join(', '));
+	}
+	if (data.closures.added.length) {
+		lines.push('NOVĚ ZAVŘENO:');
+		Array.prototype.push.apply(lines, _importDetailLines_(data.closures.added, (c) =>
+			'- ' + c.id + ' ' + c.nazev + ' (' + c.od + '–' + c.do + ')', 30));
+	}
+	if (data.closures.removed.length) {
+		lines.push('JIŽ NEZAVŘENO: ' + data.closures.removed.map((c) => c.id + ' ' + c.nazev).join(', '));
+	}
 
-  return lines.length ? lines.join('\n') : 'Beze změn oproti minulému syncu.';
+	return lines.length ? lines.join('\n') : 'Beze změn oproti minulému syncu.';
 }
 
 /** Zapíše řádek do _import_log a vrátí ho (i s id, pro entityId auditu — proklik ze zvonečku, viz apiSyncImportFile). */
 function _importWriteLog_(data) {
-  return dbInsert_(SHEETS.IMPORT_LOG, {
-    file_name: data.fileName,
-    stores_added: data.stores.added.length,
-    stores_changed: data.stores.changed.length,
-    stores_removed: data.stores.removed.length,
-    lc_added: data.logisticCenters.added.length,
-    lc_removed: data.logisticCenters.removed.length,
-    closures_added: data.closures.added.length,
-    closures_removed: data.closures.removed.length,
-    summary: _importBuildSummary_(data),
-    detail: _importBuildDetailText_(data),
-  });
+	return dbInsert_(SHEETS.IMPORT_LOG, {
+		file_name: data.fileName,
+		stores_added: data.stores.added.length,
+		stores_changed: data.stores.changed.length,
+		stores_removed: data.stores.removed.length,
+		lc_added: data.logisticCenters.added.length,
+		lc_removed: data.logisticCenters.removed.length,
+		closures_added: data.closures.added.length,
+		closures_removed: data.closures.removed.length,
+		summary: _importBuildSummary_(data),
+		detail: _importBuildDetailText_(data),
+	});
 }
 
 /** Přemění řádek Logu importu na podobu pro klienta. */
 function _publicImportLogEntry_(row) {
-  return {
-    id: String(row.id),
-    fileName: String(row.file_name || ''),
-    createdAt: String(row.created_at || ''),
-    createdBy: String(row.created_by || ''),
-    summary: String(row.summary || ''),
-    detail: String(row.detail || ''),
-    counts: {
-      storesAdded: Number(row.stores_added || 0),
-      storesChanged: Number(row.stores_changed || 0),
-      storesRemoved: Number(row.stores_removed || 0),
-      lcAdded: Number(row.lc_added || 0),
-      lcRemoved: Number(row.lc_removed || 0),
-      closuresAdded: Number(row.closures_added || 0),
-      closuresRemoved: Number(row.closures_removed || 0),
-    },
-  };
+	return {
+		id: String(row.id),
+		fileName: String(row.file_name || ''),
+		createdAt: String(row.created_at || ''),
+		createdBy: String(row.created_by || ''),
+		summary: String(row.summary || ''),
+		detail: String(row.detail || ''),
+		counts: {
+			storesAdded: Number(row.stores_added || 0),
+			storesChanged: Number(row.stores_changed || 0),
+			storesRemoved: Number(row.stores_removed || 0),
+			lcAdded: Number(row.lc_added || 0),
+			lcRemoved: Number(row.lc_removed || 0),
+			closuresAdded: Number(row.closures_added || 0),
+			closuresRemoved: Number(row.closures_removed || 0),
+		},
+	};
 }
 
 /**
@@ -741,22 +741,22 @@ function _publicImportLogEntry_(row) {
  * jednorázové oznámení, klidně unese o něco víc položek.
  */
 function apiGetImportLog() {
-  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
-    return dbGetAll_(SHEETS.IMPORT_LOG)
-      .slice()
-      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
-      .slice(0, 60)
-      .map(_publicImportLogEntry_);
-  });
+	return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+		return dbGetAll_(SHEETS.IMPORT_LOG)
+			.slice()
+			.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+			.slice(0, 60)
+			.map(_publicImportLogEntry_);
+	});
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   ČTENÍ PRO SEKCE FILIÁLKY / LC (viz nav v ui/view_app.html)
+	 ČTENÍ PRO SEKCE FILIÁLKY / LC (viz nav v ui/view_app.html)
 
-   Obojí smí ČÍST každý přihlášený uživatel (`calendar_read`) — appka tu
-   slouží i jako firemní adresář, ne jen jako nástroj správce. Editovat
-   (jen číslo/zkratku LC) smí pořád jen SUPERADMIN (`settings_manage`).
-   ══════════════════════════════════════════════════════════════════════════ */
+	 Obojí smí ČÍST každý přihlášený uživatel (`calendar_read`) — appka tu
+	 slouží i jako firemní adresář, ne jen jako nástroj správce. Editovat
+	 (jen číslo/zkratku LC) smí pořád jen SUPERADMIN (`settings_manage`).
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /**
  * Rozdíl ve dnech mezi dvěma daty "YYYY-MM-DD" (to − from). Obě se
@@ -764,8 +764,8 @@ function apiGetImportLog() {
  * nezáleží — jde jen o počet dní mezi nimi, ne o žádný konkrétní okamžik.
  */
 function _daysBetween_(fromIso, toIso) {
-  const ms = new Date(toIso).getTime() - new Date(fromIso).getTime();
-  return Math.round(ms / 86400000);
+	const ms = new Date(toIso).getTime() - new Date(fromIso).getTime();
+	return Math.round(ms / 86400000);
 }
 
 /**
@@ -785,17 +785,17 @@ function _daysBetween_(fromIso, toIso) {
  * NĚKDY nastane teď — to byla ta nahlášená chyba.
  */
 function _evaluateClosure_(closure, today) {
-  if (!closure) return null;
-  const od = String(closure.od);
-  const doD = String(closure.do);
+	if (!closure) return null;
+	const od = String(closure.od);
+	const doD = String(closure.do);
 
-  if (od <= today && today <= doD) {
-    return { status: 'current', from: od, to: doD };
-  }
-  if (od > today) {
-    return { status: 'upcoming', from: od, to: doD, daysUntil: _daysBetween_(today, od) };
-  }
-  return null; // doD < today — uzavírka už doběhla
+	if (od <= today && today <= doD) {
+		return { status: 'current', from: od, to: doD };
+	}
+	if (od > today) {
+		return { status: 'upcoming', from: od, to: doD, daysUntil: _daysBetween_(today, od) };
+	}
+	return null; // doD < today — uzavírka už doběhla
 }
 
 /**
@@ -807,40 +807,40 @@ function _evaluateClosure_(closure, today) {
  * znamená deaktivováno. Stejný princip jako _lcIsActive_ u LC.
  */
 function _storeIsActive_(row) {
-  return String(row.active) !== 'false';
+	return String(row.active) !== 'false';
 }
 
 /** Přemění řádek filiálky na podobu pro klienta — camelCase pole + vyhodnocená uzavírka (viz _evaluateClosure_). */
 function _publicStore_(row, closuresByStore, today) {
-  return {
-    id: String(row.id),
-    kod: String(row.kod || ''),
-    nazev: String(row.nazev || ''),
-    lc: String(row.lc || ''),
-    active: _storeIsActive_(row),
-    telefonProdejny: String(row.telefon_prodejny || ''),
-    vt: String(row.vt || ''),
-    telefonVt: String(row.telefon_vt || ''),
-    rm: String(row.rm || ''),
-    telefonRm: String(row.telefon_rm || ''),
-    zastupceRm: String(row.zastupce_rm || ''),
-    telefonZastupce: String(row.telefon_zastupce || ''),
-    ulice: String(row.ulice || ''),
-    mesto: String(row.mesto || ''),
-    psc: String(row.psc || ''),
-    // Otevírací doba po dnech — pro detail filiálky na klientovi (App.openStoreDetailModal).
-    hours: [
-      { label: 'Pondělí', otevreno: String(row.po_otevreno || ''), zavreno: String(row.po_zavreno || '') },
-      { label: 'Úterý', otevreno: String(row.ut_otevreno || ''), zavreno: String(row.ut_zavreno || '') },
-      { label: 'Středa', otevreno: String(row.st_otevreno || ''), zavreno: String(row.st_zavreno || '') },
-      { label: 'Čtvrtek', otevreno: String(row.ct_otevreno || ''), zavreno: String(row.ct_zavreno || '') },
-      { label: 'Pátek', otevreno: String(row.pa_otevreno || ''), zavreno: String(row.pa_zavreno || '') },
-      { label: 'Sobota', otevreno: String(row.so_otevreno || ''), zavreno: String(row.so_zavreno || '') },
-      { label: 'Neděle', otevreno: String(row.ne_otevreno || ''), zavreno: String(row.ne_zavreno || '') },
-    ],
-    // null | { status: 'current'|'upcoming', from, to, daysUntil? } — viz _evaluateClosure_.
-    closure: _evaluateClosure_(closuresByStore[String(row.id)], today),
-  };
+	return {
+		id: String(row.id),
+		kod: String(row.kod || ''),
+		nazev: String(row.nazev || ''),
+		lc: String(row.lc || ''),
+		active: _storeIsActive_(row),
+		telefonProdejny: String(row.telefon_prodejny || ''),
+		vt: String(row.vt || ''),
+		telefonVt: String(row.telefon_vt || ''),
+		rm: String(row.rm || ''),
+		telefonRm: String(row.telefon_rm || ''),
+		zastupceRm: String(row.zastupce_rm || ''),
+		telefonZastupce: String(row.telefon_zastupce || ''),
+		ulice: String(row.ulice || ''),
+		mesto: String(row.mesto || ''),
+		psc: String(row.psc || ''),
+		// Otevírací doba po dnech — pro detail filiálky na klientovi (App.openStoreDetailModal).
+		hours: [
+			{ label: 'Pondělí', otevreno: String(row.po_otevreno || ''), zavreno: String(row.po_zavreno || '') },
+			{ label: 'Úterý', otevreno: String(row.ut_otevreno || ''), zavreno: String(row.ut_zavreno || '') },
+			{ label: 'Středa', otevreno: String(row.st_otevreno || ''), zavreno: String(row.st_zavreno || '') },
+			{ label: 'Čtvrtek', otevreno: String(row.ct_otevreno || ''), zavreno: String(row.ct_zavreno || '') },
+			{ label: 'Pátek', otevreno: String(row.pa_otevreno || ''), zavreno: String(row.pa_zavreno || '') },
+			{ label: 'Sobota', otevreno: String(row.so_otevreno || ''), zavreno: String(row.so_zavreno || '') },
+			{ label: 'Neděle', otevreno: String(row.ne_otevreno || ''), zavreno: String(row.ne_zavreno || '') },
+		],
+		// null | { status: 'current'|'upcoming', from, to, daysUntil? } — viz _evaluateClosure_.
+		closure: _evaluateClosure_(closuresByStore[String(row.id)], today),
+	};
 }
 
 /**
@@ -849,16 +849,16 @@ function _publicStore_(row, closuresByStore, today) {
  * řetězec (= sloupec Číslo ve zdroji), Number() na něm je bezpečné.
  */
 function apiGetStores() {
-  return guard_(PERM_KEYS.CALENDAR_READ, () => {
-    const today = todayIso_();
-    const closuresByStore = {};
-    dbGetAll_(SHEETS.STORE_CLOSURES).forEach((row) => { closuresByStore[String(row.id)] = row; });
+	return guard_(PERM_KEYS.CALENDAR_READ, () => {
+		const today = todayIso_();
+		const closuresByStore = {};
+		dbGetAll_(SHEETS.STORE_CLOSURES).forEach((row) => { closuresByStore[String(row.id)] = row; });
 
-    return dbGetAll_(SHEETS.STORES)
-      .slice()
-      .sort((a, b) => Number(a.id) - Number(b.id))
-      .map((row) => _publicStore_(row, closuresByStore, today));
-  });
+		return dbGetAll_(SHEETS.STORES)
+			.slice()
+			.sort((a, b) => Number(a.id) - Number(b.id))
+			.map((row) => _publicStore_(row, closuresByStore, today));
+	});
 }
 
 /**
@@ -872,34 +872,34 @@ function apiGetStores() {
  * @param {Object} payload  { id, active }
  */
 function apiSetStoreActive(payload) {
-  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
-    const data = payload || {};
-    const id = cleanText_(data.id, 'ID filiálky', 100, true);
-    const active = data.active === true;
+	return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+		const data = payload || {};
+		const id = cleanText_(data.id, 'ID filiálky', 100, true);
+		const active = data.active === true;
 
-    const existing = dbFindById_(SHEETS.STORES, id);
-    if (!existing) {
-      throw userError_('Filiálka nebyla nalezena — mohla ji mezitím smazat synchronizace.');
-    }
+		const existing = dbFindById_(SHEETS.STORES, id);
+		if (!existing) {
+			throw userError_('Filiálka nebyla nalezena — mohla ji mezitím smazat synchronizace.');
+		}
 
-    dbUpdate_(SHEETS.STORES, id, { active: active });
-    audit_(active ? 'store.activate' : 'store.deactivate',
-      (active ? 'Aktivována' : 'Deaktivována') + ' filiálka „' + existing.nazev + '"');
+		dbUpdate_(SHEETS.STORES, id, { active: active });
+		audit_(active ? 'store.activate' : 'store.deactivate',
+			(active ? 'Aktivována' : 'Deaktivována') + ' filiálka „' + existing.nazev + '"');
 
-    const closuresByStore = {};
-    dbGetAll_(SHEETS.STORE_CLOSURES).forEach((row) => { closuresByStore[String(row.id)] = row; });
-    return _publicStore_(dbFindById_(SHEETS.STORES, id), closuresByStore, todayIso_());
-  });
+		const closuresByStore = {};
+		dbGetAll_(SHEETS.STORE_CLOSURES).forEach((row) => { closuresByStore[String(row.id)] = row; });
+		return _publicStore_(dbFindById_(SHEETS.STORES, id), closuresByStore, todayIso_());
+	});
 }
 
 /** Spočítá počet filiálek pro každé LC (podle názvu) — jen doplňková informace v přehledu, appka na ní jinak nezávisí. */
 function _storeCountByLc_() {
-  const counts = {};
-  dbGetAll_(SHEETS.STORES).forEach((row) => {
-    const lc = String(row.lc || '');
-    if (lc) counts[lc] = (counts[lc] || 0) + 1;
-  });
-  return counts;
+	const counts = {};
+	dbGetAll_(SHEETS.STORES).forEach((row) => {
+		const lc = String(row.lc || '');
+		if (lc) counts[lc] = (counts[lc] || 0) + 1;
+	});
+	return counts;
 }
 
 /**
@@ -910,19 +910,19 @@ function _storeCountByLc_() {
  * schovat), jedině výslovné `false` znamená deaktivováno.
  */
 function _lcIsActive_(row) {
-  return String(row.active) !== 'false';
+	return String(row.active) !== 'false';
 }
 
 /** Přemění řádek LC na podobu pro klienta. */
 function _publicLogisticCenter_(row, storeCountByLc) {
-  return {
-    id: String(row.id),
-    cislo: String(row.cislo || ''),
-    zkratka: String(row.zkratka || ''),
-    nazev: String(row.nazev || ''),
-    active: _lcIsActive_(row),
-    storeCount: storeCountByLc[String(row.nazev)] || 0,
-  };
+	return {
+		id: String(row.id),
+		cislo: String(row.cislo || ''),
+		zkratka: String(row.zkratka || ''),
+		nazev: String(row.nazev || ''),
+		active: _lcIsActive_(row),
+		storeCount: storeCountByLc[String(row.nazev)] || 0,
+	};
 }
 
 /**
@@ -931,21 +931,21 @@ function _publicLogisticCenter_(row, storeCountByLc) {
  * (prázdný řetězec by se jinak řadil textově před jakoukoli číslici).
  */
 function apiGetLogisticCenters() {
-  return guard_(PERM_KEYS.CALENDAR_READ, () => {
-    const storeCountByLc = _storeCountByLc_();
+	return guard_(PERM_KEYS.CALENDAR_READ, () => {
+		const storeCountByLc = _storeCountByLc_();
 
-    return dbGetAll_(SHEETS.LOGISTIC_CENTERS)
-      .slice()
-      .sort((a, b) => {
-        const numA = a.cislo ? Number(a.cislo) : null;
-        const numB = b.cislo ? Number(b.cislo) : null;
-        if (numA === null && numB === null) return String(a.nazev).localeCompare(String(b.nazev), 'cs');
-        if (numA === null) return 1;
-        if (numB === null) return -1;
-        return numA - numB;
-      })
-      .map((row) => _publicLogisticCenter_(row, storeCountByLc));
-  });
+		return dbGetAll_(SHEETS.LOGISTIC_CENTERS)
+			.slice()
+			.sort((a, b) => {
+				const numA = a.cislo ? Number(a.cislo) : null;
+				const numB = b.cislo ? Number(b.cislo) : null;
+				if (numA === null && numB === null) return String(a.nazev).localeCompare(String(b.nazev), 'cs');
+				if (numA === null) return 1;
+				if (numB === null) return -1;
+				return numA - numB;
+			})
+			.map((row) => _publicLogisticCenter_(row, storeCountByLc));
+	});
 }
 
 /**
@@ -956,23 +956,23 @@ function apiGetLogisticCenters() {
  * @param {Object} payload  { id, cislo, zkratka }
  */
 function apiSaveLogisticCenter(payload) {
-  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
-    const data = payload || {};
-    const id = cleanText_(data.id, 'ID LC', 100, true);
-    const existing = dbFindById_(SHEETS.LOGISTIC_CENTERS, id);
-    if (!existing) {
-      throw userError_('LC nebylo nalezeno — mohla ho mezitím smazat synchronizace.');
-    }
+	return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+		const data = payload || {};
+		const id = cleanText_(data.id, 'ID LC', 100, true);
+		const existing = dbFindById_(SHEETS.LOGISTIC_CENTERS, id);
+		if (!existing) {
+			throw userError_('LC nebylo nalezeno — mohla ho mezitím smazat synchronizace.');
+		}
 
-    const cislo = cleanText_(data.cislo, 'Číslo', LIMITS.LC_CISLO_MAX, false);
-    const zkratka = cleanText_(data.zkratka, 'Zkratka', LIMITS.LC_ZKRATKA_MAX, false);
+		const cislo = cleanText_(data.cislo, 'Číslo', LIMITS.LC_CISLO_MAX, false);
+		const zkratka = cleanText_(data.zkratka, 'Zkratka', LIMITS.LC_ZKRATKA_MAX, false);
 
-    const record = dbUpdate_(SHEETS.LOGISTIC_CENTERS, id, { cislo: cislo, zkratka: zkratka });
-    audit_('logisticCenter.update', 'Upraveno LC „' + existing.nazev + '" (číslo ' +
-      (cislo || '—') + ', zkratka ' + (zkratka || '—') + ')');
+		const record = dbUpdate_(SHEETS.LOGISTIC_CENTERS, id, { cislo: cislo, zkratka: zkratka });
+		audit_('logisticCenter.update', 'Upraveno LC „' + existing.nazev + '" (číslo ' +
+			(cislo || '—') + ', zkratka ' + (zkratka || '—') + ')');
 
-    return _publicLogisticCenter_(record, _storeCountByLc_());
-  });
+		return _publicLogisticCenter_(record, _storeCountByLc_());
+	});
 }
 
 /**
@@ -986,20 +986,20 @@ function apiSaveLogisticCenter(payload) {
  * @param {Object} payload  { id, active }
  */
 function apiSetLogisticCenterActive(payload) {
-  return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
-    const data = payload || {};
-    const id = cleanText_(data.id, 'ID LC', 100, true);
-    const active = data.active === true;
+	return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+		const data = payload || {};
+		const id = cleanText_(data.id, 'ID LC', 100, true);
+		const active = data.active === true;
 
-    const existing = dbFindById_(SHEETS.LOGISTIC_CENTERS, id);
-    if (!existing) {
-      throw userError_('LC nebylo nalezeno — mohla ho mezitím smazat synchronizace.');
-    }
+		const existing = dbFindById_(SHEETS.LOGISTIC_CENTERS, id);
+		if (!existing) {
+			throw userError_('LC nebylo nalezeno — mohla ho mezitím smazat synchronizace.');
+		}
 
-    const record = dbUpdate_(SHEETS.LOGISTIC_CENTERS, id, { active: active });
-    audit_(active ? 'logisticCenter.activate' : 'logisticCenter.deactivate',
-      (active ? 'Aktivováno' : 'Deaktivováno') + ' LC „' + existing.nazev + '"');
+		const record = dbUpdate_(SHEETS.LOGISTIC_CENTERS, id, { active: active });
+		audit_(active ? 'logisticCenter.activate' : 'logisticCenter.deactivate',
+			(active ? 'Aktivováno' : 'Deaktivováno') + ' LC „' + existing.nazev + '"');
 
-    return _publicLogisticCenter_(record, _storeCountByLc_());
-  });
+		return _publicLogisticCenter_(record, _storeCountByLc_());
+	});
 }

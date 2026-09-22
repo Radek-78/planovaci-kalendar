@@ -1,0 +1,16 @@
+# Odsazení tabulátory je závazné firemní pravidlo pro Apps Script
+# (viz CLAUDE.md §6). Celý projekt byl na tabulátory převedený najednou,
+# tenhle soubor brání tomu, aby se do něj mezery zase vloudily z editoru.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = tab
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Markdown potřebuje koncové mezery pro zalomení řádku.
+[*.md]
+trim_trailing_whitespace = false

@@ -18,45 +18,45 @@
 
 /** Základní identita a vzhled aplikace. */
 const CONFIG = {
-  /** Výchozí název — wizard ho předvyplní, uživatel může změnit. */
-  defaultAppName: 'Plánovací kalendář',
-  defaultAppSubtitle: 'Sdílený plánovací kalendář',
+	/** Výchozí název — wizard ho předvyplní, uživatel může změnit. */
+	defaultAppName: 'Plánovací kalendář',
+	defaultAppSubtitle: 'Sdílený plánovací kalendář',
 
-  /**
-   * Verze aplikace — zobrazuje se ve footeru a na úvodním splash screenu.
-   * POZOR: needituj ručně. Zapisuje ji skript tools/release.ps1 zároveň
-   * do AAA_VERZE.html a CHANGELOG.md, aby všechna tři místa souhlasila.
-   *
-   * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
-   * první spuštění release.ps1 hodnoty přepíše.
-   */
-  version: 'v0.13.2',
-  releaseDate: '22.9.2026',
+	/**
+	 * Verze aplikace — zobrazuje se ve footeru a na úvodním splash screenu.
+	 * POZOR: needituj ručně. Zapisuje ji skript tools/release.ps1 zároveň
+	 * do AAA_VERZE.html a CHANGELOG.md, aby všechna tři místa souhlasila.
+	 *
+	 * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
+	 * první spuštění release.ps1 hodnoty přepíše.
+	 */
+	version: 'v0.14.0',
+	releaseDate: '22.9.2026',
 
-  /**
-   * Font, kterým se formátují listy databáze. Musí to být PŘESNÝ název tak,
-   * jak se píše v seznamu fontů Google Sheets — setFontFamily() neexistující
-   * název tiše ignoruje a list zůstane v Arialu bez jakékoliv chybové hlášky.
-   * Kontrola: otevřít vzniklou databázi a podívat se na seznam fontů.
-   */
-  sheetFont: 'Lidl Font Cond Pro',
+	/**
+	 * Font, kterým se formátují listy databáze. Musí to být PŘESNÝ název tak,
+	 * jak se píše v seznamu fontů Google Sheets — setFontFamily() neexistující
+	 * název tiše ignoruje a list zůstane v Arialu bez jakékoliv chybové hlášky.
+	 * Kontrola: otevřít vzniklou databázi a podívat se na seznam fontů.
+	 */
+	sheetFont: 'Lidl Font Cond Pro',
 
-  /** Firemní barvy — v CSS jsou stejné hodnoty jako proměnné (ui/styles.html). */
-  theme: {
-    blue: '#0050aa',
-    darkBlue: '#002466',
-    lightBlue: '#008cd2',
-    yellow: '#fff000',
-    red: '#e60a14',
-  },
+	/** Firemní barvy — v CSS jsou stejné hodnoty jako proměnné (ui/styles.html). */
+	theme: {
+		blue: '#0050aa',
+		darkBlue: '#002466',
+		lightBlue: '#008cd2',
+		yellow: '#fff000',
+		red: '#e60a14',
+	},
 
-  /**
-   * Jediná povolená e-mailová doména pro nové uživatele — ověřuje se na
-   * serveru v apiSaveUser. Pojistka proti překlepu při zadávání, ne
-   * bezpečnostní hranice sama o sobě (o přístupu stejně rozhoduje výhradně
-   * list `_users`, ne doména).
-   */
-  allowedEmailDomain: 'lidl.cz',
+	/**
+	 * Jediná povolená e-mailová doména pro nové uživatele — ověřuje se na
+	 * serveru v apiSaveUser. Pojistka proti překlepu při zadávání, ne
+	 * bezpečnostní hranice sama o sobě (o přístupu stejně rozhoduje výhradně
+	 * list `_users`, ne doména).
+	 */
+	allowedEmailDomain: 'lidl.cz',
 };
 
 /**
@@ -65,21 +65,21 @@ const CONFIG = {
  * aplikace se považuje za neinicializovanou a spouští wizard.
  */
 const PROPS = {
-  DB_ID: 'DB_SPREADSHEET_ID',
-  SETUP_AT: 'SETUP_COMPLETED_AT',
+	DB_ID: 'DB_SPREADSHEET_ID',
+	SETUP_AT: 'SETUP_COMPLETED_AT',
 };
 
 /** Systémové role. Vyšší úroveň v ROLE_LEVEL = širší oprávnění. */
 const ROLES = {
-  SUPERADMIN: 'SUPERADMIN',
-  ADMIN: 'ADMIN',
-  USER: 'USER',
+	SUPERADMIN: 'SUPERADMIN',
+	ADMIN: 'ADMIN',
+	USER: 'USER',
 };
 
 const ROLE_LEVEL = {
-  SUPERADMIN: 3,
-  ADMIN: 2,
-  USER: 1,
+	SUPERADMIN: 3,
+	ADMIN: 2,
+	USER: 1,
 };
 
 /**
@@ -87,46 +87,54 @@ const ROLE_LEVEL = {
  * jestli uživatel smí do kalendáře zapisovat, nebo ho jen čte.
  */
 const PERMISSIONS = {
-  EDITOR: 'EDITOR',
-  VIEWER: 'VIEWER',
+	EDITOR: 'EDITOR',
+	VIEWER: 'VIEWER',
 };
 
 /** Názvy listů v databázi. Podtržítko = systémový list. */
 const SHEETS = {
-  USERS: '_users',
-  SETTINGS: '_settings',
-  AUDIT: '_audit_log',
-  EVENTS: 'events',
-  EVENT_COMMENTS: 'event_comments',
-  POSITIONS: '_positions',
-  EVENT_TYPES: '_event_types',
-  DEPARTMENTS: '_departments',
-  STORES: '_stores',
-  LOGISTIC_CENTERS: '_logistic_centers',
-  STORE_CLOSURES: '_store_closures',
-  IMPORT_LOG: '_import_log',
-  HOLIDAYS: '_holidays',
-  EVENT_TEMPLATES: '_event_templates',
-  EVENT_VIEWS: '_event_views',
-  REQUESTS: 'requests',
-  REQUEST_COMMENTS: 'request_comments',
+	USERS: '_users',
+	SETTINGS: '_settings',
+	AUDIT: '_audit_log',
+	EVENTS: 'events',
+	EVENT_COMMENTS: 'event_comments',
+	POSITIONS: '_positions',
+	EVENT_TYPES: '_event_types',
+	DEPARTMENTS: '_departments',
+	STORES: '_stores',
+	LOGISTIC_CENTERS: '_logistic_centers',
+	STORE_CLOSURES: '_store_closures',
+	IMPORT_LOG: '_import_log',
+	HOLIDAYS: '_holidays',
+	EVENT_TEMPLATES: '_event_templates',
+	EVENT_VIEWS: '_event_views',
+	REQUESTS: 'requests',
+	REQUEST_COMMENTS: 'request_comments',
 };
 
 /**
- * Stavy požadavku (sekce Požadavky). ZÁMĚRNĚ pevná trojice v kódu, ne
+ * Kroky průběhu požadavku. ZÁMĚRNĚ pevná šestice v kódu, ne
  * konfigurovatelný seznam jako typy událostí — průběh požadavku je pro
  * všechna LC stejný.
  *
- * Stav a procento pokroku jsou NEZÁVISLÉ (zadání): stav se přepíná
- * tlačítky, procento posuvníkem, jedno druhé nijak nepřepisuje. Dřívější
- * podoba procento ze stavu dopočítávala (Nový = 0, Dokončeno = 100),
- * což se v praxi ukázalo jako omezující — požadavek může být klidně
- * rozpracovaný na 60 % a přitom už označený jako dokončený, nebo naopak.
+ * Stav a procento pokroku jsou JEDNA A TÁŽ VĚC: krok určuje procento
+ * a procento určuje krok. Dřív to byly dvě nezávislé hodnoty a musela se
+ * kolem nich udržovat čtveřice pravidel, aby si neodporovaly (klik na
+ * Dokončeno dotáhne na 100 %, klik na Nový srazí na 0 %, stažení pod
+ * 100 % vrátí Dokončeno na V procesu, změna procenta odvodí stav).
+ * Sloučením tahle pravidla mizí úplně — jedna hodnota si odporovat nemůže.
+ *
+ * `progress` každého kroku je násobek REQUEST_PROGRESS_STEP; obojí musí
+ * zůstat v souladu, jinak by posuvník nabízel hodnoty, které žádnému
+ * kroku neodpovídají.
  */
 const REQUEST_STATUSES = [
-  { key: 'new', label: 'Nový' },
-  { key: 'in_progress', label: 'V procesu' },
-  { key: 'done', label: 'Dokončeno' },
+	{ key: 'new', label: 'Nový', progress: 0 },
+	{ key: 'accepted', label: 'Přijato', progress: 20 },
+	{ key: 'analysis', label: 'V analýze', progress: 40 },
+	{ key: 'solving', label: 'Řeší se', progress: 60 },
+	{ key: 'review', label: 'K ověření', progress: 80 },
+	{ key: 'done', label: 'Dokončeno', progress: 100 },
 ];
 
 /**
@@ -141,10 +149,10 @@ const REQUEST_PROGRESS_STEP = 20;
  * Záměrně jen čtyři — pro šest uživatelů nemá smysl konfigurovatelná matice rolí.
  */
 const PERM_KEYS = {
-  CALENDAR_READ: 'calendar_read',
-  CALENDAR_WRITE: 'calendar_write',
-  USERS_MANAGE: 'users_manage',
-  SETTINGS_MANAGE: 'settings_manage',
+	CALENDAR_READ: 'calendar_read',
+	CALENDAR_WRITE: 'calendar_write',
+	USERS_MANAGE: 'users_manage',
+	SETTINGS_MANAGE: 'settings_manage',
 };
 
 /**
@@ -190,13 +198,13 @@ const NOTIFY_ACTIONS_EVENT_SCOPED = ['event.create', 'event.update', 'event.dele
  * (viz apiGetEvents), takže musí existovat vždycky.
  */
 const DEFAULT_EVENT_TYPES = [
-  { id: 'default', label: 'Běžné', icon: 'chat-circle', color: '#5e6e8a', bgColor: '#eef0f3' },
-  { id: 'meeting', label: 'Schůzka', icon: 'users-three', color: '#0050aa', bgColor: '#e6eef8' },
-  { id: 'trip', label: 'Služební cesta', icon: 'airplane-tilt', color: '#008cd2', bgColor: '#e5f4fb' },
-  { id: 'important', label: 'Důležité', icon: 'warning', color: '#e60a14', bgColor: '#fce6e7' },
-  { id: 'deadline', label: 'Deadline', icon: 'alarm', color: '#b45309', bgColor: '#f7ece1' },
-  { id: 'homeoffice', label: 'Home Office', icon: 'house', color: '#16a34a', bgColor: '#e5f5ea' },
-  { id: 'party', label: 'Oslava / Teambuilding', icon: 'confetti', color: '#c026d3', bgColor: '#f7e5f9' },
+	{ id: 'default', label: 'Běžné', icon: 'chat-circle', color: '#5e6e8a', bgColor: '#eef0f3' },
+	{ id: 'meeting', label: 'Schůzka', icon: 'users-three', color: '#0050aa', bgColor: '#e6eef8' },
+	{ id: 'trip', label: 'Služební cesta', icon: 'airplane-tilt', color: '#008cd2', bgColor: '#e5f4fb' },
+	{ id: 'important', label: 'Důležité', icon: 'warning', color: '#e60a14', bgColor: '#fce6e7' },
+	{ id: 'deadline', label: 'Deadline', icon: 'alarm', color: '#b45309', bgColor: '#f7ece1' },
+	{ id: 'homeoffice', label: 'Home Office', icon: 'house', color: '#16a34a', bgColor: '#e5f5ea' },
+	{ id: 'party', label: 'Oslava / Teambuilding', icon: 'confetti', color: '#c026d3', bgColor: '#f7e5f9' },
 ];
 
 /**
@@ -207,11 +215,11 @@ const DEFAULT_EVENT_TYPES = [
  * u EVENT_TYPES dřív. Názvy bez prefixu "ph-" (ten si doplňuje UI).
  */
 const EVENT_TYPE_ICONS = [
-  'chat-circle', 'users-three', 'airplane-tilt', 'warning', 'alarm', 'house',
-  'confetti', 'calendar-check', 'briefcase', 'phone-call', 'video-camera',
-  'coffee', 'graduation-cap', 'heart', 'star', 'flag', 'bell', 'gear',
-  'wrench', 'book-open', 'medal', 'target', 'umbrella', 'gift', 'first-aid-kit',
-  'car', 'clock-user', 'chart-line-up',
+	'chat-circle', 'users-three', 'airplane-tilt', 'warning', 'alarm', 'house',
+	'confetti', 'calendar-check', 'briefcase', 'phone-call', 'video-camera',
+	'coffee', 'graduation-cap', 'heart', 'star', 'flag', 'bell', 'gear',
+	'wrench', 'book-open', 'medal', 'target', 'umbrella', 'gift', 'first-aid-kit',
+	'car', 'clock-user', 'chart-line-up',
 ];
 
 /**
@@ -229,17 +237,17 @@ const EVENT_TYPE_ICONS = [
  * appka už jednou naplnila, jen nově zaseté roky v budoucnu.
  */
 const CZECH_FIXED_HOLIDAYS = [
-  { month: 1, day: 1, name: 'Den obnovy samostatného českého státu' },
-  { month: 5, day: 1, name: 'Svátek práce' },
-  { month: 5, day: 8, name: 'Den vítězství' },
-  { month: 7, day: 5, name: 'Den slovanských věrozvěstů Cyrila a Metoděje' },
-  { month: 7, day: 6, name: 'Den upálení mistra Jana Husa' },
-  { month: 9, day: 28, name: 'Den české státnosti' },
-  { month: 10, day: 28, name: 'Den vzniku samostatného československého státu' },
-  { month: 11, day: 17, name: 'Den boje za svobodu a demokracii' },
-  { month: 12, day: 24, name: 'Štědrý den' },
-  { month: 12, day: 25, name: '1. svátek vánoční' },
-  { month: 12, day: 26, name: '2. svátek vánoční' },
+	{ month: 1, day: 1, name: 'Den obnovy samostatného českého státu' },
+	{ month: 5, day: 1, name: 'Svátek práce' },
+	{ month: 5, day: 8, name: 'Den vítězství' },
+	{ month: 7, day: 5, name: 'Den slovanských věrozvěstů Cyrila a Metoděje' },
+	{ month: 7, day: 6, name: 'Den upálení mistra Jana Husa' },
+	{ month: 9, day: 28, name: 'Den české státnosti' },
+	{ month: 10, day: 28, name: 'Den vzniku samostatného československého státu' },
+	{ month: 11, day: 17, name: 'Den boje za svobodu a demokracii' },
+	{ month: 12, day: 24, name: 'Štědrý den' },
+	{ month: 12, day: 25, name: '1. svátek vánoční' },
+	{ month: 12, day: 26, name: '2. svátek vánoční' },
 ];
 
 /**
@@ -247,60 +255,60 @@ const CZECH_FIXED_HOLIDAYS = [
  * pro uživatele, nikoliv ochrana.
  */
 const LIMITS = {
-  APP_NAME_MAX: 60,
-  APP_SUBTITLE_MAX: 120,
-  NAME_MAX: 60,
-  TITLE_MAX: 120,
-  DESCRIPTION_MAX: 2000,
-  /** Nejdelší povolená událost ve dnech — pojistka proti záznamu, který by zaplavil celou mřížku. */
-  EVENT_MAX_DAYS: 31,
-  /** Komentář k události — chatová zpráva, ne článek. */
-  COMMENT_MAX: 500,
-  /**
-   * Organizační údaje uživatele (Umístění/Oddělení/Pozice) — validace na
-   * serveru je pro všechny tři stejná (prostý text do tohoto limitu), i když
-   * Oddělení a Pozice appka nabízí jako výběr ze seznamu v Nastavení
-   * (`_departments`/`_positions`) — uložená hodnota je ale pořád jen text,
-   * žádná cizí klíč vazba (viz komentář u `_users` v 20_db.js). Totéž platí
-   * i pro Umístění — to se vybírá ze zkratek aktivních LC plus pevné "DL",
-   * ale uloží se zase jen text zkratky.
-   */
-  ORG_FIELD_MAX: 60,
-  /** Nejvíc oznámení, které apiGetBootstrap vrátí najednou — pojistka proti obřímu seznamu (např. hodně starý notifications_seen_at). */
-  NOTIFY_MAX_ITEMS: 30,
-  /** Nejvíc položek, které vrátí apiGetAllNotifications ("Zobrazit všechna oznámení") — vyšší strop než NOTIFY_MAX_ITEMS, je to úplná historie, ne jen čerstvé neviděné. */
-  NOTIFY_ALL_MAX_ITEMS: 200,
-  /** Název pracovní pozice (Nastavení). */
-  POSITION_NAME_MAX: 60,
-  /** Název oddělení (Nastavení). */
-  DEPARTMENT_NAME_MAX: 60,
-  /** Popisek typu události (Nastavení). */
-  EVENT_TYPE_LABEL_MAX: 40,
-  /** Název požadavku (sekce Požadavky) — jednořádkový nadpis, ne popis. */
-  REQUEST_TITLE_MAX: 150,
-  /** Popis požadavku — delší než popis události, je to hlavní obsah záznamu. */
-  REQUEST_DESCRIPTION_MAX: 4000,
-  /** Nejvíc položek historie, které apiGetRequestHistory vrátí u jednoho požadavku. */
-  REQUEST_HISTORY_MAX: 100,
-  /** URL/ID složky pro import dat filiálek (Nastavení) — URL bývá dlouhá. */
-  IMPORT_FOLDER_MAX: 500,
-  /** Hledaný výraz v názvu souboru při importu dat filiálek. */
-  IMPORT_SEARCH_MAX: 100,
-  /** Zkratka LC (Filiálky/LC v menu) — krátká, jen pro přehlednost tabulky. */
-  LC_ZKRATKA_MAX: 10,
-  /** Číslo LC (Filiálky/LC v menu) — zadává ručně SUPERADMIN. */
-  LC_CISLO_MAX: 20,
-  /** Název svátku (Nastavení → Státní svátky ČR) — pár nejdelších zákonných názvů má přes 40 znaků, proto víc než u typu události. */
-  HOLIDAY_NAME_MAX: 100,
-  /**
-   * Nejvíc výskytů, které smí vygenerovat jedno založení opakující se
-   * události (viz apiSaveEvent/_recurrenceCount_) — pojistka proti tomu,
-   * aby překlep v "Do data" (např. o pár desítek let dál) nevygeneroval
-   * tisíce řádků najednou. 52 pokrývá i týdenní opakování na celý rok.
-   */
-  RECURRENCE_MAX_COUNT: 52,
-  /** Název šablony události (Nastavení → Šablony událostí) — zároveň se použije jako předvyplněný název nové události. */
-  EVENT_TEMPLATE_LABEL_MAX: 120,
+	APP_NAME_MAX: 60,
+	APP_SUBTITLE_MAX: 120,
+	NAME_MAX: 60,
+	TITLE_MAX: 120,
+	DESCRIPTION_MAX: 2000,
+	/** Nejdelší povolená událost ve dnech — pojistka proti záznamu, který by zaplavil celou mřížku. */
+	EVENT_MAX_DAYS: 31,
+	/** Komentář k události — chatová zpráva, ne článek. */
+	COMMENT_MAX: 500,
+	/**
+	 * Organizační údaje uživatele (Umístění/Oddělení/Pozice) — validace na
+	 * serveru je pro všechny tři stejná (prostý text do tohoto limitu), i když
+	 * Oddělení a Pozice appka nabízí jako výběr ze seznamu v Nastavení
+	 * (`_departments`/`_positions`) — uložená hodnota je ale pořád jen text,
+	 * žádná cizí klíč vazba (viz komentář u `_users` v 20_db.js). Totéž platí
+	 * i pro Umístění — to se vybírá ze zkratek aktivních LC plus pevné "DL",
+	 * ale uloží se zase jen text zkratky.
+	 */
+	ORG_FIELD_MAX: 60,
+	/** Nejvíc oznámení, které apiGetBootstrap vrátí najednou — pojistka proti obřímu seznamu (např. hodně starý notifications_seen_at). */
+	NOTIFY_MAX_ITEMS: 30,
+	/** Nejvíc položek, které vrátí apiGetAllNotifications ("Zobrazit všechna oznámení") — vyšší strop než NOTIFY_MAX_ITEMS, je to úplná historie, ne jen čerstvé neviděné. */
+	NOTIFY_ALL_MAX_ITEMS: 200,
+	/** Název pracovní pozice (Nastavení). */
+	POSITION_NAME_MAX: 60,
+	/** Název oddělení (Nastavení). */
+	DEPARTMENT_NAME_MAX: 60,
+	/** Popisek typu události (Nastavení). */
+	EVENT_TYPE_LABEL_MAX: 40,
+	/** Název požadavku (sekce Požadavky) — jednořádkový nadpis, ne popis. */
+	REQUEST_TITLE_MAX: 150,
+	/** Popis požadavku — delší než popis události, je to hlavní obsah záznamu. */
+	REQUEST_DESCRIPTION_MAX: 4000,
+	/** Nejvíc položek historie, které apiGetRequestHistory vrátí u jednoho požadavku. */
+	REQUEST_HISTORY_MAX: 100,
+	/** URL/ID složky pro import dat filiálek (Nastavení) — URL bývá dlouhá. */
+	IMPORT_FOLDER_MAX: 500,
+	/** Hledaný výraz v názvu souboru při importu dat filiálek. */
+	IMPORT_SEARCH_MAX: 100,
+	/** Zkratka LC (Filiálky/LC v menu) — krátká, jen pro přehlednost tabulky. */
+	LC_ZKRATKA_MAX: 10,
+	/** Číslo LC (Filiálky/LC v menu) — zadává ručně SUPERADMIN. */
+	LC_CISLO_MAX: 20,
+	/** Název svátku (Nastavení → Státní svátky ČR) — pár nejdelších zákonných názvů má přes 40 znaků, proto víc než u typu události. */
+	HOLIDAY_NAME_MAX: 100,
+	/**
+	 * Nejvíc výskytů, které smí vygenerovat jedno založení opakující se
+	 * události (viz apiSaveEvent/_recurrenceCount_) — pojistka proti tomu,
+	 * aby překlep v "Do data" (např. o pár desítek let dál) nevygeneroval
+	 * tisíce řádků najednou. 52 pokrývá i týdenní opakování na celý rok.
+	 */
+	RECURRENCE_MAX_COUNT: 52,
+	/** Název šablony události (Nastavení → Šablony událostí) — zároveň se použije jako předvyplněný název nové události. */
+	EVENT_TEMPLATE_LABEL_MAX: 120,
 };
 
 /**
@@ -309,51 +317,51 @@ const LIMITS = {
  * co tady není, aby klient nemohl podstrčit libovolný klíč.
  */
 const DEFAULT_SETTINGS = {
-  appName: CONFIG.defaultAppName,
-  appSubtitle: CONFIG.defaultAppSubtitle,
-  notifyEnabled: false,
-  notifyEvents: '',
-  notifyRecipients: 'all',
-  holidaysEnabled: true,
-  pastEditAdminOnly: true,
-  // Naposledy odsouhlasená konfigurace importu dat filiálek (viz
-  // 60_import.js) — ukládá se až při úspěšné synchronizaci, ne při pouhém
-  // hledání, ať noční trigger vždycky navazuje na ověřenou volbu.
-  importFolderId: '',
-  importSearchTerm: '',
-  // Jestli má běžet noční automatická synchronizace a v kterou hodinu
-  // (0-23, spustí se někdy v tu hodinu, přesnou minutu si řídí Apps
-  // Script sám) — appka podle nich řídí skutečný trigger (viz
-  // _importSetTrigger_ v 60_import.js), zdroj pravdy pro "běží/neběží"
-  // je ale vždycky živý dotaz na ScriptApp, ne tahle uložená hodnota
-  // (ta by mohla zůstat neaktuální, kdyby trigger zrušil někdo jinudy).
-  importTriggerEnabled: false,
-  importTriggerHour: 6,
-  // Roky, pro které už appka jednou naplnila výchozí státní svátky (viz
-  // _ensureHolidaysSeededForYear_ v 50_api.js), čárkou oddělené (např.
-  // "2025,2026") — interní evidence, žádná záložka Nastavení ji přímo
-  // nenabízí k úpravě. Svátky jsou od téhle chvíle plně editovatelné
-  // (list _holidays), tenhle klíč jen brání tomu, aby appka výchozí
-  // sadu znovu podstrčila zpátky, kdyby uživatel pro daný rok smazal
-  // úplně všechny záznamy.
-  holidaysSeededYears: '',
-  // Kdo smí měnit stav a procento pokroku u požadavků — dvojice "umístění
-  // + pozice" uživatele, nastavitelná v Nastavení → Požadavky.
-  //
-  // ZÁMĚRNĚ nastavení, ne konstanta v kódu: `_users.location` i
-  // `_users.position` drží jen TEXT názvu, žádnou vazbu na
-  // _logistic_centers/_positions (viz komentář u _users v 20_db.js).
-  // S názvem napevno v kódu by přejmenování pozice v Nastavení právo tiše
-  // rozbilo — a ne naráz, ale postupně: uživatelům by staré znění zůstalo
-  // uložené a právo jim fungovalo dál, dokud by je někdo příště neuložil
-  // ve formuláři, kde by se nabídl už jen nový název.
-  //
-  // Prázdná pozice = nemá ho nikdo kromě SUPERADMIN (viz
-  // _canManageRequestStatus_). Je to bezpečná výchozí hodnota — `_positions`
-  // je na začátku prázdná tabulka, appka nemůže dopředu vědět, jak se
-  // pozice u zákazníka jmenuje.
-  requestManagerLocation: 'DL',
-  requestManagerPosition: '',
+	appName: CONFIG.defaultAppName,
+	appSubtitle: CONFIG.defaultAppSubtitle,
+	notifyEnabled: false,
+	notifyEvents: '',
+	notifyRecipients: 'all',
+	holidaysEnabled: true,
+	pastEditAdminOnly: true,
+	// Naposledy odsouhlasená konfigurace importu dat filiálek (viz
+	// 60_import.js) — ukládá se až při úspěšné synchronizaci, ne při pouhém
+	// hledání, ať noční trigger vždycky navazuje na ověřenou volbu.
+	importFolderId: '',
+	importSearchTerm: '',
+	// Jestli má běžet noční automatická synchronizace a v kterou hodinu
+	// (0-23, spustí se někdy v tu hodinu, přesnou minutu si řídí Apps
+	// Script sám) — appka podle nich řídí skutečný trigger (viz
+	// _importSetTrigger_ v 60_import.js), zdroj pravdy pro "běží/neběží"
+	// je ale vždycky živý dotaz na ScriptApp, ne tahle uložená hodnota
+	// (ta by mohla zůstat neaktuální, kdyby trigger zrušil někdo jinudy).
+	importTriggerEnabled: false,
+	importTriggerHour: 6,
+	// Roky, pro které už appka jednou naplnila výchozí státní svátky (viz
+	// _ensureHolidaysSeededForYear_ v 50_api.js), čárkou oddělené (např.
+	// "2025,2026") — interní evidence, žádná záložka Nastavení ji přímo
+	// nenabízí k úpravě. Svátky jsou od téhle chvíle plně editovatelné
+	// (list _holidays), tenhle klíč jen brání tomu, aby appka výchozí
+	// sadu znovu podstrčila zpátky, kdyby uživatel pro daný rok smazal
+	// úplně všechny záznamy.
+	holidaysSeededYears: '',
+	// Kdo smí měnit stav a procento pokroku u požadavků — dvojice "umístění
+	// + pozice" uživatele, nastavitelná v Nastavení → Požadavky.
+	//
+	// ZÁMĚRNĚ nastavení, ne konstanta v kódu: `_users.location` i
+	// `_users.position` drží jen TEXT názvu, žádnou vazbu na
+	// _logistic_centers/_positions (viz komentář u _users v 20_db.js).
+	// S názvem napevno v kódu by přejmenování pozice v Nastavení právo tiše
+	// rozbilo — a ne naráz, ale postupně: uživatelům by staré znění zůstalo
+	// uložené a právo jim fungovalo dál, dokud by je někdo příště neuložil
+	// ve formuláři, kde by se nabídl už jen nový název.
+	//
+	// Prázdná pozice = nemá ho nikdo kromě SUPERADMIN (viz
+	// _canManageRequestStatus_). Je to bezpečná výchozí hodnota — `_positions`
+	// je na začátku prázdná tabulka, appka nemůže dopředu vědět, jak se
+	// pozice u zákazníka jmenuje.
+	requestManagerLocation: 'DL',
+	requestManagerPosition: '',
 };
 
 /** Časová zóna aplikace. Musí odpovídat timeZone v appsscript.json. */

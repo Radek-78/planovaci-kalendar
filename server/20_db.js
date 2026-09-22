@@ -35,159 +35,159 @@
  * kapitola 9.9 pro postup, kdyby se to muselo opakovat).
  */
 const DB_SCHEMA = {
-  _users: [
-    'id', 'email', 'firstName', 'lastName', 'role', 'permission', 'active',
-    'created_at', 'created_by', 'updated_at',
-    // notifications_seen_at (dřív last_visit_at — přejmenováno beze změny
-    // POZICE, viz apiMarkNotificationsSeen) řídí jen oznámení BEZ vazby na
-    // konkrétní událost (dnes import.sync) — posouvá se až kliknutím na
-    // zvoneček. last_login_at je oproti tomu skutečné "poslední přihlášení"
-    // (apiGetBootstrap ho zapisuje při KAŽDÉM otevření appky) — dvě různé
-    // věci, které dřív obě žily v jednom poli, viz historie v SPECIFIKACE.md.
-    'notifications_seen_at',
-    // Organizační údaje (viz apiSaveUser). Oddělení/Pozice se vybírají ze
-    // seznamu spravovaného v Nastavení (_departments/_positions), uložená
-    // hodnota je ale pořád jen text — žádná cizí klíč vazba, smazání
-    // položky ze seznamu proto uživatele, kteří ji mají vyplněnou, nijak
-    // nepostihne (viz apiDeleteDepartment/apiDeletePosition).
-    // Umístění se vybírá ze zkratek aktivních LC (_logistic_centers) plus
-    // pevná hodnota "DL" pro centrálu — viz fillLocationSelect na
-    // klientovi. Platí pro něj ale totéž co pro oddělení/pozici: ukládá se
-    // jen TEXT zkratky, ne odkaz na řádek. Právě proto je dvojice
-    // "umístění + pozice", která řídí správu stavu požadavků, uložená jako
-    // NASTAVENÍ, a ne napevno v kódu (viz requestManagerPosition
-    // v DEFAULT_SETTINGS).
-    'location', 'department', 'position',
-    // Nový sloupec, proto AŽ NA KONCI (viz kritické pravidlo výše) — starší
-    // řádky ho prostě mají prázdný, dokud se dotyčný příště nepřihlásí.
-    'last_login_at',
-  ],
-  _settings: ['key', 'value', 'updated_at', 'updated_by'],
-  // entity_id = id záznamu, ke kterému se akce vztahuje (u komentářů id
-  // UDÁLOSTI, ne komentáře) — proklik ze zvonečku s oznámeními vždy vede
-  // na konkrétní událost, viz audit_() v 10_util.js a apiGetBootstrap.
-  // change_types = čárkou oddělené kódy toho, CO se změnilo (status,
-  // progress, title, description, comment…). Přibylo kvůli sloupci "Typ"
-  // v historii úprav požadavku — bez něj by se typ musel dolovat z textu
-  // `detail`, což je lidská věta a při každé změně formulace by se to
-  // rozbilo. Nový sloupec, proto AŽ NA KONCI (viz kritické pravidlo výše);
-  // starší řádky ho mají prázdný a typ se u nich odvodí z `action`.
-  _audit_log: ['timestamp', 'user', 'action', 'detail', 'entity_id', 'change_types'],
-  // recurrence_id: prázdné u běžné (jednorázové) události, jinak sdílené
-  // UUID napříč všemi výskyty jedné opakující se série (viz apiSaveEvent/
-  // _saveRecurringEvent_ v 50_api.js) — každý výskyt je ale ÚPLNÝ,
-  // samostatný řádek (appka celou sérii vygeneruje najednou při založení,
-  // ne že by se dopočítávala za běhu), takže apiGetEvents/vykreslení
-  // mřížky se vůbec nemusí měnit, jen přibyl tenhle sloupec navíc.
-  events: [
-    'id', 'start', 'end', 'all_day', 'type', 'title', 'description',
-    'owner_email', 'recurrence_id', 'created_at', 'created_by', 'updated_at', 'updated_by',
-  ],
-  event_comments: ['id', 'event_id', 'author_email', 'text', 'created_at'],
-  // Kdy který uživatel naposledy VIDĚL kterou událost — zapisuje appka na
-  // pozadí při každém otevření detailu (viz openEventModal/recordEventView
-  // na klientovi, apiRecordEventView/_recordEventView_ na serveru). `id`
-  // je deterministické `event_id + '::' + user_email` (upsert vždy trefí
-  // stejný řádek), takže žádné created_at/created_by navíc — je to
-  // mnohem častěji zapisovaná tabulka než ostatní, drží se proto co
-  // nejmenší. Používá ji _computeNotifications_ k přesnému rozhodnutí
-  // "viděl už tenhle uživatel TUHLE událost PO téhle změně" místo
-  // hrubého "cokoliv od poslední návštěvy" (viz historie v SPECIFIKACE.md).
-  _event_views: ['id', 'event_id', 'user_email', 'last_seen_at'],
-  // Pracovní pozice pro výběr ve formuláři uživatele (Nastavení) — jen
-  // název, žádné vazby na ostatní tabulky (viz apiSavePosition/apiDeletePosition).
-  _positions: ['id', 'name', 'created_at', 'created_by', 'updated_at', 'updated_by'],
-  // Oddělení pro výběr ve formuláři uživatele (Nastavení) — stejný vzor
-  // jako _positions (viz apiSaveDepartment/apiDeleteDepartment).
-  _departments: ['id', 'name', 'created_at', 'created_by', 'updated_at', 'updated_by'],
-  // Typy událostí (Nastavení) — id je u výchozích 7 stabilní slug
-  // (viz DEFAULT_EVENT_TYPES), u nově založených UUID; obojí je jen
-  // opaque klíč uložený v events.type, appce na tom nezáleží.
-  // color = barva ikony/textu, bg_color = barva podkladu (chip, ikona
-  // v seznamech…) — dvě NEZÁVISLÉ barvy, viz apiSaveEventType.
-  _event_types: ['id', 'label', 'icon', 'color', 'bg_color', 'created_at', 'created_by', 'updated_at', 'updated_by'],
+	_users: [
+		'id', 'email', 'firstName', 'lastName', 'role', 'permission', 'active',
+		'created_at', 'created_by', 'updated_at',
+		// notifications_seen_at (dřív last_visit_at — přejmenováno beze změny
+		// POZICE, viz apiMarkNotificationsSeen) řídí jen oznámení BEZ vazby na
+		// konkrétní událost (dnes import.sync) — posouvá se až kliknutím na
+		// zvoneček. last_login_at je oproti tomu skutečné "poslední přihlášení"
+		// (apiGetBootstrap ho zapisuje při KAŽDÉM otevření appky) — dvě různé
+		// věci, které dřív obě žily v jednom poli, viz historie v SPECIFIKACE.md.
+		'notifications_seen_at',
+		// Organizační údaje (viz apiSaveUser). Oddělení/Pozice se vybírají ze
+		// seznamu spravovaného v Nastavení (_departments/_positions), uložená
+		// hodnota je ale pořád jen text — žádná cizí klíč vazba, smazání
+		// položky ze seznamu proto uživatele, kteří ji mají vyplněnou, nijak
+		// nepostihne (viz apiDeleteDepartment/apiDeletePosition).
+		// Umístění se vybírá ze zkratek aktivních LC (_logistic_centers) plus
+		// pevná hodnota "DL" pro centrálu — viz fillLocationSelect na
+		// klientovi. Platí pro něj ale totéž co pro oddělení/pozici: ukládá se
+		// jen TEXT zkratky, ne odkaz na řádek. Právě proto je dvojice
+		// "umístění + pozice", která řídí správu stavu požadavků, uložená jako
+		// NASTAVENÍ, a ne napevno v kódu (viz requestManagerPosition
+		// v DEFAULT_SETTINGS).
+		'location', 'department', 'position',
+		// Nový sloupec, proto AŽ NA KONCI (viz kritické pravidlo výše) — starší
+		// řádky ho prostě mají prázdný, dokud se dotyčný příště nepřihlásí.
+		'last_login_at',
+	],
+	_settings: ['key', 'value', 'updated_at', 'updated_by'],
+	// entity_id = id záznamu, ke kterému se akce vztahuje (u komentářů id
+	// UDÁLOSTI, ne komentáře) — proklik ze zvonečku s oznámeními vždy vede
+	// na konkrétní událost, viz audit_() v 10_util.js a apiGetBootstrap.
+	// change_types = čárkou oddělené kódy toho, CO se změnilo (status,
+	// progress, title, description, comment…). Přibylo kvůli sloupci "Typ"
+	// v historii úprav požadavku — bez něj by se typ musel dolovat z textu
+	// `detail`, což je lidská věta a při každé změně formulace by se to
+	// rozbilo. Nový sloupec, proto AŽ NA KONCI (viz kritické pravidlo výše);
+	// starší řádky ho mají prázdný a typ se u nich odvodí z `action`.
+	_audit_log: ['timestamp', 'user', 'action', 'detail', 'entity_id', 'change_types'],
+	// recurrence_id: prázdné u běžné (jednorázové) události, jinak sdílené
+	// UUID napříč všemi výskyty jedné opakující se série (viz apiSaveEvent/
+	// _saveRecurringEvent_ v 50_api.js) — každý výskyt je ale ÚPLNÝ,
+	// samostatný řádek (appka celou sérii vygeneruje najednou při založení,
+	// ne že by se dopočítávala za běhu), takže apiGetEvents/vykreslení
+	// mřížky se vůbec nemusí měnit, jen přibyl tenhle sloupec navíc.
+	events: [
+		'id', 'start', 'end', 'all_day', 'type', 'title', 'description',
+		'owner_email', 'recurrence_id', 'created_at', 'created_by', 'updated_at', 'updated_by',
+	],
+	event_comments: ['id', 'event_id', 'author_email', 'text', 'created_at'],
+	// Kdy který uživatel naposledy VIDĚL kterou událost — zapisuje appka na
+	// pozadí při každém otevření detailu (viz openEventModal/recordEventView
+	// na klientovi, apiRecordEventView/_recordEventView_ na serveru). `id`
+	// je deterministické `event_id + '::' + user_email` (upsert vždy trefí
+	// stejný řádek), takže žádné created_at/created_by navíc — je to
+	// mnohem častěji zapisovaná tabulka než ostatní, drží se proto co
+	// nejmenší. Používá ji _computeNotifications_ k přesnému rozhodnutí
+	// "viděl už tenhle uživatel TUHLE událost PO téhle změně" místo
+	// hrubého "cokoliv od poslední návštěvy" (viz historie v SPECIFIKACE.md).
+	_event_views: ['id', 'event_id', 'user_email', 'last_seen_at'],
+	// Pracovní pozice pro výběr ve formuláři uživatele (Nastavení) — jen
+	// název, žádné vazby na ostatní tabulky (viz apiSavePosition/apiDeletePosition).
+	_positions: ['id', 'name', 'created_at', 'created_by', 'updated_at', 'updated_by'],
+	// Oddělení pro výběr ve formuláři uživatele (Nastavení) — stejný vzor
+	// jako _positions (viz apiSaveDepartment/apiDeleteDepartment).
+	_departments: ['id', 'name', 'created_at', 'created_by', 'updated_at', 'updated_by'],
+	// Typy událostí (Nastavení) — id je u výchozích 7 stabilní slug
+	// (viz DEFAULT_EVENT_TYPES), u nově založených UUID; obojí je jen
+	// opaque klíč uložený v events.type, appce na tom nezáleží.
+	// color = barva ikony/textu, bg_color = barva podkladu (chip, ikona
+	// v seznamech…) — dvě NEZÁVISLÉ barvy, viz apiSaveEventType.
+	_event_types: ['id', 'label', 'icon', 'color', 'bg_color', 'created_at', 'created_by', 'updated_at', 'updated_by'],
 
-  // ── Import dat filiálek (viz 60_import.js) ───────────────────────────
-  // Zrcadlo listů Organizace_Detail/Zavrene_Openings ve zdrojovém souboru
-  // na Disku — appka je jen ČTE a jednou denně přepisuje, needituje se nic
-  // ručně kromě "active" (viz apiSetStoreActive) a _logistic_centers.
-  // cislo/zkratka/active. Proto žádné created_at/created_by u _stores/
-  // _store_closures — "kdo založil" tu nedává smysl, vždycky je to import.
-  //
-  // id u _stores i _store_closures = sloupec "Číslo" ve zdroji (číslo
-  // filiálky) — díky tomu funguje beze změny obecná dbFindById_/dbUpdate_/
-  // dbDelete_ i pro tyhle tabulky. "kod" = sloupec "ID" ve zdroji
-  // (CZ-0100…), jen pro zobrazení, appka podle něj nic nepáruje.
-  // "active" prázdné (starší řádky založené před přidáním sloupce, i každý
-  // čerstvě naimportovaný) = aktivní, viz _storeIsActive_ v 60_import.js —
-  // synchronizace ho při refreshi zachovává stejně jako u LC.
-  _stores: [
-    'id', 'kod', 'nazev', 'lc', 'active',
-    'telefon_prodejny', 'vt', 'telefon_vt', 'rm', 'telefon_rm', 'zastupce_rm', 'telefon_zastupce',
-    'ulice', 'mesto', 'psc',
-    'po_otevreno', 'po_zavreno', 'ut_otevreno', 'ut_zavreno', 'st_otevreno', 'st_zavreno',
-    'ct_otevreno', 'ct_zavreno', 'pa_otevreno', 'pa_zavreno', 'so_otevreno', 'so_zavreno',
-    'ne_otevreno', 'ne_zavreno',
-    'updated_at',
-  ],
-  // LC se odvozují ze sloupce "LC" u filiálek — "nazev" je tedy ze zdroje
-  // (needituje se), "cislo"/"zkratka"/"active" zadává ručně SUPERADMIN
-  // v appce (viz apiSaveLogisticCenter/apiSetLogisticCenterActive) a
-  // synchronizace je při refreshi zachovává (viz _importSyncLogisticCenters_
-  // — existující řádek se přebírá celý, ne jen název). "active" prázdné
-  // (starší řádky založené před přidáním sloupce) = aktivní, viz
-  // _lcIsActive_ — chybějící hodnota nesmí LC "ztratit" ze seznamu.
-  _logistic_centers: ['id', 'cislo', 'zkratka', 'nazev', 'active', 'created_at', 'created_by', 'updated_at', 'updated_by'],
-  // Snímek "co je teď zavřené" — při každém syncu se celá tabulka nahradí
-  // (ne upsert), staré uzavírky tak zmizí samy, jakmile je zdroj přestane
-  // posílat (viz _importSyncClosures_).
-  _store_closures: ['id', 'nazev', 'od', 'do', 'celkem_dni', 'updated_at'],
-  // Trvalá historie synchronizací (Log importu v Nastavení) — append-only,
-  // žádný řádek se needituje ani nemaže, proto jen created_at/created_by
-  // (kdo/kdy spustil sync), ne updated_*. `summary` je krátký text pro
-  // zvoneček/audit log (viz audit_), `detail` delší itemizovaný výpis změn
-  // pro rozkliknutí přímo v Logu importu.
-  _import_log: [
-    'id', 'file_name',
-    'stores_added', 'stores_changed', 'stores_removed',
-    'lc_added', 'lc_removed',
-    'closures_added', 'closures_removed',
-    'summary', 'detail',
-    'created_at', 'created_by',
-  ],
-  // Státní svátky ČR (Nastavení → Státní svátky ČR) — na rozdíl od dřívější
-  // čistě dopočítané podoby teď plně editovatelná tabulka. Řádky pro nový
-  // rok appka jednou naseje z CZECH_FIXED_HOLIDAYS/_czechHolidaysForYear_
-  // (viz _ensureHolidaysSeededForYear_ v 50_api.js), od té chvíle jsou to
-  // obyčejná data jako kterákoli jiná — needituje/nemaže se nic natvrdo.
-  _holidays: ['id', 'date', 'name', 'created_at', 'created_by', 'updated_at', 'updated_by'],
-  // Šablony událostí (Nastavení → Šablony událostí) — jen výchozí obsah pro
-  // předvyplnění formuláře nové události (viz apiGetEventTemplates a
-  // App.applyEventTemplate na klientovi), appka je nikam neváže — použití
-  // šablony vytvoří normální nezávislou událost, ne odkaz na šablonu.
-  // start_time/end_time prázdné u celodenní šablony (all_day=true).
-  // duration_days = kolik dní má nová událost trvat (1 = jednodenní).
-  _event_templates: [
-    'id', 'label', 'type', 'all_day', 'start_time', 'end_time', 'duration_days', 'description',
-    'created_at', 'created_by', 'updated_at', 'updated_by',
-  ],
-  // Požadavky vedoucích pracovníků LC (sekce Požadavky, viz SPECIFIKACE.md
-  // 9.10). "Kdo zadal" a "kdy zadal" NEMAJÍ vlastní sloupce — pokrývá je
-  // created_by/created_at, které dbInsert_ vyplní samo.
-  //
-  // `status` je klíč z REQUEST_STATUSES (00_config.js), `progress` celé
-  // číslo 0-100. Historie úprav se NEUKLÁDÁ sem ani do vlastní tabulky —
-  // jde do `_audit_log` pod entity_id = id požadavku (viz
-  // apiGetRequestHistory), stejným způsobem, jakým se tam píšou i změny
-  // událostí.
-  requests: [
-    'id', 'title', 'description', 'status', 'progress',
-    'created_at', 'created_by', 'updated_at', 'updated_by',
-  ],
-  // Stejná stavba jako event_comments — záměrně vlastní tabulka, ne sdílená
-  // s komentáři událostí: smazání požadavku tak nemusí nic dohledávat mezi
-  // cizími řádky a obě části appky se můžou vyvíjet nezávisle.
-  request_comments: ['id', 'request_id', 'author_email', 'text', 'created_at'],
+	// ── Import dat filiálek (viz 60_import.js) ───────────────────────────
+	// Zrcadlo listů Organizace_Detail/Zavrene_Openings ve zdrojovém souboru
+	// na Disku — appka je jen ČTE a jednou denně přepisuje, needituje se nic
+	// ručně kromě "active" (viz apiSetStoreActive) a _logistic_centers.
+	// cislo/zkratka/active. Proto žádné created_at/created_by u _stores/
+	// _store_closures — "kdo založil" tu nedává smysl, vždycky je to import.
+	//
+	// id u _stores i _store_closures = sloupec "Číslo" ve zdroji (číslo
+	// filiálky) — díky tomu funguje beze změny obecná dbFindById_/dbUpdate_/
+	// dbDelete_ i pro tyhle tabulky. "kod" = sloupec "ID" ve zdroji
+	// (CZ-0100…), jen pro zobrazení, appka podle něj nic nepáruje.
+	// "active" prázdné (starší řádky založené před přidáním sloupce, i každý
+	// čerstvě naimportovaný) = aktivní, viz _storeIsActive_ v 60_import.js —
+	// synchronizace ho při refreshi zachovává stejně jako u LC.
+	_stores: [
+		'id', 'kod', 'nazev', 'lc', 'active',
+		'telefon_prodejny', 'vt', 'telefon_vt', 'rm', 'telefon_rm', 'zastupce_rm', 'telefon_zastupce',
+		'ulice', 'mesto', 'psc',
+		'po_otevreno', 'po_zavreno', 'ut_otevreno', 'ut_zavreno', 'st_otevreno', 'st_zavreno',
+		'ct_otevreno', 'ct_zavreno', 'pa_otevreno', 'pa_zavreno', 'so_otevreno', 'so_zavreno',
+		'ne_otevreno', 'ne_zavreno',
+		'updated_at',
+	],
+	// LC se odvozují ze sloupce "LC" u filiálek — "nazev" je tedy ze zdroje
+	// (needituje se), "cislo"/"zkratka"/"active" zadává ručně SUPERADMIN
+	// v appce (viz apiSaveLogisticCenter/apiSetLogisticCenterActive) a
+	// synchronizace je při refreshi zachovává (viz _importSyncLogisticCenters_
+	// — existující řádek se přebírá celý, ne jen název). "active" prázdné
+	// (starší řádky založené před přidáním sloupce) = aktivní, viz
+	// _lcIsActive_ — chybějící hodnota nesmí LC "ztratit" ze seznamu.
+	_logistic_centers: ['id', 'cislo', 'zkratka', 'nazev', 'active', 'created_at', 'created_by', 'updated_at', 'updated_by'],
+	// Snímek "co je teď zavřené" — při každém syncu se celá tabulka nahradí
+	// (ne upsert), staré uzavírky tak zmizí samy, jakmile je zdroj přestane
+	// posílat (viz _importSyncClosures_).
+	_store_closures: ['id', 'nazev', 'od', 'do', 'celkem_dni', 'updated_at'],
+	// Trvalá historie synchronizací (Log importu v Nastavení) — append-only,
+	// žádný řádek se needituje ani nemaže, proto jen created_at/created_by
+	// (kdo/kdy spustil sync), ne updated_*. `summary` je krátký text pro
+	// zvoneček/audit log (viz audit_), `detail` delší itemizovaný výpis změn
+	// pro rozkliknutí přímo v Logu importu.
+	_import_log: [
+		'id', 'file_name',
+		'stores_added', 'stores_changed', 'stores_removed',
+		'lc_added', 'lc_removed',
+		'closures_added', 'closures_removed',
+		'summary', 'detail',
+		'created_at', 'created_by',
+	],
+	// Státní svátky ČR (Nastavení → Státní svátky ČR) — na rozdíl od dřívější
+	// čistě dopočítané podoby teď plně editovatelná tabulka. Řádky pro nový
+	// rok appka jednou naseje z CZECH_FIXED_HOLIDAYS/_czechHolidaysForYear_
+	// (viz _ensureHolidaysSeededForYear_ v 50_api.js), od té chvíle jsou to
+	// obyčejná data jako kterákoli jiná — needituje/nemaže se nic natvrdo.
+	_holidays: ['id', 'date', 'name', 'created_at', 'created_by', 'updated_at', 'updated_by'],
+	// Šablony událostí (Nastavení → Šablony událostí) — jen výchozí obsah pro
+	// předvyplnění formuláře nové události (viz apiGetEventTemplates a
+	// App.applyEventTemplate na klientovi), appka je nikam neváže — použití
+	// šablony vytvoří normální nezávislou událost, ne odkaz na šablonu.
+	// start_time/end_time prázdné u celodenní šablony (all_day=true).
+	// duration_days = kolik dní má nová událost trvat (1 = jednodenní).
+	_event_templates: [
+		'id', 'label', 'type', 'all_day', 'start_time', 'end_time', 'duration_days', 'description',
+		'created_at', 'created_by', 'updated_at', 'updated_by',
+	],
+	// Požadavky vedoucích pracovníků LC (sekce Požadavky, viz SPECIFIKACE.md
+	// 9.10). "Kdo zadal" a "kdy zadal" NEMAJÍ vlastní sloupce — pokrývá je
+	// created_by/created_at, které dbInsert_ vyplní samo.
+	//
+	// `status` je klíč z REQUEST_STATUSES (00_config.js), `progress` celé
+	// číslo 0-100. Historie úprav se NEUKLÁDÁ sem ani do vlastní tabulky —
+	// jde do `_audit_log` pod entity_id = id požadavku (viz
+	// apiGetRequestHistory), stejným způsobem, jakým se tam píšou i změny
+	// událostí.
+	requests: [
+		'id', 'title', 'description', 'status', 'progress',
+		'created_at', 'created_by', 'updated_at', 'updated_by',
+	],
+	// Stejná stavba jako event_comments — záměrně vlastní tabulka, ne sdílená
+	// s komentáři událostí: smazání požadavku tak nemusí nic dohledávat mezi
+	// cizími řádky a obě části appky se můžou vyvíjet nezávisle.
+	request_comments: ['id', 'request_id', 'author_email', 'text', 'created_at'],
 };
 
 /**
@@ -202,67 +202,67 @@ const DB_SCHEMA = {
  * schématu, takže platí i pro řádky, které teprve vzniknou.
  */
 const TEXT_COLUMNS = {
-  _users: ['created_at', 'updated_at', 'notifications_seen_at', 'last_login_at'],
-  _settings: ['updated_at'],
-  _audit_log: ['timestamp'],
-  events: ['start', 'end', 'created_at', 'updated_at'],
-  event_comments: ['created_at'],
-  _positions: ['created_at', 'updated_at'],
-  _event_types: ['created_at', 'updated_at'],
-  _departments: ['created_at', 'updated_at'],
-  // _stores je ČISTÉ ZRCADLO cizího exportu — všechen obsah je text, proto
-  // je tu chráněný KAŽDÝ sloupec kromě `active`. Ten jediný je skutečný
-  // boolean řízený appkou (apiSetStoreActive) a čte ho toBool_; apostrof
-  // před true/false by z něj udělal řetězec, takže ten se tu záměrně NESMÍ
-  // objevit.
-  //
-  // Důvody, proč je ochrana takhle plošná (všechny reálně nahlášené chyby):
-  //
-  // 1) NEKONEČNÁ SMYČKA „filiálka se změnila" (nahlášeno u 278 Mikulov
-  //    a 365 Orlová). Dvě filiálky mají ulici pojmenovanou po datu
-  //    ("28. Října", "17. listopadu"). Bez ochrany `ulice` se dělo tohle:
-  //    sync zapsal správný text → Sheets si ho tiše převedla na typ Date →
-  //    další noc ho dbGetAll_ přečetl jako Date → _storeRowChanges_ udělal
-  //    String(Date) ("Wed Oct 28 2026 …") a porovnal s textem ze zdroje →
-  //    nerovnost → „změna" → zápis téhož textu → a zase dokola. Nikdy se
-  //    to nemohlo ustálit, proto to bylo KAŽDÝ den. Pozor na záměnu
-  //    s opravou v _importCellText_ (60_import.js): ta řeší ČTECÍ stranu
-  //    (buňku typu Date ve zdrojovém souboru), tahle řeší stranu ZÁPISU
-  //    do našeho listu — jsou to dva různé problémy se stejným příznakem.
-  //
-  // 2) telefonní čísla a `psc` — bez ochrany z nich Sheets udělá Number
-  //    a tiše zahodí mezery i případné vedoucí nuly (ztráta dat).
-  //
-  // 3) `id` = "Číslo" filiálky ze zdroje (např. "994") — bez ochrany typ
-  //    Number, `dbFindById_` by takovou filiálku nikdy nedohledal
-  //    (nahlášená chyba „Filiálka nebyla nalezena" u (de)aktivace). Čtecí
-  //    strana (dbFindBy_) už na tenhle nesoulad typů netahá, ale řádky
-  //    zapsané ještě před touhle opravou (dokud je nepřepíše další sync)
-  //    v listu samotném pořád vypadají jako číslo — vizuální kosmetika.
-  //
-  // 4) otevírací doba (např. "7:00") a updated_at — převod na čas/datum,
-  //    viz obecný komentář nad TEXT_COLUMNS.
-  _stores: [
-    'id', 'kod', 'nazev', 'lc',
-    'telefon_prodejny', 'vt', 'telefon_vt', 'rm', 'telefon_rm', 'zastupce_rm', 'telefon_zastupce',
-    'ulice', 'mesto', 'psc',
-    'po_otevreno', 'po_zavreno', 'ut_otevreno', 'ut_zavreno', 'st_otevreno', 'st_zavreno',
-    'ct_otevreno', 'ct_zavreno', 'pa_otevreno', 'pa_zavreno', 'so_otevreno', 'so_zavreno',
-    'ne_otevreno', 'ne_zavreno', 'updated_at',
-  ],
-  _logistic_centers: ['created_at', 'updated_at'],
-  // id = stejné "Číslo" jako u _stores, stejný důvod ochrany. `nazev` je
-  // stejně jako u _stores text ze zdroje — chráněný ze stejného důvodu
-  // (bod 1 výše). `celkem_dni` se tu záměrně nechrání: to je jediná
-  // skutečně číselná hodnota, appka si ji dopočítává sama.
-  _store_closures: ['id', 'nazev', 'od', 'do', 'updated_at'],
-  _import_log: ['created_at'],
-  _holidays: ['date', 'created_at', 'updated_at'],
-  // start_time/end_time (např. "9:00") by Sheets rádo převedlo na čas, stejný důvod jako u _stores otevírací doby výše.
-  _event_templates: ['start_time', 'end_time', 'created_at', 'updated_at'],
-  _event_views: ['last_seen_at'],
-  requests: ['created_at', 'updated_at'],
-  request_comments: ['created_at'],
+	_users: ['created_at', 'updated_at', 'notifications_seen_at', 'last_login_at'],
+	_settings: ['updated_at'],
+	_audit_log: ['timestamp'],
+	events: ['start', 'end', 'created_at', 'updated_at'],
+	event_comments: ['created_at'],
+	_positions: ['created_at', 'updated_at'],
+	_event_types: ['created_at', 'updated_at'],
+	_departments: ['created_at', 'updated_at'],
+	// _stores je ČISTÉ ZRCADLO cizího exportu — všechen obsah je text, proto
+	// je tu chráněný KAŽDÝ sloupec kromě `active`. Ten jediný je skutečný
+	// boolean řízený appkou (apiSetStoreActive) a čte ho toBool_; apostrof
+	// před true/false by z něj udělal řetězec, takže ten se tu záměrně NESMÍ
+	// objevit.
+	//
+	// Důvody, proč je ochrana takhle plošná (všechny reálně nahlášené chyby):
+	//
+	// 1) NEKONEČNÁ SMYČKA „filiálka se změnila" (nahlášeno u 278 Mikulov
+	//    a 365 Orlová). Dvě filiálky mají ulici pojmenovanou po datu
+	//    ("28. Října", "17. listopadu"). Bez ochrany `ulice` se dělo tohle:
+	//    sync zapsal správný text → Sheets si ho tiše převedla na typ Date →
+	//    další noc ho dbGetAll_ přečetl jako Date → _storeRowChanges_ udělal
+	//    String(Date) ("Wed Oct 28 2026 …") a porovnal s textem ze zdroje →
+	//    nerovnost → „změna" → zápis téhož textu → a zase dokola. Nikdy se
+	//    to nemohlo ustálit, proto to bylo KAŽDÝ den. Pozor na záměnu
+	//    s opravou v _importCellText_ (60_import.js): ta řeší ČTECÍ stranu
+	//    (buňku typu Date ve zdrojovém souboru), tahle řeší stranu ZÁPISU
+	//    do našeho listu — jsou to dva různé problémy se stejným příznakem.
+	//
+	// 2) telefonní čísla a `psc` — bez ochrany z nich Sheets udělá Number
+	//    a tiše zahodí mezery i případné vedoucí nuly (ztráta dat).
+	//
+	// 3) `id` = "Číslo" filiálky ze zdroje (např. "994") — bez ochrany typ
+	//    Number, `dbFindById_` by takovou filiálku nikdy nedohledal
+	//    (nahlášená chyba „Filiálka nebyla nalezena" u (de)aktivace). Čtecí
+	//    strana (dbFindBy_) už na tenhle nesoulad typů netahá, ale řádky
+	//    zapsané ještě před touhle opravou (dokud je nepřepíše další sync)
+	//    v listu samotném pořád vypadají jako číslo — vizuální kosmetika.
+	//
+	// 4) otevírací doba (např. "7:00") a updated_at — převod na čas/datum,
+	//    viz obecný komentář nad TEXT_COLUMNS.
+	_stores: [
+		'id', 'kod', 'nazev', 'lc',
+		'telefon_prodejny', 'vt', 'telefon_vt', 'rm', 'telefon_rm', 'zastupce_rm', 'telefon_zastupce',
+		'ulice', 'mesto', 'psc',
+		'po_otevreno', 'po_zavreno', 'ut_otevreno', 'ut_zavreno', 'st_otevreno', 'st_zavreno',
+		'ct_otevreno', 'ct_zavreno', 'pa_otevreno', 'pa_zavreno', 'so_otevreno', 'so_zavreno',
+		'ne_otevreno', 'ne_zavreno', 'updated_at',
+	],
+	_logistic_centers: ['created_at', 'updated_at'],
+	// id = stejné "Číslo" jako u _stores, stejný důvod ochrany. `nazev` je
+	// stejně jako u _stores text ze zdroje — chráněný ze stejného důvodu
+	// (bod 1 výše). `celkem_dni` se tu záměrně nechrání: to je jediná
+	// skutečně číselná hodnota, appka si ji dopočítává sama.
+	_store_closures: ['id', 'nazev', 'od', 'do', 'updated_at'],
+	_import_log: ['created_at'],
+	_holidays: ['date', 'created_at', 'updated_at'],
+	// start_time/end_time (např. "9:00") by Sheets rádo převedlo na čas, stejný důvod jako u _stores otevírací doby výše.
+	_event_templates: ['start_time', 'end_time', 'created_at', 'updated_at'],
+	_event_views: ['last_seen_at'],
+	requests: ['created_at', 'updated_at'],
+	request_comments: ['created_at'],
 };
 
 /**
@@ -276,7 +276,7 @@ const TEXT_COLUMNS = {
  * nespoléhat jen na to, že se do listu nikdy nic špatně nezapíše.
  */
 const LOCAL_DATETIME_COLUMNS = {
-  events: ['start', 'end'],
+	events: ['start', 'end'],
 };
 
 /** Handle na databázi pro aktuální běh skriptu (šetří opakované openById). */
@@ -289,8 +289,8 @@ let dbCache_ = {};
 let dbLockHeld_ = false;
 
 /* ══════════════════════════════════════════════════════════════════════════
-   PŘÍSTUP K SPREADSHEETU
-   ══════════════════════════════════════════════════════════════════════════ */
+	 PŘÍSTUP K SPREADSHEETU
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /**
  * Vrátí databázový spreadsheet. Pokud aplikace ještě není inicializovaná,
@@ -298,14 +298,14 @@ let dbLockHeld_ = false;
  * Jediné místo, kde databáze vzniká, je setupInitialize() v 40_setup.js.
  */
 function dbSpreadsheet_() {
-  if (dbHandle_) return dbHandle_;
+	if (dbHandle_) return dbHandle_;
 
-  const id = PropertiesService.getScriptProperties().getProperty(PROPS.DB_ID);
-  if (!id) {
-    throw userError_('Aplikace není inicializována. Spusťte úvodního průvodce.');
-  }
-  dbHandle_ = SpreadsheetApp.openById(id);
-  return dbHandle_;
+	const id = PropertiesService.getScriptProperties().getProperty(PROPS.DB_ID);
+	if (!id) {
+		throw userError_('Aplikace není inicializována. Spusťte úvodního průvodce.');
+	}
+	dbHandle_ = SpreadsheetApp.openById(id);
+	return dbHandle_;
 }
 
 /**
@@ -323,24 +323,24 @@ function dbSpreadsheet_() {
  * v názvu tabulky).
  */
 function dbSheet_(table) {
-  const spreadsheet = dbSpreadsheet_();
-  let sheet = spreadsheet.getSheetByName(table);
+	const spreadsheet = dbSpreadsheet_();
+	let sheet = spreadsheet.getSheetByName(table);
 
-  if (!sheet || !_dbHeaderMatches_(sheet, table)) {
-    dbEnsureSchema_(spreadsheet);
-    sheet = spreadsheet.getSheetByName(table);
-  }
-  if (!sheet) {
-    throw userError_('Tabulka „' + table + '" v databázi chybí. Kontaktujte správce.');
-  }
-  return sheet;
+	if (!sheet || !_dbHeaderMatches_(sheet, table)) {
+		dbEnsureSchema_(spreadsheet);
+		sheet = spreadsheet.getSheetByName(table);
+	}
+	if (!sheet) {
+		throw userError_('Tabulka „' + table + '" v databázi chybí. Kontaktujte správce.');
+	}
+	return sheet;
 }
 
 /** Odpovídá první řádek listu aktuálnímu schématu dané tabulky? */
 function _dbHeaderMatches_(sheet, table) {
-  const headers = DB_SCHEMA[table];
-  const current = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
-  return headers.every((header, i) => current[i] === header);
+	const headers = DB_SCHEMA[table];
+	const current = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+	return headers.every((header, i) => current[i] === header);
 }
 
 /**
@@ -348,30 +348,30 @@ function _dbHeaderMatches_(sheet, table) {
  * Nic nemaže ani nepřepisuje data — je bezpečné to volat opakovaně.
  */
 function dbEnsureSchema_(ss) {
-  Object.keys(DB_SCHEMA).forEach((table) => {
-    const headers = DB_SCHEMA[table];
+	Object.keys(DB_SCHEMA).forEach((table) => {
+		const headers = DB_SCHEMA[table];
 
-    let sheet = ss.getSheetByName(table);
-    if (!sheet) {
-      sheet = ss.insertSheet(table);
-      applySheetFont_(sheet);
-    }
+		let sheet = ss.getSheetByName(table);
+		if (!sheet) {
+			sheet = ss.insertSheet(table);
+			applySheetFont_(sheet);
+		}
 
-    // Hlavička se zapíše jen tehdy, když se liší — zbytečný setValues by
-    // pokaždé měnil soubor a znehodnocoval historii revizí.
-    const current = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
-    const differs = headers.some((header, i) => current[i] !== header);
-    if (differs) {
-      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-      sheet.getRange(1, 1, 1, headers.length)
-        .setFontWeight('bold')
-        .setBackground(CONFIG.theme.blue)
-        .setFontColor('#ffffff');
-      sheet.setFrozenRows(1);
-    }
+		// Hlavička se zapíše jen tehdy, když se liší — zbytečný setValues by
+		// pokaždé měnil soubor a znehodnocoval historii revizí.
+		const current = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+		const differs = headers.some((header, i) => current[i] !== header);
+		if (differs) {
+			sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+			sheet.getRange(1, 1, 1, headers.length)
+				.setFontWeight('bold')
+				.setBackground(CONFIG.theme.blue)
+				.setFontColor('#ffffff');
+			sheet.setFrozenRows(1);
+		}
 
-    dbEnsureTextColumns_(sheet, table, headers);
-  });
+		dbEnsureTextColumns_(sheet, table, headers);
+	});
 }
 
 /**
@@ -380,44 +380,44 @@ function dbEnsureSchema_(ss) {
  * u TEXT_COLUMNS.
  */
 function dbEnsureTextColumns_(sheet, table, headers) {
-  const textColumns = TEXT_COLUMNS[table] || [];
-  const rowCount = Math.max(sheet.getMaxRows() - 1, 1); // bez řádku hlavičky
+	const textColumns = TEXT_COLUMNS[table] || [];
+	const rowCount = Math.max(sheet.getMaxRows() - 1, 1); // bez řádku hlavičky
 
-  textColumns.forEach((columnName) => {
-    const index = headers.indexOf(columnName);
-    if (index === -1) return;
-    sheet.getRange(2, index + 1, rowCount, 1).setNumberFormat('@');
-  });
+	textColumns.forEach((columnName) => {
+		const index = headers.indexOf(columnName);
+		if (index === -1) return;
+		sheet.getRange(2, index + 1, rowCount, 1).setNumberFormat('@');
+	});
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   ZÁMEK
+	 ZÁMEK
 
-   Apps Script může tentýž skript spustit paralelně pro víc uživatelů.
-   Bez zámku by dva souběžné zápisy mohly přepsat jeden druhého (oba si
-   přečtou stejný poslední řádek a oba na něj zapíšou).
-   ══════════════════════════════════════════════════════════════════════════ */
+	 Apps Script může tentýž skript spustit paralelně pro víc uživatelů.
+	 Bez zámku by dva souběžné zápisy mohly přepsat jeden druhého (oba si
+	 přečtou stejný poslední řádek a oba na něj zapíšou).
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /** Spustí fn pod zámkem skriptu. Vnořené volání zámek nebere podruhé. */
 function withLock_(fn) {
-  if (dbLockHeld_) return fn();
+	if (dbLockHeld_) return fn();
 
-  const lock = LockService.getScriptLock();
-  // 30 s je kompromis: delší čekání uživatel vnímá jako zamrznutí,
-  // kratší by při souběhu zbytečně selhávalo.
-  lock.waitLock(30000);
-  dbLockHeld_ = true;
-  try {
-    return fn();
-  } finally {
-    dbLockHeld_ = false;
-    lock.releaseLock();
-  }
+	const lock = LockService.getScriptLock();
+	// 30 s je kompromis: delší čekání uživatel vnímá jako zamrznutí,
+	// kratší by při souběhu zbytečně selhávalo.
+	lock.waitLock(30000);
+	dbLockHeld_ = true;
+	try {
+		return fn();
+	} finally {
+		dbLockHeld_ = false;
+		lock.releaseLock();
+	}
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   ČTENÍ
-   ══════════════════════════════════════════════════════════════════════════ */
+	 ČTENÍ
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /**
  * Vrátí všechny záznamy tabulky jako pole objektů podle hlaviček.
@@ -425,47 +425,47 @@ function withLock_(fn) {
  * ručním mazáním obsahu buněk v tabulce.
  */
 function dbGetAll_(table) {
-  // POZOR: kontrola musí být na PŘÍTOMNOST klíče, ne na jeho pravdivostní
-  // hodnotu — prázdná tabulka se cachuje jako [], a prázdné pole je v JS
-  // vždy pravdivé. `if (dbCache_[table])` by proto prázdný výsledek bralo
-  // jako "už mám v cache" napořád (v rámci jedné instance běhu) i po
-  // vložení nových řádků odjinud. Skutečně nová data v rámci JEDNOHO
-  // požadavku zajišťuje reset dbCache_ na začátku guard_()/doGet().
-  if (Object.prototype.hasOwnProperty.call(dbCache_, table)) return dbCache_[table];
+	// POZOR: kontrola musí být na PŘÍTOMNOST klíče, ne na jeho pravdivostní
+	// hodnotu — prázdná tabulka se cachuje jako [], a prázdné pole je v JS
+	// vždy pravdivé. `if (dbCache_[table])` by proto prázdný výsledek bralo
+	// jako "už mám v cache" napořád (v rámci jedné instance běhu) i po
+	// vložení nových řádků odjinud. Skutečně nová data v rámci JEDNOHO
+	// požadavku zajišťuje reset dbCache_ na začátku guard_()/doGet().
+	if (Object.prototype.hasOwnProperty.call(dbCache_, table)) return dbCache_[table];
 
-  const sheet = dbSheet_(table);
-  const lastRow = sheet.getLastRow();
-  const headers = DB_SCHEMA[table];
+	const sheet = dbSheet_(table);
+	const lastRow = sheet.getLastRow();
+	const headers = DB_SCHEMA[table];
 
-  // Jen hlavička = prázdná tabulka.
-  if (lastRow < 2) {
-    dbCache_[table] = [];
-    return [];
-  }
+	// Jen hlavička = prázdná tabulka.
+	if (lastRow < 2) {
+		dbCache_[table] = [];
+		return [];
+	}
 
-  const values = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
-  const records = [];
+	const values = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+	const records = [];
 
-  values.forEach((row, rowIndex) => {
-    if (row[0] === '' || row[0] === null) return; // prázdný řádek
+	values.forEach((row, rowIndex) => {
+		if (row[0] === '' || row[0] === null) return; // prázdný řádek
 
-    const localDatetimeColumns = LOCAL_DATETIME_COLUMNS[table] || [];
-    const record = {};
-    headers.forEach((header, colIndex) => {
-      let value = row[colIndex];
-      // Obrana do hloubky — viz komentář u LOCAL_DATETIME_COLUMNS.
-      if (value instanceof Date && localDatetimeColumns.indexOf(header) !== -1) {
-        value = Utilities.formatDate(value, TIMEZONE, "yyyy-MM-dd'T'HH:mm");
-      }
-      record[header] = value;
-    });
-    // Číslo řádku v listu — potřebné pro cílený update/delete bez dalšího hledání.
-    record._row = rowIndex + 2;
-    records.push(record);
-  });
+		const localDatetimeColumns = LOCAL_DATETIME_COLUMNS[table] || [];
+		const record = {};
+		headers.forEach((header, colIndex) => {
+			let value = row[colIndex];
+			// Obrana do hloubky — viz komentář u LOCAL_DATETIME_COLUMNS.
+			if (value instanceof Date && localDatetimeColumns.indexOf(header) !== -1) {
+				value = Utilities.formatDate(value, TIMEZONE, "yyyy-MM-dd'T'HH:mm");
+			}
+			record[header] = value;
+		});
+		// Číslo řádku v listu — potřebné pro cílený update/delete bez dalšího hledání.
+		record._row = rowIndex + 2;
+		records.push(record);
+	});
 
-  dbCache_[table] = records;
-  return records;
+	dbCache_[table] = records;
+	return records;
 }
 
 /**
@@ -483,21 +483,21 @@ function dbGetAll_(table) {
  * identifikátory, nikdy záměrně číselný typ.
  */
 function dbFindBy_(table, column, value) {
-  return dbGetAll_(table).find((record) => String(record[column]) === String(value)) || null;
+	return dbGetAll_(table).find((record) => String(record[column]) === String(value)) || null;
 }
 
 /** Najde záznam podle id, jinak null. */
 function dbFindById_(table, id) {
-  return dbFindBy_(table, 'id', String(id));
+	return dbFindBy_(table, 'id', String(id));
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   ZÁPIS
-   ══════════════════════════════════════════════════════════════════════════ */
+	 ZÁPIS
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /** Zneplatní cache tabulky — volá se po každém zápisu. */
 function dbInvalidate_(table) {
-  delete dbCache_[table];
+	delete dbCache_[table];
 }
 
 /**
@@ -513,13 +513,13 @@ function dbInvalidate_(table) {
  * vynutí interpretaci.
  */
 function dbRecordToRow_(table, record) {
-  const textColumns = TEXT_COLUMNS[table] || [];
-  return DB_SCHEMA[table].map((header) => {
-    const value = record[header];
-    if (value === undefined || value === null || value === '') return '';
-    if (textColumns.indexOf(header) !== -1) return "'" + value;
-    return value;
-  });
+	const textColumns = TEXT_COLUMNS[table] || [];
+	return DB_SCHEMA[table].map((header) => {
+		const value = record[header];
+		if (value === undefined || value === null || value === '') return '';
+		if (textColumns.indexOf(header) !== -1) return "'" + value;
+		return value;
+	});
 }
 
 /**
@@ -527,12 +527,12 @@ function dbRecordToRow_(table, record) {
  * Používá se pro auditní log, kde si sloupce plní volající sám.
  */
 function dbAppend_(table, record) {
-  return withLock_(() => {
-    const sheet = dbSheet_(table);
-    sheet.appendRow(dbRecordToRow_(table, record));
-    dbInvalidate_(table);
-    return record;
-  });
+	return withLock_(() => {
+		const sheet = dbSheet_(table);
+		sheet.appendRow(dbRecordToRow_(table, record));
+		dbInvalidate_(table);
+		return record;
+	});
 }
 
 /**
@@ -540,20 +540,20 @@ function dbAppend_(table, record) {
  * updated_at. Volající je nemusí (a nemá) vyplňovat.
  */
 function dbInsert_(table, record) {
-  return withLock_(() => {
-    const now = nowIso_();
-    const complete = Object.assign({}, record, {
-      id: record.id || uuid_(),
-      created_at: now,
-      created_by: currentEmail_() || 'system',
-      updated_at: now,
-    });
+	return withLock_(() => {
+		const now = nowIso_();
+		const complete = Object.assign({}, record, {
+			id: record.id || uuid_(),
+			created_at: now,
+			created_by: currentEmail_() || 'system',
+			updated_at: now,
+		});
 
-    const sheet = dbSheet_(table);
-    sheet.appendRow(dbRecordToRow_(table, complete));
-    dbInvalidate_(table);
-    return complete;
-  });
+		const sheet = dbSheet_(table);
+		sheet.appendRow(dbRecordToRow_(table, complete));
+		dbInvalidate_(table);
+		return complete;
+	});
 }
 
 /**
@@ -572,26 +572,26 @@ function dbInsert_(table, record) {
  * @returns {Object[]} kompletní vložené záznamy (se všemi doplněnými poli), ve stejném pořadí
  */
 function dbInsertMany_(table, records) {
-  return withLock_(() => {
-    const headers = DB_SCHEMA[table];
-    const now = nowIso_();
-    const email = currentEmail_() || 'system';
+	return withLock_(() => {
+		const headers = DB_SCHEMA[table];
+		const now = nowIso_();
+		const email = currentEmail_() || 'system';
 
-    const complete = records.map((record) => Object.assign({}, record, {
-      id: record.id || uuid_(),
-      created_at: now,
-      created_by: email,
-      updated_at: now,
-    }));
+		const complete = records.map((record) => Object.assign({}, record, {
+			id: record.id || uuid_(),
+			created_at: now,
+			created_by: email,
+			updated_at: now,
+		}));
 
-    const sheet = dbSheet_(table);
-    const startRow = sheet.getLastRow() + 1;
-    sheet.getRange(startRow, 1, complete.length, headers.length)
-      .setValues(complete.map((record) => dbRecordToRow_(table, record)));
+		const sheet = dbSheet_(table);
+		const startRow = sheet.getLastRow() + 1;
+		sheet.getRange(startRow, 1, complete.length, headers.length)
+			.setValues(complete.map((record) => dbRecordToRow_(table, record)));
 
-    dbInvalidate_(table);
-    return complete;
-  });
+		dbInvalidate_(table);
+		return complete;
+	});
 }
 
 /**
@@ -603,49 +603,49 @@ function dbInsertMany_(table, records) {
  * doplňuje automaticky.
  */
 function dbUpdate_(table, id, changes) {
-  return withLock_(() => {
-    // Cache mohla vzniknout před zámkem — před úpravou ji zahodíme, ať
-    // pracujeme se skutečným aktuálním stavem listu.
-    dbInvalidate_(table);
+	return withLock_(() => {
+		// Cache mohla vzniknout před zámkem — před úpravou ji zahodíme, ať
+		// pracujeme se skutečným aktuálním stavem listu.
+		dbInvalidate_(table);
 
-    const existing = dbFindById_(table, id);
-    if (!existing) {
-      throw userError_('Záznam nebyl nalezen — mohl ho mezitím smazat někdo jiný.');
-    }
+		const existing = dbFindById_(table, id);
+		if (!existing) {
+			throw userError_('Záznam nebyl nalezen — mohl ho mezitím smazat někdo jiný.');
+		}
 
-    const updated = Object.assign({}, existing, changes, {
-      id: existing.id,
-      created_at: existing.created_at,
-      created_by: existing.created_by,
-      updated_at: nowIso_(),
-    });
-    delete updated._row;
+		const updated = Object.assign({}, existing, changes, {
+			id: existing.id,
+			created_at: existing.created_at,
+			created_by: existing.created_by,
+			updated_at: nowIso_(),
+		});
+		delete updated._row;
 
-    const sheet = dbSheet_(table);
-    const headers = DB_SCHEMA[table];
-    sheet
-      .getRange(existing._row, 1, 1, headers.length)
-      .setValues([dbRecordToRow_(table, updated)]);
+		const sheet = dbSheet_(table);
+		const headers = DB_SCHEMA[table];
+		sheet
+			.getRange(existing._row, 1, 1, headers.length)
+			.setValues([dbRecordToRow_(table, updated)]);
 
-    dbInvalidate_(table);
-    return updated;
-  });
+		dbInvalidate_(table);
+		return updated;
+	});
 }
 
 /** Smaže záznam podle id. */
 function dbDelete_(table, id) {
-  return withLock_(() => {
-    dbInvalidate_(table);
+	return withLock_(() => {
+		dbInvalidate_(table);
 
-    const existing = dbFindById_(table, id);
-    if (!existing) {
-      throw userError_('Záznam nebyl nalezen — mohl ho mezitím smazat někdo jiný.');
-    }
+		const existing = dbFindById_(table, id);
+		if (!existing) {
+			throw userError_('Záznam nebyl nalezen — mohl ho mezitím smazat někdo jiný.');
+		}
 
-    dbSheet_(table).deleteRow(existing._row);
-    dbInvalidate_(table);
-    return existing;
-  });
+		dbSheet_(table).deleteRow(existing._row);
+		dbInvalidate_(table);
+		return existing;
+	});
 }
 
 /**
@@ -667,47 +667,47 @@ function dbDelete_(table, id) {
  * @returns {number} počet zapsaných řádků
  */
 function dbReplaceAll_(table, records) {
-  return withLock_(() => {
-    const headers = DB_SCHEMA[table];
-    const now = nowIso_();
-    const email = currentEmail_() || 'system';
-    const hasColumn = (name) => headers.indexOf(name) !== -1;
+	return withLock_(() => {
+		const headers = DB_SCHEMA[table];
+		const now = nowIso_();
+		const email = currentEmail_() || 'system';
+		const hasColumn = (name) => headers.indexOf(name) !== -1;
 
-    const rows = records.map((record) => {
-      const complete = Object.assign({}, record);
-      if (hasColumn('id') && !complete.id) complete.id = uuid_();
-      if (hasColumn('created_at') && !complete.created_at) complete.created_at = now;
-      if (hasColumn('created_by') && !complete.created_by) complete.created_by = email;
-      if (hasColumn('updated_at')) complete.updated_at = now;
-      return dbRecordToRow_(table, complete);
-    });
+		const rows = records.map((record) => {
+			const complete = Object.assign({}, record);
+			if (hasColumn('id') && !complete.id) complete.id = uuid_();
+			if (hasColumn('created_at') && !complete.created_at) complete.created_at = now;
+			if (hasColumn('created_by') && !complete.created_by) complete.created_by = email;
+			if (hasColumn('updated_at')) complete.updated_at = now;
+			return dbRecordToRow_(table, complete);
+		});
 
-    const sheet = dbSheet_(table);
-    const lastRow = sheet.getLastRow();
-    if (lastRow > 1) {
-      sheet.getRange(2, 1, lastRow - 1, headers.length).clearContent();
-    }
-    if (rows.length > 0) {
-      sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
-    }
+		const sheet = dbSheet_(table);
+		const lastRow = sheet.getLastRow();
+		if (lastRow > 1) {
+			sheet.getRange(2, 1, lastRow - 1, headers.length).clearContent();
+		}
+		if (rows.length > 0) {
+			sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+		}
 
-    dbInvalidate_(table);
-    return rows.length;
-  });
+		dbInvalidate_(table);
+		return rows.length;
+	});
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   NASTAVENÍ (list `_settings`)
+	 NASTAVENÍ (list `_settings`)
 
-   Klíč–hodnota. Hodnoty se ukládají jako text; typ určuje DEFAULT_SETTINGS,
-   podle kterého se při čtení převádějí zpět (boolean).
-   ══════════════════════════════════════════════════════════════════════════ */
+	 Klíč–hodnota. Hodnoty se ukládají jako text; typ určuje DEFAULT_SETTINGS,
+	 podle kterého se při čtení převádějí zpět (boolean).
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /** Převede hodnotu z tabulky na boolean. Sheets vrací true/false i "TRUE"/"true". */
 function toBool_(value) {
-  if (value === true || value === false) return value;
-  const text = String(value).trim().toLowerCase();
-  return text === 'true' || text === 'ano' || text === '1';
+	if (value === true || value === false) return value;
+	const text = String(value).trim().toLowerCase();
+	return text === 'true' || text === 'ano' || text === '1';
 }
 
 /**
@@ -715,21 +715,21 @@ function toBool_(value) {
  * které v tabulce ještě nejsou. Typ se odvozuje z DEFAULT_SETTINGS.
  */
 function settingsAll_() {
-  const stored = {};
-  dbGetAll_(SHEETS.SETTINGS).forEach((row) => {
-    stored[String(row.key)] = row.value;
-  });
+	const stored = {};
+	dbGetAll_(SHEETS.SETTINGS).forEach((row) => {
+		stored[String(row.key)] = row.value;
+	});
 
-  const result = {};
-  Object.keys(DEFAULT_SETTINGS).forEach((key) => {
-    const defaultValue = DEFAULT_SETTINGS[key];
-    if (!(key in stored)) {
-      result[key] = defaultValue;
-      return;
-    }
-    result[key] = typeof defaultValue === 'boolean' ? toBool_(stored[key]) : String(stored[key]);
-  });
-  return result;
+	const result = {};
+	Object.keys(DEFAULT_SETTINGS).forEach((key) => {
+		const defaultValue = DEFAULT_SETTINGS[key];
+		if (!(key in stored)) {
+			result[key] = defaultValue;
+			return;
+		}
+		result[key] = typeof defaultValue === 'boolean' ? toBool_(stored[key]) : String(stored[key]);
+	});
+	return result;
 }
 
 /**
@@ -737,32 +737,32 @@ function settingsAll_() {
  * že klient nemůže do tabulky podstrčit libovolný vlastní klíč.
  */
 function settingsSet_(key, value) {
-  if (!(key in DEFAULT_SETTINGS)) {
-    throw userError_('Neznámý klíč nastavení.');
-  }
+	if (!(key in DEFAULT_SETTINGS)) {
+		throw userError_('Neznámý klíč nastavení.');
+	}
 
-  return withLock_(() => {
-    dbInvalidate_(SHEETS.SETTINGS);
+	return withLock_(() => {
+		dbInvalidate_(SHEETS.SETTINGS);
 
-    const existing = dbFindBy_(SHEETS.SETTINGS, 'key', key);
-    const row = {
-      key: key,
-      value: value,
-      updated_at: nowIso_(),
-      updated_by: currentEmail_() || 'system',
-    };
+		const existing = dbFindBy_(SHEETS.SETTINGS, 'key', key);
+		const row = {
+			key: key,
+			value: value,
+			updated_at: nowIso_(),
+			updated_by: currentEmail_() || 'system',
+		};
 
-    const sheet = dbSheet_(SHEETS.SETTINGS);
-    const headers = DB_SCHEMA[SHEETS.SETTINGS];
+		const sheet = dbSheet_(SHEETS.SETTINGS);
+		const headers = DB_SCHEMA[SHEETS.SETTINGS];
 
-    if (existing) {
-      sheet.getRange(existing._row, 1, 1, headers.length)
-        .setValues([dbRecordToRow_(SHEETS.SETTINGS, row)]);
-    } else {
-      sheet.appendRow(dbRecordToRow_(SHEETS.SETTINGS, row));
-    }
+		if (existing) {
+			sheet.getRange(existing._row, 1, 1, headers.length)
+				.setValues([dbRecordToRow_(SHEETS.SETTINGS, row)]);
+		} else {
+			sheet.appendRow(dbRecordToRow_(SHEETS.SETTINGS, row));
+		}
 
-    dbInvalidate_(SHEETS.SETTINGS);
-    return row;
-  });
+		dbInvalidate_(SHEETS.SETTINGS);
+		return row;
+	});
 }

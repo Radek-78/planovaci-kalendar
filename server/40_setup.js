@@ -15,8 +15,8 @@
  */
 
 /* ══════════════════════════════════════════════════════════════════════════
-   STAV INICIALIZACE
-   ══════════════════════════════════════════════════════════════════════════ */
+	 STAV INICIALIZACE
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /**
  * Je aplikace inicializovaná?
@@ -26,27 +26,27 @@
  * a aplikace nezůstala trvale rozbitá s odkazem na neexistující soubor.
  */
 function isSetupDone_() {
-  const properties = PropertiesService.getScriptProperties();
-  const id = properties.getProperty(PROPS.DB_ID);
-  if (!id) return false;
+	const properties = PropertiesService.getScriptProperties();
+	const id = properties.getProperty(PROPS.DB_ID);
+	if (!id) return false;
 
-  try {
-    // Otevřený spreadsheet se rovnou uloží jako handle repository vrstvy.
-    // Bez toho by ho dbSpreadsheet_() otevíralo podruhé — a otevření
-    // spreadsheetu je v Apps Scriptu nejdražší část celého požadavku.
-    dbHandle_ = SpreadsheetApp.openById(id);
-    return true;
-  } catch (e) {
-    console.error('Databáze podle uloženého ID nejde otevřít, property se ruší: ' + e);
-    properties.deleteProperty(PROPS.DB_ID);
-    dbHandle_ = null;
-    return false;
-  }
+	try {
+		// Otevřený spreadsheet se rovnou uloží jako handle repository vrstvy.
+		// Bez toho by ho dbSpreadsheet_() otevíralo podruhé — a otevření
+		// spreadsheetu je v Apps Scriptu nejdražší část celého požadavku.
+		dbHandle_ = SpreadsheetApp.openById(id);
+		return true;
+	} catch (e) {
+		console.error('Databáze podle uloženého ID nejde otevřít, property se ruší: ' + e);
+		properties.deleteProperty(PROPS.DB_ID);
+		dbHandle_ = null;
+		return false;
+	}
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   SLOŽKA V DRIVE
-   ══════════════════════════════════════════════════════════════════════════ */
+	 SLOŽKA V DRIVE
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /**
  * Složka, ve které leží tento Apps Script projekt — právě tam vznikne databáze.
@@ -57,18 +57,18 @@ function isSetupDone_() {
  * @returns {Folder|null} null = kořen Disku nebo nedostatečná práva
  */
 function scriptFolder_() {
-  try {
-    const parents = DriveApp.getFileById(ScriptApp.getScriptId()).getParents();
-    return parents.hasNext() ? parents.next() : null;
-  } catch (e) {
-    console.error('Složku skriptu se nepodařilo zjistit: ' + e);
-    return null;
-  }
+	try {
+		const parents = DriveApp.getFileById(ScriptApp.getScriptId()).getParents();
+		return parents.hasNext() ? parents.next() : null;
+	} catch (e) {
+		console.error('Složku skriptu se nepodařilo zjistit: ' + e);
+		return null;
+	}
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   DATA PRO ÚVODNÍ OBRAZOVKU WIZARDU
-   ══════════════════════════════════════════════════════════════════════════ */
+	 DATA PRO ÚVODNÍ OBRAZOVKU WIZARDU
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /**
  * Údaje, které wizard vykreslí ještě před prvním voláním serveru.
@@ -77,12 +77,12 @@ function scriptFolder_() {
  * e-mail se proto dotahuje až klientsky přes wizardGetOwnerEmail().
  */
 function wizardInfo_() {
-  const folder = scriptFolder_();
-  return {
-    folderName: folder ? folder.getName() : null,
-    defaultAppName: CONFIG.defaultAppName,
-    defaultAppSubtitle: CONFIG.defaultAppSubtitle,
-  };
+	const folder = scriptFolder_();
+	return {
+		folderName: folder ? folder.getName() : null,
+		defaultAppName: CONFIG.defaultAppName,
+		defaultAppSubtitle: CONFIG.defaultAppSubtitle,
+	};
 }
 
 /**
@@ -94,24 +94,24 @@ function wizardInfo_() {
  * aby uživatel proklikal celý průvodce a teprve na konci se dozvěděl, že nesmí.
  */
 function wizardGetOwnerEmail() {
-  try {
-    const folder = scriptFolder_();
-    const email = currentEmail_();
-    const owner = ownerEmail_();
+	try {
+		const folder = scriptFolder_();
+		const email = currentEmail_();
+		const owner = ownerEmail_();
 
-    return ok_({
-      email: email,
-      folderName: folder ? folder.getName() : null,
-      isOwner: !!email && !!owner && email === owner,
-    });
-  } catch (e) {
-    return fail_(e);
-  }
+		return ok_({
+			email: email,
+			folderName: folder ? folder.getName() : null,
+			isOwner: !!email && !!owner && email === owner,
+		});
+	} catch (e) {
+		return fail_(e);
+	}
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   DOKONČENÍ WIZARDU
-   ══════════════════════════════════════════════════════════════════════════ */
+	 DOKONČENÍ WIZARDU
+	 ══════════════════════════════════════════════════════════════════════════ */
 
 /**
  * Vytvoří databázi, zapíše superadmina a nastavení.
@@ -127,94 +127,106 @@ function wizardGetOwnerEmail() {
  * @param {Object} payload  { appName, appSubtitle, firstName, lastName }
  */
 function setupInitialize(payload) {
-  try {
-    // 1) Rychlá kontrola ještě před zámkem — ušetří čekání v běžném případě.
-    if (isSetupDone_()) {
-      throw userError_('Aplikace už je inicializována.');
-    }
+	try {
+		// 1) Rychlá kontrola ještě před zámkem — ušetří čekání v běžném případě.
+		if (isSetupDone_()) {
+			throw userError_('Aplikace už je inicializována.');
+		}
 
-    // 2) Inicializaci smí provést pouze vlastník skriptu.
-    const email = currentEmail_();
-    const owner = ownerEmail_();
-    if (!email) {
-      throw userError_('Nepodařilo se zjistit váš účet. Přihlaste se firemním účtem a zkuste to znovu.');
-    }
-    if (email !== owner) {
-      throw userError_('Inicializaci může provést pouze vlastník skriptu.');
-    }
+		// 2) Inicializaci smí provést pouze vlastník skriptu.
+		const email = currentEmail_();
+		const owner = ownerEmail_();
+		if (!email) {
+			throw userError_('Nepodařilo se zjistit váš účet. Přihlaste se firemním účtem a zkuste to znovu.');
+		}
+		if (email !== owner) {
+			throw userError_('Inicializaci může provést pouze vlastník skriptu.');
+		}
 
-    // 3) Validace vstupů z formuláře.
-    const data = payload || {};
-    const appName = cleanText_(data.appName, 'Název aplikace', LIMITS.APP_NAME_MAX, true);
-    const appSubtitle = cleanText_(data.appSubtitle, 'Podtitul', LIMITS.APP_SUBTITLE_MAX, false);
-    const firstName = cleanText_(data.firstName, 'Jméno', LIMITS.NAME_MAX, true);
-    const lastName = cleanText_(data.lastName, 'Příjmení', LIMITS.NAME_MAX, true);
+		// 3) Validace vstupů z formuláře.
+		const data = payload || {};
+		const appName = cleanText_(data.appName, 'Název aplikace', LIMITS.APP_NAME_MAX, true);
+		const appSubtitle = cleanText_(data.appSubtitle, 'Podtitul', LIMITS.APP_SUBTITLE_MAX, false);
+		const firstName = cleanText_(data.firstName, 'Jméno', LIMITS.NAME_MAX, true);
+		const lastName = cleanText_(data.lastName, 'Příjmení', LIMITS.NAME_MAX, true);
 
-    return withLock_(() => {
-      // 4) Kontrola se opakuje UVNITŘ zámku — mezi bodem 1 a získáním zámku
-      //    mohl inicializaci dokončit jiný souběžný běh.
-      if (isSetupDone_()) {
-        throw userError_('Aplikace už je inicializována.');
-      }
+		return withLock_(() => {
+			// 4) Kontrola se opakuje UVNITŘ zámku — mezi bodem 1 a získáním zámku
+			//    mohl inicializaci dokončit jiný souběžný běh.
+			if (isSetupDone_()) {
+				throw userError_('Aplikace už je inicializována.');
+			}
 
-      // 5) Vytvoření spreadsheetu a jeho přesun do složky skriptu.
-      const spreadsheet = SpreadsheetApp.create(appName + ' – databáze');
-      const defaultSheet = spreadsheet.getSheets()[0];
+			// 5) Vytvoření spreadsheetu a jeho přesun do složky skriptu.
+			const spreadsheet = SpreadsheetApp.create(appName + ' – databáze');
+			const defaultSheet = spreadsheet.getSheets()[0];
 
-      const folder = scriptFolder_();
-      if (folder) {
-        DriveApp.getFileById(spreadsheet.getId()).moveTo(folder);
-      }
+			// Přesun databáze vedle skriptu je POHODLÍ, ne podmínka běhu — proto
+			// smí selhat. Appka má jen čtecí rozsah k Disku
+			// (drive.readonly, viz appsscript.json), takže přesun v běžné
+			// instalaci neprojde a databáze zůstane v kořeni Disku; appka si ji
+			// pak stejně drží podle id ve Script Properties, ne podle umístění.
+			// Bez tohohle ošetření by na neúspěšném přesunu spadla CELÁ
+			// inicializace, a to po vytvoření spreadsheetu — zůstal by po ní
+			// osiřelý soubor a nedokončená appka.
+			const folder = scriptFolder_();
+			if (folder) {
+				try {
+					DriveApp.getFileById(spreadsheet.getId()).moveTo(folder);
+				} catch (e) {
+					console.error('Databázi se nepodařilo přesunout ke skriptu, zůstane v kořeni Disku: ' + e);
+				}
+			}
 
-      // 6) Listy podle schématu (včetně firemního fontu a textových sloupců).
-      dbEnsureSchema_(spreadsheet);
+			// 6) Listy podle schématu (včetně firemního fontu a textových sloupců).
+			dbEnsureSchema_(spreadsheet);
 
-      // 7) Výchozí prázdný list, který Sheets vytvoří spolu se souborem,
-      //    už není potřeba. Maže se až po vytvoření ostatních — spreadsheet
-      //    nesmí zůstat bez jediného listu.
-      spreadsheet.deleteSheet(defaultSheet);
+			// 7) Výchozí prázdný list, který Sheets vytvoří spolu se souborem,
+			//    už není potřeba. Maže se až po vytvoření ostatních — spreadsheet
+			//    nesmí zůstat bez jediného listu.
+			spreadsheet.deleteSheet(defaultSheet);
 
-      // 8) Propojení skriptu s databází. Od této chvíle je aplikace inicializovaná.
-      const properties = {};
-      properties[PROPS.DB_ID] = spreadsheet.getId();
-      properties[PROPS.SETUP_AT] = nowIso_();
-      PropertiesService.getScriptProperties().setProperties(properties);
+			// 8) Propojení skriptu s databází. Od této chvíle je aplikace inicializovaná.
+			const properties = {};
+			properties[PROPS.DB_ID] = spreadsheet.getId();
+			properties[PROPS.SETUP_AT] = nowIso_();
+			PropertiesService.getScriptProperties().setProperties(properties);
 
-      // Repository vrstva si drží handle a cache z běhu před inicializací —
-      // je nutné je přepnout na nově vzniklou databázi.
-      dbHandle_ = spreadsheet;
-      dbCache_ = {};
+			// Repository vrstva si drží handle a cache z běhu před inicializací —
+			// je nutné je přepnout na nově vzniklou databázi.
+			dbHandle_ = spreadsheet;
+			dbCache_ = {};
 
-      // 9) Vlastník se stává superadminem. Role je natvrdo, ne z payloadu.
-      dbInsert_(SHEETS.USERS, {
-        email: email,
-        firstName: firstName,
-        lastName: lastName,
-        role: ROLES.SUPERADMIN,
-        permission: PERMISSIONS.EDITOR,
-        active: true,
-        notifications_seen_at: '',
-      });
+			// 9) Vlastník se stává superadminem. Role je natvrdo, ne z payloadu.
+			dbInsert_(SHEETS.USERS, {
+				email: email,
+				firstName: firstName,
+				lastName: lastName,
+				role: ROLES.SUPERADMIN,
+				permission: PERMISSIONS.EDITOR,
+				active: true,
+				notifications_seen_at: '',
+			});
 
-      // 10) Základní nastavení aplikace.
-      settingsSet_('appName', appName);
-      settingsSet_('appSubtitle', appSubtitle);
+			// 10) Základní nastavení aplikace.
+			settingsSet_('appName', appName);
+			settingsSet_('appSubtitle', appSubtitle);
 
-      // 11) Záznam do auditu.
-      audit_(
-        'setup',
-        'Inicializace aplikace. Databáze: ' + spreadsheet.getId() +
-        ', složka: ' + (folder ? folder.getName() : 'kořen Disku') +
-        ', superadmin: ' + email
-      );
+			// 11) Záznam do auditu.
+			audit_(
+				'setup',
+				'Inicializace aplikace. Databáze: ' + spreadsheet.getId() +
+				', složka: ' + (folder ? folder.getName() : 'kořen Disku') +
+				', superadmin: ' + email
+			);
 
-      return ok_({
-        spreadsheetUrl: spreadsheet.getUrl(),
-        appUrl: ScriptApp.getService().getUrl(),
-        folderName: folder ? folder.getName() : null,
-      });
-    });
-  } catch (error) {
-    return fail_(error);
-  }
+			return ok_({
+				spreadsheetUrl: spreadsheet.getUrl(),
+				appUrl: ScriptApp.getService().getUrl(),
+				folderName: folder ? folder.getName() : null,
+			});
+		});
+	} catch (error) {
+		return fail_(error);
+	}
 }

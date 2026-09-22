@@ -427,7 +427,7 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiDeleteHoliday(payload)` | `settings_manage` | `{ id }` | — |
 | `apiGetRequests()` | `calendar_read` | — | pole požadavků od nejnovějšího, každý včetně `canEdit`/`canManageStatus` a počtu komentářů (viz 9.10) |
 | `apiSaveRequest(payload)` | `calendar_read` | `{ id?, title, description }` | uložený požadavek — s `id` úprava (jen vlastní, nebo ADMIN+), bez `id` nový |
-| `apiSetRequestStatus(payload)` | `calendar_read` + `canManageRequestStatus_` | `{ id, status, progress? }` | uložený požadavek — jediná část s pravidlem umístění+pozice místo role |
+| `apiSetRequestStep(payload)` | `calendar_read` + `canManageRequestStatus_` | `{ id, progress? , step? }` | uložený požadavek — jediná část s pravidlem umístění+pozice místo role |
 | `apiDeleteRequest(payload)` | `calendar_read` | `{ id }` | — smaže i komentáře, historie v auditu zůstává |
 | `apiGetRequestComments(payload)` | `calendar_read` | `{ requestId }` | pole komentářů od nejstaršího (stejný tvar jako u události) |
 | `apiAddRequestComment(payload)` | `calendar_read` | `{ requestId, text }` | vytvořený komentář |
@@ -1626,22 +1626,35 @@ request_comments: id, request_id, author_email, text, created_at
 „Kdo zadal" a „kdy zadal" nemají vlastní sloupce — pokrývá je
 `created_by`/`created_at`, které `dbInsert_` vyplní samo.
 
-**Stav a pokrok jsou NEZÁVISLÉ.** Trojice stavů je pevně v kódu
-(`REQUEST_STATUSES` v 00_config.js), ne konfigurovatelný seznam jako typy
-událostí — průběh požadavku je pro všechna LC stejný. Procento pokroku je
-ale samostatná hodnota: stav se přepíná tlačítky pásu průběhu, procento
-posuvníkem, jedno druhé nikdy nepřepisuje.
+**Průběh je JEDNA hodnota — krok a procento jsou totéž.** Šest pevných
+kroků v kódu (`REQUEST_STATUSES` v 00_config.js), každý se svým procentem:
 
-První podoba procento ze stavu dopočítávala (Nový = 0, Dokončeno = 100,
-ručně jen ve V procesu) — po vyzkoušení se to ukázalo jako omezující a na
-základě zpětné vazby se to rozpojilo. `apiSetRequestStatus` proto přijímá
-`status` i `progress` jako nepovinné a mění jen to, co skutečně dorazilo:
-klik na krok průběhu pošle jen `status`, puštění posuvníku jen `progress`.
+| % | Krok |
+|---|---|
+| 0 | Nový |
+| 20 | Přijato |
+| 40 | V analýze |
+| 60 | Řeší se |
+| 80 | K ověření |
+| 100 | Dokončeno |
 
-Pokrok se nastavuje **po 20 %** (`REQUEST_PROGRESS_STEP` v 00_config.js).
-Posuvník má tenhle `step` a server kontroluje, že přišel násobek — jinak by
-se do dat mohla dostat hodnota, kterou by posuvník neuměl zobrazit zpátky
-na sobě samém.
+Dřív to byly DVĚ nezávislé hodnoty (třístupňový stav + procento zvlášť)
+a musela se kolem nich udržovat čtveřice pravidel, aby si neodporovaly:
+klik na Dokončeno dotáhne na 100 %, klik na Nový srazí na 0 %, stažení pod
+100 % vrátí Dokončeno na V procesu, změna procenta odvodí stav. Sloučením
+tahle pravidla zmizela úplně — jedna hodnota si odporovat nemůže.
+Posun posuvníkem nebo tlačítky −/+ tedy rovnou mění i název kroku.
+
+Zdroj pravdy je **procento**; sloupec `requests.status` se dál zapisuje
+(ať je list čitelný i bez appky), ale při čtení se ignoruje a krok se
+z procenta dopočítá — kdyby se ty dvě hodnoty kdy rozešly ručním zásahem
+v listu, rozhoduje procento. Barvu má štítek kroku z téže proměnné jako
+proužek a posuvník (`--request-progress-color`), takže pro jednu hodnotu
+nikdy neukážou dvě různé barvy.
+
+Zapisuje se přes `apiSetRequestStep`, který bere `progress` (posuvník,
+tlačítka −/+) nebo `step` (klik přímo na krok) — obojí je tatáž hodnota
+vyjádřená jinak.
 
 **Práva**
 
@@ -1860,26 +1873,10 @@ popis nemá koho odsunout — proto `.request-description` nemá vlastní strop
 výšky a `.request-comments-list` zase vlastní pevnou výšku, obojí bylo
 potřeba jen v jednosloupcové podobě.
 
-Posuvník pokroku má po stranách krokovací tlačítka **− a +** (po 20 %),
-na krajích rozsahu zakázaná. Klik na **krajní** kroky navíc rovnou srovná
-i pokrok — *Dokončeno* na 100 %, *Nový* na 0 %. Hotový požadavek na 40 %
-ani čerstvě založený na 80 % by nikomu nic neřekly. *V procesu* pokrok
-nechává být, tam dává smysl jakákoli hodnota. Obojí je zkratka čistě na
-klientovi, ne pravidlo dat — pokrok jde hned zase přenastavit.
-
-Opačným směrem se **stav odvozuje z pokroku, a to na serveru**: mění-li se
-samotný pokrok (volající stav neposlal), platí 0 % = *Nový*, 100 % =
-*Dokončeno*, cokoli mezi = *V procesu*. Původně tu byl jen jeden směr
-(stažení pod 100 % vracelo *Dokončeno* na *V procesu*), takže naklikání
-pokroku tlačítky −/+ na 0 nebo 100 % nechalo stav viset, kde byl — hlášeno
-a opraveno; jedno pravidlo místo výčtu výjimek.
-
-**Výslovně zadaný stav se respektuje vždycky**, i když pokroku neodpovídá —
-jinak by nešlo označit za dokončený požadavek, který zůstal rozpracovaný.
-Odvození sedí na serveru, aby platilo při každém zápisu a rovnou se
-objevilo v historii jako skutečná změna stavu; klient si ho jen zrcadlí,
-aby optimistický náhled neukázal na okamžik stav, který server vzápětí
-přepíše.
+Posuvník průběhu má po stranách krokovací tlačítka **− a +** (po 20 %),
+na krajích rozsahu zakázaná. Klik přímo na krok skočí na jeho procento.
+Žádné zvláštní pravidlo pro krajní kroky tu není — krok a procento jsou
+jedna hodnota, takže se nemá co dopočítávat.
 
 **Menu** je kvůli téhle sekci rozdělené do skupin oddělených linkou:
 Kalendář + Požadavky / Uživatelé / Filiálky + LC, a Nastavení samostatně
