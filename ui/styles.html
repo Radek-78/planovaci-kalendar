@@ -1079,7 +1079,7 @@
 	.users-table-head {
 		background: var(--page);
 		border-bottom: 1px solid var(--line);
-		color: var(--muted);
+		color: var(--lidl-blue);
 		flex-shrink: 0;
 		font-size: 10px;
 		font-weight: 700;
@@ -1316,7 +1316,7 @@
 	.data-table-head {
 		background: var(--page);
 		border-bottom: 1px solid var(--line);
-		color: var(--muted);
+		color: var(--lidl-blue);
 		flex-shrink: 0;
 		font-size: 10px;
 		font-weight: 700;
@@ -1357,6 +1357,27 @@
 	.stores-table-head,
 	.store-row {
 		grid-template-columns: 108px 1.3fr 0.8fr 1fr 0.8fr 0.8fr 205px 60px;
+	}
+
+	/* Zavřená filiálka — číslo i název červeně a ikona zámku u čísla.
+		 Platí jen pro zavření PROBÍHAJÍCÍ (closure.status === 'current'),
+		 ne pro to teprve chystané; to nese sloupec Stav vlastním textem.
+		 Zbytek řádku zůstává v obvyklých barvách, ať červená neztratí váhu. */
+	.store-cell-number {
+		align-items: center;
+		display: flex;
+		gap: 6px;
+	}
+
+	.store-closed-icon {
+		color: var(--lidl-red);
+		flex-shrink: 0;
+		font-size: 15px;
+	}
+
+	.store-row.is-closed .store-cell-number,
+	.store-row.is-closed .store-cell-number + .user-cell-name {
+		color: var(--lidl-red);
 	}
 
 	/* Celý řádek filiálky je klikací (otevře detail, viz openStoreDetailModal)
@@ -2034,7 +2055,7 @@
 	.holidays-table-head {
 		background: var(--page);
 		border-bottom: 1px solid var(--line);
-		color: var(--muted);
+		color: var(--lidl-blue);
 		flex-shrink: 0;
 		font-size: 10px;
 		font-weight: 700;
@@ -2503,6 +2524,13 @@
 		cursor: pointer;
 	}
 
+	/* Právě se ukládá na pozadí — na serveru ještě neexistuje, takže není
+		 co otevřít (viz submitRequestForm/enqueueRequestSave). */
+	.request-row.is-pending {
+		cursor: default;
+		opacity: 0.5;
+	}
+
 	/* Datum se štítkem týdne na jednom řádku. */
 	.request-cell-date {
 		align-items: center;
@@ -2531,9 +2559,17 @@
 
 	/* Malý štítek umístění (DL / zkratka LC) před jménem zadavatele.
 		 Pevná šířka, ať štítky ve sloupci pod sebou lícují a jména za nimi
-		 začínala na stejném místě bez ohledu na délku zkratky. */
+		 začínala na stejném místě bez ohledu na délku zkratky.
+
+		 JEDNA barva pro všechna umístění. Dřív měl každý LC vlastní, jenže
+		 vedle barevných štítků kalendářního týdne v témže řádku z toho byla
+		 přebarvená tabulka, ve které barva nic neříkala — dvě pestré škály
+		 vedle sebe se perou o pozornost. Barevný zůstal jen týden, kde
+		 odlišení sousedních hodnot dává smysl. */
 	.request-author-loc {
+		background: var(--line-soft);
 		border-radius: 3px;
+		color: var(--muted);
 		flex-shrink: 0;
 		font-size: 10px;
 		font-weight: 700;
@@ -2569,17 +2605,6 @@
 	.request-week-chip.is-kw6 { background: #ffedd5; color: #c2410c; }
 	.request-week-chip.is-kw7 { background: #e2e8f0; color: #334155; }
 
-	/* Barva podle umístění — třídu přiděluje requestLocationClass z názvu,
-		 takže stejné LC má vždycky stejnou barvu a nová se přidávat nemusí.
-		 Osm dvojic podklad/písmo, všechny dost tmavé na čitelnost. */
-	.request-author-loc.is-loc0 { background: #e8eefc; color: #1e40af; }
-	.request-author-loc.is-loc1 { background: #e5f5ea; color: #15803d; }
-	.request-author-loc.is-loc2 { background: #fdf1dc; color: #b45309; }
-	.request-author-loc.is-loc3 { background: #f3e8fd; color: #7e22ce; }
-	.request-author-loc.is-loc4 { background: #fdeaea; color: #b91c1c; }
-	.request-author-loc.is-loc5 { background: #dcf5f3; color: #0f766e; }
-	.request-author-loc.is-loc6 { background: #fde8f3; color: #be185d; }
-	.request-author-loc.is-loc7 { background: #eef0f3; color: #475569; }
 
 	/* ── Stav požadavku ── */
 

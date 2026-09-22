@@ -464,7 +464,7 @@ mřížce chyběla. Podmínka: `start <= to && end >= from`.
 | **Kalendář** | měsíční mřížka + panel detailu dne |
 | **Požadavky** | přehled požadavků vedoucích pracovníků LC (viz 9.10), detail na klik na řádek |
 | **Uživatelé** | tabulka, přidání, změna role/oprávnění, deaktivace |
-| **Filiálky** | čtecí přehled filiálek (import dat, viz 9.6), detail na klik na řádek |
+| **Filiálky** | čtecí přehled filiálek (import dat, viz 9.6), detail na klik na řádek; právě zavřená filiálka má číslo i název červeně a u čísla ikonu zámku |
 | **LC** | čtecí přehled logistických center (import dat, viz 9.6), editace čísla/zkratky |
 | **Nastavení** | záložky: Oddělení, Pracovní pozice, Typy událostí (viz 9.5), Šablony událostí (viz 9.9), Import dat filiálek (viz 9.6), Státní svátky ČR (viz 9.7), Požadavky (viz 9.10) |
 
@@ -1073,6 +1073,22 @@ nahoru. V prohlížeči bez Popover API se nestane nic a hláška se zobrazí
 jako dřív. Pozor: popover má výchozí styly prohlížeče (rámeček, podklad,
 `inset: 0`, `display: none`), které `.toast-region` musí přebít — jinak by
 se oblast roztáhla přes celou obrazovku, nebo by se nezobrazila vůbec.
+
+**Zakládání a úprava požadavku běží na pozadí, ve frontě.** Okno se zavře
+hned a zápis pokračuje bez něj — kolečko do Apps Scriptu trvá i přes
+vteřinu a čekat na něj s otevřeným formulářem působilo, že se appka
+zasekla. Nový požadavek se rovnou objeví jako ztlumený, neklikací řádek
+s dočasným `tmp-` id (na serveru ještě není, takže není co otevřít) a po
+potvrzení se přepíše skutečným záznamem. Seznam se přitom NEPŘENAČÍTÁ
+celý: dřív po uložení všechno zmizelo a načítalo se znovu, přestože server
+právě uložený záznam vrací.
+
+Zápisy jdou **frontou, jeden po druhém** (`requestSaveQueue`). Na serveru
+stejně čekají na společném zámku (`withLock_`), takže poslat jich pět naráz
+by nic nezrychlilo — jen by hrozilo, že se odpovědi vrátí v jiném pořadí,
+než se zakládalo, a při rychlém zakládání i náraz na limit souběžných
+spuštění (30, viz CLAUDE.md §5). Když zápis selže, řádek zmizí a formulář
+se otevře znovu i s vyplněným textem, ať uživatel nepřijde o napsané.
 
 ### 9.7 Státní svátky ČR
 
@@ -1778,13 +1794,11 @@ LC, `authorLocation` ze serveru) — pevně široký, ať jména za ním začín
 na stejném místě bez ohledu na délku zkratky, a **barevně odlišený podle
 umístění**.
 
-Barvy přiděluje `requestLocationClasses` podle POŘADÍ v abecedně seřazeném
-seznamu umístění, která se v datech vyskytují. Zvažoval jsem odvození
-z názvu hashem, aby barva byla navždy stejná, ale při pár LC se barvy
-běžně srazily (DL, LC2, BRN i JIR vycházely na tutéž) — rozlišitelnost je
-tu důležitější než absolutní stálost. Cenou je, že přibytí nového LC může
-barvy posunout; LC se ale mění jednou za dlouho. Mapa se přepočítá pokaždé,
-když se vymění `requestsCache`.
+Štítek má **jednu barvu pro všechna umístění**. Dřív měl každý LC vlastní,
+jenže vedle barevných štítků kalendářního týdne v témže řádku z toho byla
+přebarvená tabulka, ve které barva nic neříkala — dvě pestré škály vedle
+sebe se perou o pozornost. Barevný zůstal jen týden, kde odlišení
+sousedních hodnot dává smysl.
 
 Ve zúženém sloupci se zkracuje jméno, štítek nikdy — ze kterého LC požadavek přišel je důležitější než
 celé jméno, to je stejně vidět po rozkliknutí. Kvůli tomu má sekce vlastní

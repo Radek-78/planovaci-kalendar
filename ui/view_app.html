@@ -3983,8 +3983,20 @@
 						'<i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i></button>')
 				: '';
 
-			return '<div class="data-row store-row' + (s.active ? '' : ' is-inactive') + '" data-id="' + Ui.escape(s.id) + '">' +
-				'<span class="user-cell-name">' + Ui.escape(s.id) + '</span>' +
+			// Právě zavřená filiálka (ne teprve chystané zavření) je vidět už
+			// z čísla a názvu — červeně a s ikonou zámku. Sloupec Stav to sice
+			// říká taky, ale až na druhém konci řádku; při procházení seznamu
+			// se přehlédne.
+			const isClosed = !!(s.closure && s.closure.status === 'current');
+
+			return '<div class="data-row store-row' + (s.active ? '' : ' is-inactive') +
+				(isClosed ? ' is-closed' : '') + '" data-id="' + Ui.escape(s.id) + '">' +
+				'<span class="user-cell-name store-cell-number">' +
+					(isClosed
+						? '<i class="ph ph-lock store-closed-icon" aria-hidden="true" title="Filiálka je zavřená"></i>'
+						: '') +
+					Ui.escape(s.id) +
+				'</span>' +
 				'<span class="user-cell-name">' + Ui.escape(s.nazev) + '</span>' +
 				'<span class="user-cell-muted">' + Ui.escape(s.lc || '—') + '</span>' +
 				'<span class="user-cell-muted">' + Ui.escape(s.telefonProdejny || '—') + '</span>' +
@@ -5799,41 +5811,6 @@
 			return '<span class="request-week-chip is-kw' + (week % 8) + '">KW' + week + '</span>';
 		},
 
-		/** Mapa umístění → barevná třída, dopočítaná z dat (viz requestLocationClasses). */
-		_locationClassMap: null,
-
-		/**
-		 * Přidělí barvy umístěním podle POŘADÍ v abecedně seřazeném seznamu
-		 * těch, která se v datech skutečně vyskytují.
-		 *
-		 * Zvažoval jsem odvození z názvu (hash), aby barva byla navždy stejná,
-		 * ale při pár LC se barvy běžně srazily — DL, LC2, BRN i JIR vycházely
-		 * na tutéž. Rozlišitelnost je tu důležitější než absolutní stálost:
-		 * takhle dostanou dvě různá umístění stejnou barvu až od devátého.
-		 * Cenou je, že přibytí nového LC může barvy posunout — LC se ale mění
-		 * jednou za dlouho. Barvy samotné jsou v CSS (.request-author-loc.is-locN).
-		 */
-		requestLocationClasses() {
-			const seen = {};
-			(this.requestsCache || []).forEach((r) => {
-				const loc = String(r.authorLocation || '').trim();
-				if (loc) seen[loc] = true;
-			});
-
-			const map = {};
-			Object.keys(seen)
-				.sort((a, b) => a.localeCompare(b, 'cs'))
-				.forEach((loc, i) => { map[loc] = 'is-loc' + (i % 8); });
-			return map;
-		},
-
-		requestLocationClass(location) {
-			const loc = String(location || '').trim();
-			if (!loc) return '';
-			if (!this._locationClassMap) this._locationClassMap = this.requestLocationClasses();
-			return this._locationClassMap[loc] || 'is-loc7';
-		},
-
 		/** Definice kroku podle klíče — s bezpečným pádem na první krok u neznámé hodnoty. */
 		requestStep(statusKey) {
 			return this.REQUEST_STATUS_STEPS.find((s) => s.key === statusKey) || this.REQUEST_STATUS_STEPS[0];
@@ -5854,7 +5831,6 @@
 			Ui.call('apiGetRequests', null, { silent: true })
 				.then((items) => {
 					this.requestsCache = items;
-					this._locationClassMap = null; // jiná data = jiný seznam umístění
 					this.renderRequests();
 				})
 				.catch((error) => {
@@ -5888,15 +5864,17 @@
 						'<i class="ph ph-trash" aria-hidden="true"></i></button>'
 					: '');
 
-			return '<div class="data-row request-row" data-id="' + Ui.escape(r.id) + '">' +
+			// Čekající řádek (ukládá se na pozadí) je ztlumený a neklikací —
+			// detail by se neměl čím otevřít, na serveru záznam ještě není.
+			return '<div class="data-row request-row' + (r.isPending ? ' is-pending' : '') +
+				'" data-id="' + Ui.escape(r.id) + '">' +
 				'<span class="user-cell-muted request-cell-date">' +
 					this.renderWeekChip(r.createdAt) +
 					'<span>' + Ui.escape(this.formatDateTime(r.createdAt)) + '</span>' +
 				'</span>' +
 				'<span class="user-cell-muted request-cell-author">' +
 					(r.authorLocation
-						? '<span class="request-author-loc ' + this.requestLocationClass(r.authorLocation) + '">' +
-								Ui.escape(r.authorLocation) + '</span>'
+						? '<span class="request-author-loc">' + Ui.escape(r.authorLocation) + '</span>'
 						: '') +
 					'<span class="request-author-name">' + Ui.escape(r.authorName) + '</span>' +
 				'</span>' +
@@ -5950,7 +5928,9 @@
 				}
 
 				const row = e.target.closest('.request-row');
-				if (row) this.openRequestModal(row.dataset.id, row);
+				if (row && !row.classList.contains('is-pending')) {
+					this.openRequestModal(row.dataset.id, row);
+				}
 			});
 
 			this.bindRequestForm();
@@ -5984,36 +5964,124 @@
 			});
 		},
 
+		/**
+		 * Odešle formulář. Okno se zavře HNED a ukládání běží na pozadí —
+		 * kolečko do Apps Scriptu trvá i přes vteřinu a čekat na něj s otevřeným
+		 * formulářem působilo, že se appka zasekla (nahlášeno).
+		 *
+		 * Nový požadavek se rovnou objeví v seznamu jako ztlumený řádek
+		 * s dočasným `tmp-` id; po potvrzení serverem se přepíše skutečným.
+		 * Seznam se přitom NEPŘENAČÍTÁ celý: dřív po uložení všechno zmizelo
+		 * a načítalo se znovu, i když server vrací právě uložený záznam.
+		 *
+		 * Při chybě řádek zmizí, formulář se otevře znovu i s vyplněným textem
+		 * a uživatel se dozví proč — o napsané tak nikdy nepřijde.
+		 */
 		submitRequestForm() {
 			const form = document.querySelector('#requestForm');
 			const dialog = document.querySelector('#requestFormModal');
-			const submitButton = document.querySelector('#requestFormSubmit');
 			const id = form.dataset.requestId;
 
 			const payload = {
 				title: document.querySelector('#requestFormTitle').value.trim(),
 				description: document.querySelector('#requestFormDescription').value.trim(),
 			};
+			if (!payload.title) return; // required na inputu, tohle je jen pojistka
 			if (id) payload.id = id;
 
-			Ui.setButtonLoading(submitButton, true, 'Ukládám…');
-			Ui.call('apiSaveRequest', payload, { silent: true })
-				.then(() => {
-					Ui.setButtonLoading(submitButton, false);
-					Ui.closeModal(dialog);
-					Ui.toast(id ? 'Požadavek upraven.' : 'Požadavek zadán.', 'success');
-					this.loadRequests();
-					// Když se upravoval právě otevřený detail, ať v něm rovnou sedí
-					// nový název a popis — jinak by uživatel viděl starou verzi.
-					if (id && this.currentRequestId === id) {
-						this.reloadOpenRequest();
-						this.loadRequestHistory(id); // úprava přibyla do historie
+			Ui.closeModal(dialog);
+
+			const tempId = id || ('tmp-' + Date.now());
+			if (id) {
+				// Úprava: text se v seznamu i v otevřeném detailu přepíše hned.
+				const cached = this.requestsCache.find((r) => r.id === id);
+				if (cached) {
+					this.replaceRequestInCache(Object.assign({}, cached, {
+						title: payload.title,
+						description: payload.description,
+					}));
+				}
+			} else {
+				// Nový: čekající řádek nahoru (seznam je řazený od nejnovějšího).
+				this.requestsCache.unshift({
+					id: tempId,
+					title: payload.title,
+					description: payload.description,
+					status: this.REQUEST_STATUS_STEPS[0].key,
+					progress: this.REQUEST_STATUS_STEPS[0].progress,
+					authorName: this.currentUserName || this.currentUserEmail,
+					authorLocation: '',
+					createdAt: new Date().toISOString(),
+					commentCount: 0,
+					canEdit: false,
+					canDelete: false,
+					canManageStatus: false,
+					isPending: true,
+				});
+			}
+			this.renderRequests();
+			this.enqueueRequestSave(payload, tempId);
+		},
+
+		/**
+		 * Fronta ukládání požadavků — jeden zápis po druhém, nikdy souběžně.
+		 *
+		 * Zápisy na serveru stejně čekají na společném zámku (withLock_), takže
+		 * poslat jich pět naráz by nic nezrychlilo, jen by hrozilo, že se
+		 * odpovědi vrátí v jiném pořadí, než se zakládalo. Fronta je drží
+		 * v pořadí a zároveň brání tomu, aby rychlé zakládání několika
+		 * požadavků po sobě narazilo na limit souběžných spuštění.
+		 */
+		requestSaveQueue: [],
+		requestSaveRunning: false,
+
+		enqueueRequestSave(payload, tempId) {
+			this.requestSaveQueue.push({ payload: payload, tempId: tempId });
+			this.runRequestSaveQueue();
+		},
+
+		runRequestSaveQueue() {
+			if (this.requestSaveRunning || !this.requestSaveQueue.length) return;
+			this.requestSaveRunning = true;
+
+			const job = this.requestSaveQueue.shift();
+			const isEdit = !!job.payload.id;
+
+			Ui.call('apiSaveRequest', job.payload, { silent: true })
+				.then((saved) => {
+					// Dočasný řádek se přepíše skutečným (u úpravy jde o tentýž id).
+					const index = this.requestsCache.findIndex((r) => r.id === job.tempId);
+					if (index !== -1) this.requestsCache[index] = saved;
+					this.renderRequests();
+					Ui.toast(isEdit ? 'Požadavek upraven.' : 'Požadavek zadán.', 'success');
+
+					if (isEdit && this.currentRequestId === job.payload.id) {
+						this.renderRequestDetail(saved);
+						this.loadRequestHistory(job.payload.id); // úprava přibyla do historie
 					}
 				})
 				.catch((error) => {
-					Ui.setButtonLoading(submitButton, false);
+					// Nový požadavek ze seznamu zmizí, úprava se vrátí na původní text
+					// (ten dotáhne až následné načtení, tady stačí seznam překreslit).
+					if (!isEdit) {
+						this.requestsCache = this.requestsCache.filter((r) => r.id !== job.tempId);
+					}
+					this.renderRequests();
 					Ui.toast(error.message, 'error');
+					this.restoreFailedRequestForm(job.payload);
+				})
+				.then(() => {
+					this.requestSaveRunning = false;
+					this.runRequestSaveQueue();
 				});
+		},
+
+		/** Po neúspěšném uložení vrátí uživateli formulář i s tím, co napsal. */
+		restoreFailedRequestForm(payload) {
+			const request = payload.id ? this.requestsCache.find((r) => r.id === payload.id) : null;
+			this.openRequestFormModal(request || null, null);
+			document.querySelector('#requestFormTitle').value = payload.title;
+			document.querySelector('#requestFormDescription').value = payload.description;
 		},
 
 		confirmDeleteRequest(request, originEl) {
@@ -6132,8 +6200,7 @@
 				'<div class="request-meta">' +
 					'<span><i class="ph ph-user" aria-hidden="true"></i> ' +
 						(request.authorLocation
-							? '<span class="request-author-loc ' + this.requestLocationClass(request.authorLocation) + '">' +
-									Ui.escape(request.authorLocation) + '</span>'
+							? '<span class="request-author-loc">' + Ui.escape(request.authorLocation) + '</span>'
 							: '') +
 						Ui.escape(request.authorName) +
 					'</span>' +
@@ -6391,7 +6458,6 @@
 			Ui.call('apiGetRequests', null, { silent: true })
 				.then((items) => {
 					this.requestsCache = items;
-					this._locationClassMap = null; // jiná data = jiný seznam umístění
 					this.renderRequests();
 					const request = items.find((r) => r.id === this.currentRequestId);
 					if (!request) return;
