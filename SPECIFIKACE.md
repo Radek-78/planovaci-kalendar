@@ -1844,10 +1844,11 @@ klonováním — tedy na jednom místě, ne u osmi volajících.
 
 **Hlavička tabulky** je ve firemní modré s bílým textem a jemnými bílými
 předěly sloupců (`rgba(255,255,255,0.22)` — světle šedá z řádků by na
-modrém podkladu nebyla vidět). Sloupec s aktivním filtrem nebo řazením je značený **ze tří míst naráz**:
-plný žlutý odznak s tmavou ikonou, žlutý popisek a žlutá linka pod buňkou
-(`.data-col-header.is-filtered`/`.is-sorted`). Samotná obarvená ikona se
-v řadě hlaviček ztrácela — plocha žluté je vidět i periferně.
+modrém podkladu nebyla vidět). Sloupec s aktivním filtrem značí **plný žlutý odznak** s tmavou ikonou —
+samotný obarvený glyf se v řadě hlaviček ztrácel. Odznak má SHODNÝ rozměr
+s klidovým stavem (obojí 14 × 14 px), takže zapnutí filtru nezvětší výšku
+hlavičky; zvýraznění celé buňky (žlutý popisek a linka pod ní) se proto
+zrušilo, výšku hlavičky měnit nemá.
 
 **Filtr a řazení v hlavičce** (sdílené všemi tabulkami): nadpisy v okně se
 píšou tak, jak jsou zadané — bez verzálek (písmo se kvůli tomu muselo

@@ -3653,12 +3653,7 @@
 						'<i class="ph ph-caret-' + (sortEntry.dir === 'desc' ? 'down' : 'up') + '" aria-hidden="true"></i></span>'
 					: '';
 
-				// Třídy is-filtered/is-sorted nesou zvýraznění celé hlavičky —
-				// žlutý popisek a linka pod buňkou. Značka je tak vidět ze tří
-				// míst naráz, ne jen z malé ikony (nahlášeno: „žlutá je
-				// nevýrazná").
 				return '<button type="button" class="data-col-header' +
-					(hasFilter ? ' is-filtered' : '') + (sortEntry ? ' is-sorted' : '') +
 					'" data-col="' + col.key + '" title="Řadit nebo filtrovat podle sloupce ' + Ui.escape(col.label) + '">' +
 					'<span class="col-header-label">' + Ui.escape(col.label) + '</span>' +
 					'<span class="col-rank-slot">' + rankBadge + '</span>' +

@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.14.4 - 22.09.2026 08:25
+- v0.14.4: Značka aktivního filtru už nezvětšuje hlavičku. Zvýraznění celé buňky z minulé verze - žlutý popisek sloupce a žlutá linka pod ním - se ruší. Zůstal jen žlutý odznak s ikonou filtru, ten stačí. Aby zapnutí filtru výšku hlavičky neměnilo vůbec, má odznak nově shodný rozměr s klidovým stavem, tedy čtrnáct krát čtrnáct pixelů v obou případech. Aktivní stav tak jen přebarví, nic nezvětšuje.
+
 ## v0.14.3 - 22.09.2026 08:20
 - v0.14.3: Filtrování po týdnech, výraznější značka filtru, rezervované místo pro posuvník a čitelné štítky. Ve sloupci Zadáno je nově přepínač, jestli se má filtrovat podle data, nebo podle kalendářního týdne. Ve sloupci Zadal stejný přepínač mezi jménem a umístěním existoval už dřív, jen se hůř hledal - je to tentýž prvek v horní části okna filtru. Sloupec s aktivním filtrem nebo řazením je nově poznat ze tří míst naráz: plný žlutý odznak s tmavou ikonou, žlutý popisek sloupce a žlutá linka pod buňkou. Samotná obarvená ikona se v řadě hlaviček ztrácela. Místo pro svislý posuvník je nově rezervované vždycky, i když se zrovna nescrolluje. Dosud se po zapnutí filtru, který zkrátil seznam pod výšku okna, lišta ztratila a všechny sloupce poskočily doprava. Platí to pro tabulky filiálek, uživatelů, LC a požadavků i pro seznamy v nastavení a svátky. Štítek umístění má nově bílý podklad s obrysem místo šedé výplně. Zvýraznění řádku při najetí myší je taky šedé, takže se šedý štítek s pozadím slil a přestal být čitelný. Ze stejného důvodu je osmý odstín štítku kalendářního týdne nově indigový, ne šedý. Výpočet čísla týdne se přesunul mimo hlavní objekt aplikace, aby ho mohly použít i definice sloupců tabulky, a nemusel tak existovat ve dvou kopiích.
 

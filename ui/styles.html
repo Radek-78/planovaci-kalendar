@@ -1525,11 +1525,14 @@
 		 řídí VÝHRADNĚ .is-active na tomhle slotu (ne hoverem/barvou tlačítka
 		 jako dřív) — ať je jasně a spolehlivě vidět, jen když je na sloupci
 		 doopravdy aktivní filtr. */
+	/* Pevná výška i v klidovém stavu — aktivní stav pak jen přebarví, nic
+		 nezvětší. Bez toho hlavička po zapnutí filtru povyrostla (nahlášeno). */
 	.col-filter-slot {
 		align-items: center;
 		color: rgba(255, 255, 255, 0.5);
 		display: inline-flex;
 		flex-shrink: 0;
+		height: 14px;
 		justify-content: center;
 		width: 14px;
 	}
@@ -1538,28 +1541,15 @@
 		font-size: 11px;
 	}
 
-	/* Aktivní filtr — PLNÝ žlutý odznak s tmavou ikonou, ne jen žlutý glyf.
-		 Samotná obarvená ikona se v řadě hlaviček ztrácela (nahlášeno);
-		 plocha žluté je vidět i periferně. */
+	/* Aktivní filtr — PLNÝ žlutý odznak s tmavou ikonou, ne jen obarvený
+		 glyf; samotná obarvená ikona se v řadě hlaviček ztrácela. Rozměr je
+		 shodný s klidovým stavem, takže se hlavička nezvětší — zvýraznění
+		 celé buňky (žlutý popisek a linka pod ní) se proto zrušilo, výšku
+		 hlavičky měnit nemá. */
 	.col-filter-slot.is-active {
 		background: var(--lidl-yellow);
 		border-radius: 3px;
 		color: var(--lidl-dark-blue);
-		height: 16px;
-		width: 16px;
-	}
-
-	/* Celá hlavička sloupce, na kterém je filtr nebo řazení — žlutý popisek
-		 a žlutá linka pod buňkou. Značka je tak čitelná ze tří míst naráz
-		 (popisek, linka, odznak), ne jen z jedné malé ikony. */
-	.data-col-header.is-filtered .col-header-label,
-	.data-col-header.is-sorted .col-header-label {
-		color: var(--lidl-yellow);
-	}
-
-	.data-col-header.is-filtered,
-	.data-col-header.is-sorted {
-		box-shadow: inset 0 -3px 0 var(--lidl-yellow);
 	}
 
 	.data-col-header:hover .col-header-label {
