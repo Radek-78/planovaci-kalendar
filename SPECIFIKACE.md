@@ -1090,6 +1090,16 @@ než se zakládalo, a při rychlém zakládání i náraz na limit souběžných
 spuštění (30, viz CLAUDE.md §5). Když zápis selže, řádek zmizí a formulář
 se otevře znovu i s vyplněným textem, ať uživatel nepřijde o napsané.
 
+**Místo pro posuvník je rezervované vždycky** (`scrollbar-gutter: stable`
+na `.users-panel-wrap`, `.holidays-table-body`, `.settings-list-wrap`).
+Bez toho se po zapnutí filtru, který zkrátí seznam pod výšku okna, lišta
+ztratila a všechny sloupce poskočily doprava (nahlášeno).
+
+**Štítky v řádcích nesmí být šedé.** Zvýraznění řádku při najetí myší je
+taky šedé (`--page`), takže se šedý štítek s pozadím slil a přestal být
+čitelný (nahlášeno). Štítek umístění má proto bílý podklad s obrysem
+a osmý odstín štítku týdne je indigový, ne šedý.
+
 ### 9.7 Státní svátky ČR
 
 Svátky jsou **plně editovatelná tabulka** `_holidays` (id/date/name +
@@ -1834,9 +1844,10 @@ klonováním — tedy na jednom místě, ne u osmi volajících.
 
 **Hlavička tabulky** je ve firemní modré s bílým textem a jemnými bílými
 předěly sloupců (`rgba(255,255,255,0.22)` — světle šedá z řádků by na
-modrém podkladu nebyla vidět). Sloupec s aktivním filtrem nebo řazením
-značí **žlutá** ikona; na modrém podkladu drží firemní žlutá kontrast sama
-o sobě a nepotřebuje žádnou podložku.
+modrém podkladu nebyla vidět). Sloupec s aktivním filtrem nebo řazením je značený **ze tří míst naráz**:
+plný žlutý odznak s tmavou ikonou, žlutý popisek a žlutá linka pod buňkou
+(`.data-col-header.is-filtered`/`.is-sorted`). Samotná obarvená ikona se
+v řadě hlaviček ztrácela — plocha žluté je vidět i periferně.
 
 **Filtr a řazení v hlavičce** (sdílené všemi tabulkami): nadpisy v okně se
 píšou tak, jak jsou zadané — bez verzálek (písmo se kvůli tomu muselo
@@ -1853,7 +1864,14 @@ v popoveru musí přebít — jinak se malá písmena z dat zobrazila velká
 (nahlášeno).
 
 Sloupec může nabídnout **víc věcí k filtrování** přes `filterModes` —
-`requests.zadal` (jméno / umístění) a `stores.cislo` (číslo / zavření).
+`requests.zadano` (datum / týden), `requests.zadal` (jméno / umístění)
+a `stores.cislo` (číslo / zavření). Režim si může přinést vlastní `format`
+pro čitelný výpis hodnot (datum `2026-09-22` → `22.9.2026`).
+
+Výpočet čísla týdne (`isoWeekNumber`/`isoWeekLabel`) je ZÁMĚRNĚ mimo `App`:
+definice sloupců se volají jako `col.filterValue(row)`, takže uvnitř nemají
+`this` ukazující na App. Dřív to byla metoda App a použití ve filtru by
+znamenalo druhou kopii téhož výpočtu.
 U filiálek se podle čísla nejčastěji nehledá konkrétní číslo, ale „ukaž
 zavřené"; sloupec Stav to sice nese, ale jeho hodnotou je datum rozsahu,
 takže se podle něj filtrovat nedá. Uložený filtr

@@ -30,7 +30,7 @@ const CONFIG = {
 	 * v0.0.0 / „nevydáno" znamená, že zatím neproběhlo žádné vydání —
 	 * první spuštění release.ps1 hodnoty přepíše.
 	 */
-	version: 'v0.14.2',
+	version: 'v0.14.3',
 	releaseDate: '22.9.2026',
 
 	/**

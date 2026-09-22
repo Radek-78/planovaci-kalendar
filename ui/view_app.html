@@ -1293,6 +1293,35 @@
 	 * přichází ze serveru — klient si je nikdy nepočítá sám, jen podle nich
 	 * skrývá položky menu (viz onBootstrap).
 	 */
+/**
+ * Číslo kalendářního týdne podle ISO 8601 — pondělí je první den a do týdne
+ * 1 patří ten, který obsahuje první čtvrtek v roce. Totéž číslování značí
+ * německé „KW" i sloupec týdnů v mřížce kalendáře.
+ *
+ * Počítá se přes UTC, ne přes lokální čas — posun o dny přes `setUTCDate`
+ * nemůže spadnout na přechodu letního času, kdy den nemá 24 hodin.
+ *
+ * ZÁMĚRNĚ mimo App: používají ji i definice sloupců tabulky
+ * (DATA_TABLE_COLUMNS), které se volají jako `col.filterValue(row)`, takže
+ * uvnitř nemají `this` ukazující na App.
+ *
+ * @param {Date} date
+ * @returns {number} 1–53
+ */
+	function isoWeekNumber(date) {
+		const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+		const day = d.getUTCDay() || 7; // neděle vrací 0, ISO ji má jako 7
+		d.setUTCDate(d.getUTCDate() + 4 - day); // čtvrtek téhož týdne určuje rok i číslo
+		const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+		return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+	}
+
+	/** Popisek týdne („KW38") z ISO razítka; prázdný řetězec u nečitelné hodnoty. */
+	function isoWeekLabel(iso) {
+		const date = new Date(iso);
+		return isNaN(date.getTime()) ? '' : 'KW' + isoWeekNumber(date);
+	}
+
 	const App = {
 		/** Popisky rolí pro zobrazení. Klíče odpovídají ROLES v server/00_config.js. */
 		ROLE_LABELS: {
@@ -3513,12 +3542,20 @@
 			],
 			requests: [
 				{
-					// Filtruje se podle DNE (ne přesného času) — jinak by měl každý
-					// požadavek vlastní, nikdy se neopakující hodnotu a filtr by
-					// nedával smysl. Řadí se přitom podle úplného razítka.
+					// Filtruje se podle DNE nebo TÝDNE, ne podle přesného času —
+					// ten má každý požadavek vlastní a nikdy se neopakuje, takže
+					// by z filtru byl seznam všech razítek. Řadí se přitom vždycky
+					// podle úplného razítka.
 					key: 'zadano', label: 'Zadáno',
+					filterModes: [
+						{
+							key: 'date', label: 'Datum',
+							value: (r) => String(r.createdAt).slice(0, 10),
+							format: (v) => v.split('-').reverse().join('.'),
+						},
+						{ key: 'week', label: 'Týden', value: (r) => isoWeekLabel(r.createdAt) },
+					],
 					filterValue: (r) => String(r.createdAt).slice(0, 10),
-					filterLabel: (v) => v.split('-').reverse().join('.'),
 					sortValue: (r) => r.createdAt,
 					filterSort: 'text', sortAsc: 'Nejstarší nahoře', sortDesc: 'Nejnovější nahoře',
 				},
@@ -3616,7 +3653,12 @@
 						'<i class="ph ph-caret-' + (sortEntry.dir === 'desc' ? 'down' : 'up') + '" aria-hidden="true"></i></span>'
 					: '';
 
+				// Třídy is-filtered/is-sorted nesou zvýraznění celé hlavičky —
+				// žlutý popisek a linka pod buňkou. Značka je tak vidět ze tří
+				// míst naráz, ne jen z malé ikony (nahlášeno: „žlutá je
+				// nevýrazná").
 				return '<button type="button" class="data-col-header' +
+					(hasFilter ? ' is-filtered' : '') + (sortEntry ? ' is-sorted' : '') +
 					'" data-col="' + col.key + '" title="Řadit nebo filtrovat podle sloupce ' + Ui.escape(col.label) + '">' +
 					'<span class="col-header-label">' + Ui.escape(col.label) + '</span>' +
 					'<span class="col-rank-slot">' + rankBadge + '</span>' +
@@ -3858,9 +3900,12 @@
 			}
 
 			const activeFilter = state.filters[filterKey]; // Set povolených hodnot, nebo undefined = vše
-			// filterLabel patří sloupci jako celku — u režimů (Jméno/Umístění)
-			// jsou hodnoty samy o sobě čitelné, převádět je není co.
-			const label = mode ? null : col.filterLabel;
+			// `filterLabel` patří sloupci jako celku; režim si může přinést
+			// vlastní `format` (např. datum na čitelný tvar). Když nemá ani
+			// jedno, hodnota se vypíše tak, jak je — u jmen nebo zkratek LC
+			// není co převádět.
+			const modeDef = mode ? (col.filterModes || []).find((m) => m.key === mode) : null;
+			const label = mode ? (modeDef && modeDef.format) : col.filterLabel;
 
 			return '<label class="column-filter-check-all"><input type="checkbox" id="columnFilterCheckAll"' +
 					(!activeFilter ? ' checked' : '') + '> Vybrat vše</label>' +
@@ -5798,26 +5843,6 @@
 			{ key: 'done', label: 'Dokončeno', progress: 100 },
 		],
 
-		/**
-		 * Číslo kalendářního týdne podle ISO 8601 — pondělí je první den a do
-		 * týdne 1 patří ten, který obsahuje první čtvrtek v roce. Je to totéž
-		 * číslování, jaké značí německé „KW", a taky totéž, které appka už
-		 * ukazuje ve sloupci týdnů v mřížce kalendáře.
-		 *
-		 * Počítá se přes UTC, ne přes lokální čas — posun o dny přes
-		 * `setUTCDate` nemůže spadnout na přechodu letního času, kdy den
-		 * nemá 24 hodin.
-		 *
-		 * @param {Date} date
-		 * @returns {number} 1–53
-		 */
-		isoWeekNumber(date) {
-			const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-			const day = d.getUTCDay() || 7; // neděle vrací 0, ISO ji má jako 7
-			d.setUTCDate(d.getUTCDate() + 4 - day); // čtvrtek téhož týdne určuje rok i číslo
-			const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-			return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
-		},
 
 		/**
 		 * Štítek kalendářního týdne („KW38") k danému razítku.
@@ -5829,7 +5854,7 @@
 		renderWeekChip(iso) {
 			const date = new Date(iso);
 			if (isNaN(date.getTime())) return '';
-			const week = this.isoWeekNumber(date);
+			const week = isoWeekNumber(date);
 			return '<span class="request-week-chip is-kw' + (week % 8) + '">KW' + week + '</span>';
 		},
 
