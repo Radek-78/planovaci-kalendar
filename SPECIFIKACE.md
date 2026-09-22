@@ -1672,6 +1672,22 @@ Zapisuje se přes `apiSetRequestStep`, který bere `progress` (posuvník,
 tlačítka −/+) nebo `step` (klik přímo na krok) — obojí je tatáž hodnota
 vyjádřená jinak.
 
+**Čtení i zápis běží pod JEDNÍM zámkem (opraveno).** Dřív se `existing`
+četlo mimo zámek a zámek si bral až `dbUpdate_`. Když dorazila dvě volání
+krátce po sobě — a to se při klikání na −/+ dělo běžně, protože každé
+kolečko do Apps Scriptu trvá přes vteřinu a volání se překrývala — obě si
+přečetla TÝŽ starý stav, než kterékoli z nich stihlo zapsat. Do historie
+pak spadlo několik řádků „Nový (0 %) → …" se stejným časem, přestože
+uživatel klikal po jednotlivých krocích (nahlášeno). Klasický
+read-modify-write souběh. `withLock_` umí vnořené volání (`dbUpdate_`
+uvnitř si zámek nebere podruhé), takže obalení nic neblokuje navíc; cache
+se uvnitř zámku zahazuje, aby se četl skutečný stav listu.
+
+Klient navíc **neposílá dvě volání naráz** (`requestStateRunning`):
+rozdělaná změna počká a odešle se hned po doběhnutí předchozí. Zámek na
+serveru je ochrana proti souběhu obecně (dva uživatelé), tohle brání tomu,
+aby si zbytečný souběh vyrobil jeden uživatel sám.
+
 **Práva**
 
 | Akce | Kdo |
@@ -1816,6 +1832,12 @@ události, deaktivace uživatele, svátky, pozice, oddělení, typy, šablony).
 Opraveno v `confirmAction` jedním `Ui.setButtonLoading(okBtn, false)` před
 klonováním — tedy na jednom místě, ne u osmi volajících.
 
+**Hlavička tabulky** je ve firemní modré s bílým textem a jemnými bílými
+předěly sloupců (`rgba(255,255,255,0.22)` — světle šedá z řádků by na
+modrém podkladu nebyla vidět). Sloupec s aktivním filtrem nebo řazením
+značí **žlutá** ikona; na modrém podkladu drží firemní žlutá kontrast sama
+o sobě a nepotřebuje žádnou podložku.
+
 **Filtr a řazení v hlavičce** (sdílené všemi tabulkami): nadpisy v okně se
 píšou tak, jak jsou zadané — bez verzálek (písmo se kvůli tomu muselo
 zvětšit, 10px verzálkami je ještě čitelných, 10px normálním textem už ne).
@@ -1824,8 +1846,17 @@ Obě možnosti
 jako dvě nesouvisející akce. Ikona filtru je všude `ph-funnel` (nálevka),
 ne dřívější `ph-funnel-simple` (tři čárky pod sebou).
 
-Sloupec může nabídnout **víc věcí k filtrování** přes `filterModes` — dnes
-jen `requests.zadal`, kde jsou ve sloupci jméno i umístění. Uložený filtr
+Hodnoty v seznamu filtru se vypisují **přesně tak, jak jsou v datech**.
+Globální pravidlo pro `label` dává verzálky a prostrkání (je určené pro
+popisky formulářových polí) a seznam hodnot je taky z `<label>`, takže se
+v popoveru musí přebít — jinak se malá písmena z dat zobrazila velká
+(nahlášeno).
+
+Sloupec může nabídnout **víc věcí k filtrování** přes `filterModes` —
+`requests.zadal` (jméno / umístění) a `stores.cislo` (číslo / zavření).
+U filiálek se podle čísla nejčastěji nehledá konkrétní číslo, ale „ukaž
+zavřené"; sloupec Stav to sice nese, ale jeho hodnotou je datum rozsahu,
+takže se podle něj filtrovat nedá. Uložený filtr
 má pak klíč `sloupec::režim`, takže můžou být aktivní oba naráz;
 `dataTableFilterGetter` klíč zase rozloží zpátky na funkci, která hodnotu
 z řádku vytáhne. Přepínač v okně filtru nese u režimu s aktivním filtrem
@@ -1844,10 +1875,18 @@ třídou chyby bylo i to, že se u Požadavků zapomnělo zavolat
 `renderDataTableHead` a nad seznamem chyběla celá hlavička.
 
 **Barevná škála pokroku** — šest kroků po 20 % od červené přes žlutou po
-zelenou. Barvu drží jedna CSS proměnná `--request-progress-color`, ze které
-čte proužek v přehledu i posuvník v detailu (`accent-color`), takže obě
-podoby ukazatele nikdy neukážou pro tutéž hodnotu jinou barvu. Při tažení
+zelenou. Každý krok drží TŘI proměnné: `--request-progress-color` (sytá,
+pro proužek a posuvník), `--request-progress-soft` (světlý podklad štítku)
+a `--request-progress-ink` (tmavé písmo na něm). Bílý text na plné barvě
+nešel použít — u žlutého a jantarového kroku by nebyl čitelný. Čte z nich
+proužek, posuvník (`accent-color`), štítek v seznamu i dlaždice aktuálního
+kroku, takže pro jednu hodnotu nikdy neukážou různou barvu. Při tažení
 posuvníku se třída přepíná už při `input`, ne až po puštění.
+
+Proužek má navíc **bílé předěly po 20 %**, takže ukazuje šest dílků místo
+plynulé čáry. Barvy sousedních kroků jsou nutně podobné (škála červená →
+žlutá → zelená má na šest hodnot málo místa), rozlišení kroků proto nestojí
+jen na barvě.
 Detail je ve stejném modal-jazyce jako událost — komentáře jsou dokonce
 doslova tytéž funkce (`renderCommentItem`/`commentsEmptyState`), liší se
 jen endpoint a cílový seznam. Pás průběhu vidí všichni; kdo nemá právo,

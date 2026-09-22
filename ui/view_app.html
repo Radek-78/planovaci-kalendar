@@ -3469,7 +3469,26 @@
 				{ key: 'akce', label: 'Akce', actionsOnly: true },
 			],
 			stores: [
-				{ key: 'cislo', label: 'Číslo', filterValue: (s) => s.id, sortValue: (s) => Number(s.id), filterSort: 'number', sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší' },
+				{
+					// Druhý režim filtru (viz filterModes) — u čísla filiálky se
+					// nejčastěji nehledá konkrétní číslo, ale „ukaž mi zavřené".
+					// Stav uzavírky je sice i ve vlastním sloupci Stav, ale tam
+					// je hodnotou datum rozsahu, takže se podle něj filtrovat
+					// nedá; tohle je jen otevřeno/zavře se/zavřeno.
+					key: 'cislo', label: 'Číslo',
+					filterModes: [
+						{ key: 'number', label: 'Číslo', value: (s) => s.id },
+						{
+							key: 'closure', label: 'Zavření',
+							value: (s) => (s.closure
+								? (s.closure.status === 'current' ? 'Zavřeno' : 'Zavře se')
+								: 'Otevřeno'),
+						},
+					],
+					filterValue: (s) => s.id,
+					sortValue: (s) => Number(s.id), filterSort: 'number',
+					sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší',
+				},
 				{ key: 'nazev', label: 'Název', filterValue: (s) => s.nazev, sortValue: (s) => s.nazev, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
 				{ key: 'lc', label: 'LC', filterValue: (s) => s.lc || '—', sortValue: (s) => s.lc, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
 				{ key: 'telefonProdejny', label: 'Telefon prodejny', filterValue: (s) => s.telefonProdejny || '—', sortValue: (s) => s.telefonProdejny, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
@@ -5739,9 +5758,12 @@
 		/** Id požadavku otevřeného v detailu — kvůli překreslení po změně stavu i po přidání komentáře. */
 		currentRequestId: null,
 
-		/** Odložený zápis stavu/pokroku na server (viz saveRequestState) a stav před ním, pro případný návrat. */
+		/** Odložený zápis průběhu na server (viz saveRequestProgress) a stav před ním, pro případný návrat. */
 		requestStateTimer: null,
 		requestStateBeforeSave: null,
+
+		/** Běží právě zápis průběhu? Brání souběžným voláním, viz flushRequestState. */
+		requestStateRunning: false,
 
 		/**
 		 * Načtená historie právě otevřeného požadavku. Drží se mimo DOM,
@@ -6162,11 +6184,15 @@
 
 			const steps = this.REQUEST_STATUS_STEPS.map((step, index) => {
 				const state = index < currentIndex ? ' is-done' : (index === currentIndex ? ' is-current' : '');
+				// Třída podle procenta nese barvu kroku (viz --request-progress-*
+				// v CSS) — aktuální dlaždice tak má stejnou barvu jako proužek
+				// i štítek v seznamu.
+				const cls = 'request-step ' + this.requestProgressClass(step.progress) + state;
 				const inner = '<span class="request-step-dot">' + (index + 1) + '</span>' +
 					'<span class="request-step-label">' + Ui.escape(step.label) + '</span>';
 				return canManage
-					? '<button type="button" class="request-step is-clickable' + state + '" data-step="' + step.key + '">' + inner + '</button>'
-					: '<span class="request-step' + state + '">' + inner + '</span>';
+					? '<button type="button" class="' + cls + ' is-clickable" data-step="' + step.key + '">' + inner + '</button>'
+					: '<span class="' + cls + '">' + inner + '</span>';
 			}).join('');
 
 			// JEDEN ukazatel pokroku, ne dva. Dřív tu byl vedle sebe nekliknutelný
@@ -6411,12 +6437,28 @@
 		/** Odešle odložený průběh jedním voláním — výsledek celé dávky kliknutí. */
 		flushRequestState(id) {
 			this.requestStateTimer = null;
+
+			// NIKDY dvě volání naráz. Kolečko do Apps Scriptu trvá přes vteřinu,
+			// takže dvě odeslání krátce po sobě se překrývala a to druhé si
+			// přečetlo stav, který to první ještě nestihlo zapsat — do historie
+			// pak spadlo několik řádků „Nový (0 %) → …" se stejným časem
+			// (nahlášeno). Server je proti tomu od téhle verze chráněný zámkem;
+			// tohle navíc brání tomu, aby se zbytečné souběžné volání vůbec
+			// poslalo. Rozdělaná změna počká a odešle se hned po doběhnutí té
+			// předchozí, bez ztráty — `requestStateBeforeSave` se tu záměrně
+			// ještě nespotřebovává.
+			if (this.requestStateRunning) {
+				this.requestStateTimer = setTimeout(() => this.flushRequestState(id), 200);
+				return;
+			}
+
 			const current = this.requestsCache.find((r) => r.id === id);
 			const before = this.requestStateBeforeSave;
 			this.requestStateBeforeSave = null;
 			if (!current || !before) return;
 			if (current.progress === before.progress) return;
 
+			this.requestStateRunning = true;
 			Ui.call('apiSetRequestStep', { id: id, progress: current.progress }, { silent: true })
 				.then((updated) => {
 					this.replaceRequestInCache(updated);
@@ -6437,6 +6479,9 @@
 					}
 					this.renderRequests();
 					Ui.toast(error.message, 'error');
+				})
+				.then(() => {
+					this.requestStateRunning = false;
 				});
 		},
 

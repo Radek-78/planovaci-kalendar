@@ -1077,9 +1077,9 @@
 	}
 
 	.users-table-head {
-		background: var(--page);
-		border-bottom: 1px solid var(--line);
-		color: var(--lidl-blue);
+		background: var(--lidl-blue);
+		border-bottom: 1px solid var(--lidl-dark-blue);
+		color: var(--white);
 		flex-shrink: 0;
 		font-size: 10px;
 		font-weight: 700;
@@ -1114,9 +1114,17 @@
 	/* Svislé oddělovače mezi sloupci — stejná síla čáry jako mezi řádky,
 		 aby celé pole dat působilo jako jedna souvislá mřížka. Poslední
 		 sloupec bez čáry (nic za ním). */
-	.users-table-head > *:not(:last-child),
 	.user-row > *:not(:last-child) {
 		border-right: 1px solid var(--line-soft);
+	}
+
+	/* V hlavičce jemné BÍLÉ linky — světle šedá z řádků by na modrém
+		 podkladu nebyla vidět. Průhledná bílá jen naznačí sloupce a nekrájí
+		 hlavičku na dlaždice. */
+	.users-table-head > *:not(:last-child),
+	.data-table-head > *:not(:last-child),
+	.holidays-table-head > *:not(:last-child) {
+		border-right: 1px solid rgba(255, 255, 255, 0.22);
 	}
 
 	/* Neaktivní uživatel — celý řádek vybledlý, ale pořád čitelný, ne skrytý. */
@@ -1314,9 +1322,9 @@
 	}
 
 	.data-table-head {
-		background: var(--page);
-		border-bottom: 1px solid var(--line);
-		color: var(--lidl-blue);
+		background: var(--lidl-blue);
+		border-bottom: 1px solid var(--lidl-dark-blue);
+		color: var(--white);
 		flex-shrink: 0;
 		font-size: 10px;
 		font-weight: 700;
@@ -1349,7 +1357,6 @@
 		opacity: 0.55;
 	}
 
-	.data-table-head > *:not(:last-child),
 	.data-row > *:not(:last-child) {
 		border-right: 1px solid var(--line-soft);
 	}
@@ -1490,9 +1497,11 @@
 		 způsobem je řazení provedeno"). */
 	.col-rank-badge {
 		align-items: center;
-		background: var(--lidl-blue);
+		/* Žlutě jako ikona filtru — obojí značí "tady je něco nastaveno".
+			 Na modré hlavičce je čitelnější plný žlutý odznak s tmavým číslem. */
+		background: var(--lidl-yellow);
 		border-radius: 999px;
-		color: var(--white);
+		color: var(--lidl-dark-blue);
 		display: inline-flex;
 		font-size: 9px;
 		font-weight: 700;
@@ -1513,7 +1522,7 @@
 		 doopravdy aktivní filtr. */
 	.col-filter-slot {
 		align-items: center;
-		color: var(--muted);
+		color: rgba(255, 255, 255, 0.5);
 		display: inline-flex;
 		flex-shrink: 0;
 		justify-content: center;
@@ -1524,12 +1533,14 @@
 		font-size: 11px;
 	}
 
+	/* Aktivní filtr nebo řazení — ŽLUTĚ. Hlavička je modrá, takže firemní
+		 žlutá na ní drží kontrast sama o sobě a nepotřebuje žádný podklad. */
 	.col-filter-slot.is-active {
-		color: var(--lidl-blue);
+		color: var(--lidl-yellow);
 	}
 
 	.data-col-header:hover .col-header-label {
-		color: var(--lidl-blue);
+		color: var(--lidl-yellow);
 	}
 
 	/* ── Popover řazení/filtru sloupce (Excel-like) ──────────────────────── */
@@ -1616,6 +1627,16 @@
 	/* Bez uppercase a bez prostrkání — v okně řazení/filtru se text píše
 		 tak, jak je zadaný (zpětná vazba). Velikost písma se proto zvedla:
 		 10px verzálkami je ještě čitelných, 10px normálním textem už ne. */
+	/* Globální pravidlo pro `label` dává verzálky a prostrkání (je určené pro
+		 popisky formulářových polí). Seznam hodnot filtru je ale taky z <label>
+		 a hodnoty se musí vypsat přesně tak, jak jsou v datech — nahlášeno. */
+	.column-filter-popover label {
+		font-size: 12.5px;
+		font-weight: 400;
+		letter-spacing: 0;
+		text-transform: none;
+	}
+
 	.column-filter-heading {
 		color: var(--muted);
 		font-size: 11.5px;
@@ -2053,9 +2074,9 @@
 	}
 
 	.holidays-table-head {
-		background: var(--page);
-		border-bottom: 1px solid var(--line);
-		color: var(--lidl-blue);
+		background: var(--lidl-blue);
+		border-bottom: 1px solid var(--lidl-dark-blue);
+		color: var(--white);
 		flex-shrink: 0;
 		font-size: 10px;
 		font-weight: 700;
@@ -2613,9 +2634,11 @@
 		 dává requestProgressClass) — krok a procento jsou jedna hodnota, takže
 		 musí mít i jednu barvu. */
 	.request-status-chip {
-		background: var(--request-progress-color, var(--line-soft));
+		/* Světlý podklad a tmavé písmo, ne bílé na plné barvě — u žlutého
+			 a jantarového kroku by bílý text nebyl čitelný. */
+		background: var(--request-progress-soft, var(--line-soft));
 		border-radius: 3px;
-		color: var(--white);
+		color: var(--request-progress-ink, var(--muted));
 		display: inline-block;
 		font-size: 11px;
 		font-weight: 700;
@@ -2639,6 +2662,23 @@
 		height: 6px;
 		min-width: 0;
 		overflow: hidden;
+		position: relative;
+	}
+
+	/* Bílé předěly po 20 % — proužek tím ukazuje ŠEST DÍLKŮ, ne plynulou
+		 čáru, takže je na první pohled poznat, o kolik kroků se posunul.
+		 Barva sousedních kroků je nutně podobná (škála červená → žlutá →
+		 zelená má na šest hodnot málo místa), tohle rozlišení proto nestojí
+		 jen na barvě. */
+	.request-progress-track::after {
+		background: repeating-linear-gradient(
+			90deg,
+			transparent 0 calc(20% - 2px),
+			var(--white) calc(20% - 2px) 20%
+		);
+		content: "";
+		inset: 0;
+		position: absolute;
 	}
 
 	/* Barevné odstupňování pokroku — od červené přes žlutou po zelenou.
@@ -2647,22 +2687,51 @@
 		 obě podoby ukazatele nikdy neukážou jinou barvu pro tutéž hodnotu. */
 	.request-progress.is-p0,
 	.request-progress-edit.is-p0,
-	.request-status-chip.is-p0 { --request-progress-color: #dc2626; }
+	.request-status-chip.is-p0 {
+		--request-progress-color: #dc2626;
+		--request-progress-soft: #fde4e4;
+		--request-progress-ink: #9f1414;
+	}
+
 	.request-progress.is-p20,
 	.request-progress-edit.is-p20,
-	.request-status-chip.is-p20 { --request-progress-color: #ea580c; }
+	.request-status-chip.is-p20 {
+		--request-progress-color: #f97316;
+		--request-progress-soft: #ffe8d3;
+		--request-progress-ink: #b04708;
+	}
+
 	.request-progress.is-p40,
 	.request-progress-edit.is-p40,
-	.request-status-chip.is-p40 { --request-progress-color: #f59e0b; }
+	.request-status-chip.is-p40 {
+		--request-progress-color: #eab308;
+		--request-progress-soft: #fcf3c9;
+		--request-progress-ink: #856404;
+	}
+
 	.request-progress.is-p60,
 	.request-progress-edit.is-p60,
-	.request-status-chip.is-p60 { --request-progress-color: #eab308; }
+	.request-status-chip.is-p60 {
+		--request-progress-color: #a3c516;
+		--request-progress-soft: #eef7cd;
+		--request-progress-ink: #5b7310;
+	}
+
 	.request-progress.is-p80,
 	.request-progress-edit.is-p80,
-	.request-status-chip.is-p80 { --request-progress-color: #84cc16; }
+	.request-status-chip.is-p80 {
+		--request-progress-color: #35b45b;
+		--request-progress-soft: #dcf4e3;
+		--request-progress-ink: #1d7a3c;
+	}
+
 	.request-progress.is-p100,
 	.request-progress-edit.is-p100,
-	.request-status-chip.is-p100 { --request-progress-color: #16a34a; }
+	.request-status-chip.is-p100 {
+		--request-progress-color: #0e8a44;
+		--request-progress-soft: #d2efdd;
+		--request-progress-ink: #0a5c2d;
+	}
 
 	.request-progress-fill {
 		background: var(--request-progress-color, var(--lidl-blue));
@@ -2757,14 +2826,17 @@
 		background: #16a34a;
 	}
 
+	/* Aktuální krok nese barvu svého procenta, ne jednotnou modrou — pás
+		 průběhu tak ukazuje totéž co proužek i štítek v seznamu. */
 	.request-step.is-current {
-		border-color: var(--lidl-blue);
-		color: var(--text);
+		background: var(--request-progress-soft, var(--white));
+		border-color: var(--request-progress-color, var(--lidl-blue));
+		color: var(--request-progress-ink, var(--text));
 		font-weight: 700;
 	}
 
 	.request-step.is-current .request-step-dot {
-		background: var(--lidl-blue);
+		background: var(--request-progress-color, var(--lidl-blue));
 	}
 
 	/* Posuvník procenta — jen ve stavu V procesu (viz renderRequestInfo). */

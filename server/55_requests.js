@@ -253,11 +253,6 @@ function apiSetRequestStep(payload) {
 				'. Dvojici lze změnit v Nastavení → Požadavky.');
 		}
 
-		const existing = dbFindById_(SHEETS.REQUESTS, id);
-		if (!existing) {
-			throw userError_('Požadavek nebyl nalezen — možná ho mezitím smazal někdo jiný.');
-		}
-
 		// `step` (klik přímo na krok) se převede na jeho procento, jinak se
 		// bere poslané procento. Když dorazí obojí, vyhrává krok.
 		let progress;
@@ -269,24 +264,47 @@ function apiSetRequestStep(payload) {
 			progress = _requestProgressFor_(data.progress);
 		}
 
-		const oldProgress = Number(existing.progress || 0);
-		const oldDef = _requestStepForProgress_(oldProgress) || REQUEST_STATUSES[0];
-		const newDef = _requestStepForProgress_(progress);
+		// PŘEČTENÍ I ZÁPIS MUSÍ BÝT POD JEDNÍM ZÁMKEM.
+		//
+		// Dřív se `existing` četlo mimo zámek a zámek si bral až dbUpdate_.
+		// Když dorazila dvě volání krátce po sobě (klikání na -/+ — každé
+		// kolečko do Apps Scriptu trvá přes vteřinu, takže se překrývala),
+		// obě si přečetla TÝŽ starý stav, než kterékoli z nich stihlo
+		// zapsat. Do historie se pak zapsalo několik řádků „Nový (0 %) → …"
+		// se stejným časem, přestože uživatel klikal po jednotlivých
+		// krocích (nahlášeno). Klasický read-modify-write souběh.
+		//
+		// withLock_ umí vnořené volání (dbUpdate_ uvnitř si zámek nebere
+		// podruhé), takže tohle obalení nic neblokuje navíc.
+		return withLock_(() => {
+			// Cache mohla vzniknout ještě před zámkem — zahodit, ať se čte
+			// skutečný aktuální stav listu, ne to, co platilo před chvílí.
+			dbInvalidate_(SHEETS.REQUESTS);
 
-		const updated = dbUpdate_(SHEETS.REQUESTS, id, {
-			status: newDef.key,
-			progress: progress,
-			updated_by: user.email,
+			const existing = dbFindById_(SHEETS.REQUESTS, id);
+			if (!existing) {
+				throw userError_('Požadavek nebyl nalezen — možná ho mezitím smazal někdo jiný.');
+			}
+
+			const oldProgress = Number(existing.progress || 0);
+			const oldDef = _requestStepForProgress_(oldProgress) || REQUEST_STATUSES[0];
+			const newDef = _requestStepForProgress_(progress);
+
+			const updated = dbUpdate_(SHEETS.REQUESTS, id, {
+				status: newDef.key,
+				progress: progress,
+				updated_by: user.email,
+			});
+
+			if (oldDef.key !== newDef.key) {
+				audit_('request.status',
+					'Požadavek „' + String(existing.title || '') + '" — průběh: ' +
+						oldDef.label + ' (' + oldProgress + ' %) → ' + newDef.label + ' (' + progress + ' %)',
+					id, ['step']);
+			}
+
+			return _publicRequest_(updated, user, settings, {}, _requestCommentCounts_());
 		});
-
-		if (oldDef.key !== newDef.key) {
-			audit_('request.status',
-				'Požadavek „' + String(existing.title || '') + '" — průběh: ' +
-					oldDef.label + ' (' + oldProgress + ' %) → ' + newDef.label + ' (' + progress + ' %)',
-				id, ['step']);
-		}
-
-		return _publicRequest_(updated, user, settings, {}, _requestCommentCounts_());
 	});
 }
 
