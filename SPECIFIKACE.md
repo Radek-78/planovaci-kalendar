@@ -1706,6 +1706,16 @@ okna (řádky historie jsou dlouhé, sloupec by je zbytečně lámal) a vrací s
 tlačítkem *Zpět na požadavek*. Otevření jiného požadavku okno z přehledu
 vždycky vrátí zpět.
 
+U data a času je **štítek kalendářního týdne** („KW38") — v přehledu
+požadavků i v historii. Číslo je ISO 8601 (pondělí první, týden s prvním
+čtvrtkem v roce je 1), tedy totéž číslování, jaké značí německé KW a jaké
+už appka ukazuje ve sloupci týdnů v mřížce kalendáře; počítá se přes UTC,
+aby posun o dny nespadl na přechodu letního času. Barva plyne z čísla
+týdne modulo počet barev, takže SOUSEDNÍ týdny se vždycky liší a stejný
+týden má vždycky tutéž barvu, i napříč roky. Vlastní sada barev, ne
+sdílená se štítkem umístění — jsou to dvě nesouvisející věci vedle sebe
+a společná paleta by svedla k domněnce, že spolu barvy něco znamenají.
+
 Čas se v historii zobrazuje **na sekundy** a řadí se od nejnovějšího.
 Kvůli tomu má auditní log vlastní razítko `nowLocalIsoSeconds_()` —
 `nowLocalIso_` plní i `events.start/end` a `_event_views.last_seen_at`,
@@ -1779,7 +1789,10 @@ události, deaktivace uživatele, svátky, pozice, oddělení, typy, šablony).
 Opraveno v `confirmAction` jedním `Ui.setButtonLoading(okBtn, false)` před
 klonováním — tedy na jednom místě, ne u osmi volajících.
 
-**Filtr a řazení v hlavičce** (sdílené všemi tabulkami): obě možnosti
+**Filtr a řazení v hlavičce** (sdílené všemi tabulkami): nadpisy v okně se
+píšou tak, jak jsou zadané — bez verzálek (písmo se kvůli tomu muselo
+zvětšit, 10px verzálkami je ještě čitelných, 10px normálním textem už ne).
+Obě možnosti
 řazení jsou vedle sebe (`.column-filter-sort-row`) — pod sebou vypadaly
 jako dvě nesouvisející akce. Ikona filtru je všude `ph-funnel` (nálevka),
 ne dřívější `ph-funnel-simple` (tři čárky pod sebou).

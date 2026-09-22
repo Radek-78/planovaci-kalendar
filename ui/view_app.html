@@ -5750,6 +5750,41 @@
       { key: 'done', label: 'Dokončeno', cls: 'is-done' },
     ],
 
+    /**
+     * Číslo kalendářního týdne podle ISO 8601 — pondělí je první den a do
+     * týdne 1 patří ten, který obsahuje první čtvrtek v roce. Je to totéž
+     * číslování, jaké značí německé „KW", a taky totéž, které appka už
+     * ukazuje ve sloupci týdnů v mřížce kalendáře.
+     *
+     * Počítá se přes UTC, ne přes lokální čas — posun o dny přes
+     * `setUTCDate` nemůže spadnout na přechodu letního času, kdy den
+     * nemá 24 hodin.
+     *
+     * @param {Date} date
+     * @returns {number} 1–53
+     */
+    isoWeekNumber(date) {
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const day = d.getUTCDay() || 7; // neděle vrací 0, ISO ji má jako 7
+      d.setUTCDate(d.getUTCDate() + 4 - day); // čtvrtek téhož týdne určuje rok i číslo
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+    },
+
+    /**
+     * Štítek kalendářního týdne („KW38") k danému razítku.
+     *
+     * Barva se odvozuje z čísla týdne modulo počet barev, takže SOUSEDNÍ
+     * týdny mají vždycky jinou barvu a stejný týden vždycky tutéž —
+     * i napříč roky, což je záměr (KW38 je pořád KW38).
+     */
+    renderWeekChip(iso) {
+      const date = new Date(iso);
+      if (isNaN(date.getTime())) return '';
+      const week = this.isoWeekNumber(date);
+      return '<span class="request-week-chip is-kw' + (week % 8) + '">KW' + week + '</span>';
+    },
+
     /** Mapa umístění → barevná třída, dopočítaná z dat (viz requestLocationClasses). */
     _locationClassMap: null,
 
@@ -5834,7 +5869,10 @@
           : '');
 
       return '<div class="data-row request-row" data-id="' + Ui.escape(r.id) + '">' +
-        '<span class="user-cell-muted">' + Ui.escape(this.formatDateTime(r.createdAt)) + '</span>' +
+        '<span class="user-cell-muted request-cell-date">' +
+          this.renderWeekChip(r.createdAt) +
+          '<span>' + Ui.escape(this.formatDateTime(r.createdAt)) + '</span>' +
+        '</span>' +
         '<span class="user-cell-muted request-cell-author">' +
           (r.authorLocation
             ? '<span class="request-author-loc ' + this.requestLocationClass(r.authorLocation) + '">' +
@@ -6117,7 +6155,10 @@
     renderRequestHistoryItem(h) {
       const types = (h.types || []).map((t) => this.REQUEST_CHANGE_TYPES[t]).filter((t) => t);
       return '<div class="request-history-item">' +
-        '<span class="request-history-time">' + Ui.escape(this.formatDateTime(h.timestamp, true)) + '</span>' +
+        '<span class="request-history-time">' +
+          this.renderWeekChip(h.timestamp) +
+          '<span>' + Ui.escape(this.formatDateTime(h.timestamp, true)) + '</span>' +
+        '</span>' +
         '<span class="request-history-types">' +
           (types.length
             ? types.map((t) => '<span class="request-type-chip ' + t.cls + '">' + Ui.escape(t.label) + '</span>').join('')

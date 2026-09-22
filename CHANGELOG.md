@@ -5,6 +5,10 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.13.2 - 22.09.2026 07:24
+- v0.13.2: Štítek kalendářního týdne u data, konec verzálek v okně filtru. U data a času je nově štítek s číslem kalendářního týdne ve tvaru KW38, a to jak v přehledu požadavků, tak v historii úprav. Číslo je podle normy ISO 8601, tedy stejné číslování, jaké značí německé KW a jaké appka už ukazuje ve sloupci týdnů v mřížce kalendáře. Barva plyne z čísla týdne, takže sousední týdny se vždycky liší a stejný týden má vždycky tutéž barvu, i napříč roky. Sloupec Zadáno se kvůli štítku musel rozšířit ze sto třiceti na sto sedmdesát dva pixelů
+- místo se bere z pružných sloupců, ostatní pevné šířky zůstaly. V okně řazení a filtru se nadpisy už nepíšou velkými písmeny, ale tak, jak jsou zadané. Písmo se kvůli tomu muselo o kousek zvětšit, protože deset pixelů verzálkami je ještě čitelných, ale deset pixelů normálním textem už ne.
+
 ## v0.13.1 - 17.09.2026 15:27
 - v0.13.1: Historie jen jako tlačítko, čas na sekundy a barevné štítky umístění. Rychlý náhled posledních úprav v detailu požadavku zmizel - se sloupcem typu úpravy působil v úzkém sloupci nepřehledně. Zůstalo jen tlačítko s počtem úprav, které otevře celý přehled, kde je na výpis místo. Čas se v historii zobrazuje na sekundy a řadí se od nejnovějšího po nejstarší. Auditní log kvůli tomu dostal vlastní razítko se sekundami
 - sdílená funkce plní i časy událostí, kde se nad tvarem dělá porovnání rozsahu, a přidání sekund by ho tiše rozbilo. Starší záznamy sekundy nemají a doplní se u nich nuly. Okno detailu požadavku je o třetinu nižší, protože v něm po odebrání náhledu historie zbylo prázdné místo. Štítky umístění před jmény mají nově všechny stejnou šířku, takže jména za nimi začínají na stejném místě, a jsou barevně odlišené podle umístění. Barvy se přidělují podle pořadí v abecedním seznamu umístění, která se v datech vyskytují - odvození barvy z názvu jsem zkoušel, ale při pár logistických centrech se barvy běžně srážely a čtyři různá vycházela stejně.

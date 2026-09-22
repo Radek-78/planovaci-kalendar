@@ -1592,13 +1592,14 @@
     font-size: 12px;
   }
 
+  /* Bez uppercase a bez prostrkání — v okně řazení/filtru se text píše
+     tak, jak je zadaný (zpětná vazba). Velikost písma se proto zvedla:
+     10px verzálkami je ještě čitelných, 10px normálním textem už ne. */
   .column-filter-heading {
     color: var(--muted);
-    font-size: 10px;
+    font-size: 11.5px;
     font-weight: 700;
-    letter-spacing: 0.04em;
     margin: 0 0 6px;
-    text-transform: uppercase;
   }
 
   .column-filter-sort-btn {
@@ -2490,14 +2491,24 @@
   .request-row {
     /* Zadáno, Zadal, Název, Popis, Stav, Pokrok, Akce — šířky podle
        zadání. px = pevné (obsah má vždy stejnou délku), fr = podíl na
-       zbylém místě. */
-    grid-template-columns: 130px 0.6fr 0.6fr 1.6fr 110px 150px 76px;
+       zbylém místě. Zadáno je širší než původních 130px, protože k datu
+       přibyl štítek kalendářního týdne; místo se bere ze sloupců v `fr`,
+       ostatní pevné šířky zůstávají. */
+    grid-template-columns: 172px 0.6fr 0.6fr 1.6fr 110px 150px 76px;
   }
 
   /* Celý řádek otevírá detail (stejně jako u filiálek); klik na tlačítko
      Akce se zastaví dřív, viz bindRequests. */
   .request-row {
     cursor: pointer;
+  }
+
+  /* Datum se štítkem týdne na jednom řádku. */
+  .request-cell-date {
+    align-items: center;
+    display: flex;
+    gap: 6px;
+    min-width: 0;
   }
 
   .request-cell-title,
@@ -2531,6 +2542,32 @@
     padding: 2px 5px;
     text-align: center;
   }
+
+  /* Štítek kalendářního týdne („KW38"). Barva plyne z čísla týdne modulo
+     počet barev, takže sousední týdny se vždycky liší a stejný týden má
+     vždycky tutéž barvu — i napříč roky, což je záměr.
+     Vlastní sada barev, ne sdílená s umístěním: jsou to dvě nesouvisející
+     věci vedle sebe a společná paleta by svedla k domněnce, že spolu
+     barvy něco znamenají. */
+  .request-week-chip {
+    border-radius: 3px;
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    min-width: 42px;
+    padding: 2px 5px;
+    text-align: center;
+  }
+
+  .request-week-chip.is-kw0 { background: #dbeafe; color: #1d4ed8; }
+  .request-week-chip.is-kw1 { background: #dcfce7; color: #15803d; }
+  .request-week-chip.is-kw2 { background: #fef3c7; color: #a16207; }
+  .request-week-chip.is-kw3 { background: #ede9fe; color: #6d28d9; }
+  .request-week-chip.is-kw4 { background: #ffe4e6; color: #be123c; }
+  .request-week-chip.is-kw5 { background: #ccfbf1; color: #0f766e; }
+  .request-week-chip.is-kw6 { background: #ffedd5; color: #c2410c; }
+  .request-week-chip.is-kw7 { background: #e2e8f0; color: #334155; }
 
   /* Barva podle umístění — třídu přiděluje requestLocationClass z názvu,
      takže stejné LC má vždycky stejnou barvu a nová se přidávat nemusí.
@@ -2912,10 +2949,14 @@
     opacity: 0.55;
   }
 
+  /* Širší než dřív — vedle data a času na sekundy je tu i štítek týdne. */
   .request-history-time {
+    align-items: center;
     color: var(--muted);
+    display: flex;
     flex-shrink: 0;
-    width: 124px;
+    gap: 6px;
+    width: 196px;
   }
 
   .request-history-text {
