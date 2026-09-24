@@ -201,12 +201,12 @@
 					<div class="store-view-toggle" role="group" aria-label="Zobrazené filiálky">
 						<button type="button" class="store-view-toggle-btn is-active" data-view="open">Otevřeno <span class="store-view-toggle-count" id="storeViewCountOpen"></span></button>
 						<button type="button" class="store-view-toggle-btn" data-view="future">Budoucí <span class="store-view-toggle-count" id="storeViewCountFuture"></span></button>
-						<!-- Outlet je NA ROZDÍL od Otevřeno/Budoucí nezávislá vlastnost
-								 filiálky, ne třetí hodnota téže osy — outletová filiálka může
-								 být otevřená i budoucí zároveň. Záložka proto ukáže VŠECHNY
-								 outlety bez ohledu na to, jestli mají otevřeno (viz
-								 App.storesInView) — nemá je smysl z Otevřeno/Budoucí schovávat,
-								 pořád je to filiálka jako každá jiná. -->
+						<!-- Outlet je TŘETÍ ZÁLOŽKA se stejnou logikou jako Otevřeno/
+								 Budoucí — každá filiálka patří právě do jedné (viz
+								 App.storeEffectiveView): dokud čeká na otevření, je Budoucí
+								 jako každá jiná filiálka bez ohledu na Outlet; jakmile je
+								 otevřená, teprve TEHDY se oddělí sem a v Otevřeno zmizí (řídí
+								 se jinými provozními pravidly, zpětná vazba). -->
 						<button type="button" class="store-view-toggle-btn" data-view="outlet">Outlet <span class="store-view-toggle-count" id="storeViewCountOutlet"></span></button>
 					</div>
 					<!-- Rychlé filtry podle LC — víceklikové badge (na rozdíl od
@@ -4167,22 +4167,30 @@
 		},
 
 		/**
-		 * Filiálky odpovídající JEDNÉ ze tří záložek (Otevřeno/Budoucí/Outlet).
-		 * Otevřeno a Budoucí jsou vzájemně vylučující (jedna a táž osa —
-		 * datum otevření), Outlet je ale NEZÁVISLÁ VLASTNOST: outletová
-		 * filiálka může být otevřená i budoucí, takže záložka Outlet ukazuje
-		 * VŠECHNY outletové filiálky bez ohledu na to, jestli už mají otevřeno
-		 * — jinak by přepnutím na Outlet zmizely z Otevřeno/Budoucí filiálky,
-		 * které tam mají být vidět úplně stejně jako kterékoli jiné (adresa,
-		 * kontakty, otevírací doba se hledají stejně bez ohledu na Outlet).
+		 * Do KTERÉ jedné záložky filiálka patří — PŘESNÉ rozdělení, každá
+		 * filiálka právě do jedné (ne "Outlet navrch Otevřeno/Budoucí", jak
+		 * appka dělala dřív — opraveno na základě zpětné vazby: outlet se
+		 * řídí jinými provozními pravidly a do běžného seznamu otevřených
+		 * filiálek nepatří, JAKMILE je otevřený).
 		 *
-		 * Sdílené mezi renderStores (řádky tabulky) a storeLcBadgeCount
-		 * (počet v badge LC) — obojí musí počítat úplně stejnou množinu.
+		 * Dokud filiálka (outlet i neoutlet) čeká na otevření, chová se
+		 * úplně stejně jako kterákoli jiná budoucí filiálka — Budoucí bere
+		 * přednost před Outletem. Teprve po otevření se outlet oddělí do
+		 * vlastní záložky a v Otevřeno už se neobjeví.
+		 */
+		storeEffectiveView(s) {
+			if (this.isStoreFuture(s)) return 'future';
+			return this.isStoreOutlet(s) ? 'outlet' : 'open';
+		},
+
+		/**
+		 * Filiálky odpovídající JEDNÉ ze tří záložek (Otevřeno/Budoucí/Outlet)
+		 * — viz storeEffectiveView. Sdílené mezi renderStores (řádky tabulky)
+		 * a storeLcBadgeCount (počet v badge LC) — obojí musí počítat úplně
+		 * stejnou množinu.
 		 */
 		storesInView(view) {
-			if (view === 'outlet') return this.storesCache.filter((s) => this.isStoreOutlet(s));
-			const wantFuture = view === 'future';
-			return this.storesCache.filter((s) => this.isStoreFuture(s) === wantFuture);
+			return this.storesCache.filter((s) => this.storeEffectiveView(s) === view);
 		},
 
 		/**
@@ -4264,9 +4272,11 @@
 					Ui.escape(s.id) +
 				'</span>' +
 				'<span class="user-cell-name">' + Ui.escape(s.nazev) +
-					// Malý štítek vedle názvu, ne jen v Outlet záložce — outletová
-					// filiálka je pořád outlet, i když se dívám na Otevřeno/Budoucí,
-					// a je užitečné to vidět bez přepínání záložky.
+					// Otevřený Outlet se v tabulce vůbec neobjeví mimo záložku Outlet
+					// (viz storeEffectiveView), takže se tenhle štítek prakticky ukáže
+					// jen na dvou místech: v Budoucí (outlet, který ještě čeká na
+					// otevření) a v Outlet samotné — v obou je to užitečná informace
+					// navíc, proto podmínka nezávisí na aktuální záložce.
 					(this.isStoreOutlet(s) ? ' <span class="store-outlet-tag">Outlet</span>' : '') +
 				'</span>' +
 				'<span class="user-cell-muted">' + Ui.escape(s.lc || '—') + '</span>' +

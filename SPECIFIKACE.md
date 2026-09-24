@@ -467,7 +467,7 @@ mřížce chyběla. Podmínka: `start <= to && end >= from`.
 | **Kalendář** | měsíční mřížka + panel detailu dne |
 | **Požadavky** | přehled požadavků vedoucích pracovníků LC (viz 9.10), detail na klik na řádek |
 | **Uživatelé** | tabulka, přidání, změna role/oprávnění, deaktivace |
-| **Filiálky** | čtecí přehled filiálek (import dat, viz 9.6), detail na klik na řádek; právě zavřená filiálka má číslo i název červeně a u čísla ikonu zámku; trojice záložek Otevřeno/Budoucí/Outlet (s počtem v závorce) v hlavičce, vedle nich víceklikové badge rychlého filtru podle LC s počtem; Outlet je nezávislá vlastnost napříč Otevřeno/Budoucí, ne třetí hodnota téže osy, detekce podle názvu s ruční opravou v detailu (viz 9.6 Etapa 8/9/10) |
+| **Filiálky** | čtecí přehled filiálek (import dat, viz 9.6), detail na klik na řádek; právě zavřená filiálka má číslo i název červeně a u čísla ikonu zámku; trojice VZÁJEMNĚ SE VYLUČUJÍCÍCH záložek Otevřeno/Budoucí/Outlet (s počtem v závorce) v hlavičce — Outlet přebírá filiálku z Otevřeno, jakmile je otevřená, budoucí outlet zůstává v Budoucí — vedle nich víceklikové badge rychlého filtru podle LC s počtem; detekce Outletu podle názvu s ruční opravou v detailu (viz 9.6 Etapa 8/9/10) |
 | **LC** | čtecí přehled logistických center (import dat, viz 9.6), editace čísla/zkratky, samostatné sloupce Otevřeno a Budoucí s vlastním řazením/filtrem, Budoucí = 0 se nevypisuje (viz 9.6 Etapa 9) |
 | **Nastavení** | záložky: Oddělení, Pracovní pozice, Typy událostí (viz 9.5), Šablony událostí (viz 9.9), Import dat filiálek (viz 9.6), Státní svátky ČR (viz 9.7), Požadavky (viz 9.10) |
 
@@ -1243,24 +1243,43 @@ Budoucí:
   jinak hlásil jako „změna" pokaždé) a `_importSyncStores_` ho u
   existující filiálky přenáší ze STARÉHO řádku — přežije tak další
   synchronizaci stejně jako aktivace.
-- **Outlet je NEZÁVISLÁ VLASTNOST, ne třetí hodnota osy Otevřeno/Budoucí.**
-  Ty dvě se vzájemně vylučují (jedna a táž věc — datum otevření), Outlet
-  ale ne: outletová filiálka může být otevřená i budoucí zároveň. Záložka
-  Outlet proto ukazuje VŠECHNY outlety bez ohledu na otevření
-  (`App.storesInView('outlet')`) — schovávat je z Otevřeno/Budoucí by
-  nedávalo smysl, pořád je to filiálka jako každá jiná (adresa, kontakty,
-  otevírací doba se hledají stejně). Odznak „Outlet" je proto vidět
-  u řádku VE VŠECH třech záložkách, ne jen v Outlet.
-  Ze stejného důvodu se sloupec Stav v řádku řídí PER ŘÁDEK
-  (`App.isStoreFuture(s)`), ne podle toho, která záložka je aktivní —
-  dřív to bylo tab-wide (`this.storeView === 'future'`), což v Otevřeno/
-  Budoucí vycházelo nastejno (tam jsou všechny řádky stejného typu), ale
-  v Outlet by to všem řádkům ukázalo stejný, často špatný typ informace
-  (mix otevřených i budoucích).
-  `App.storesInView(view)` je JEDNO sdílené místo, které tuhle logiku
-  počítá — používá ho jak `renderStores` (řádky tabulky), tak
-  `storeLcBadgeCount` (počet v LC badge se tak správně přepočítá i pro
-  záložku Outlet).
+- **Každá filiálka patří právě do JEDNÉ ze tří záložek** — první verze
+  udělala Outlet nezávislou vlastnost napříč Otevřeno/Budoucí (outletová
+  filiálka byla vidět ve své záložce I v Otevřeno/Budoucí zároveň), což
+  bylo podle zpětné vazby ŠPATNĚ: Outlet se řídí jinými provozními
+  pravidly a do běžného seznamu otevřených filiálek nepatří, JAKMILE je
+  otevřený. Opraveno na přesné rozdělení (`App.storeEffectiveView`):
+  1. dokud filiálka (outlet i neoutlet) čeká na otevření, je **Budoucí**
+     jako kterákoli jiná — Outlet ještě není v provozu, chová se úplně
+     stejně jako běžná budoucí filiálka;
+  2. jakmile je otevřená, teprve TEHDY se rozhoduje: outlet jde do
+     **Outlet** a v Otevřeno zmizí, neoutlet zůstává v **Otevřeno**.
+
+  Budoucnost tedy bere přednost před Outletem. Odznak „Outlet" u řádku
+  proto v praxi appka ukáže jen na dvou místech: v Budoucí (outlet, který
+  ještě čeká) a v Outlet samotné (outlet, který už běží) — nikdy
+  v Otevřeno, tam se otevřený outlet vůbec nezobrazí.
+
+  Sloupec Stav v řádku se řídí PER ŘÁDEK (`App.isStoreFuture(s)`), ne
+  podle toho, která záložka je aktivní — v Outlet záložce se totiž (po
+  týhle opravě už jen dočasně, dokud tam nějaký budoucí outlet nezraje)
+  nic nemíchá, ale princip zůstává obecně správnější než dřívější
+  tab-wide `this.storeView === 'future'`.
+
+  `App.storesInView(view)` je JEDNO sdílené místo, které z
+  `storeEffectiveView` počítá celou množinu pro danou záložku — používá
+  ho jak `renderStores` (řádky tabulky), tak `storeLcBadgeCount` (počet
+  v LC badge).
+- **Počty u LC musí říkat totéž co záložky Filiálky.** `_storeCountByLc_`
+  (server) počítal „Otevřeno" jen podle data otevření, bez ohledu na
+  Outlet — po opravě výše by tak stejné slovo na dvou obrazovkách
+  znamenalo něco jiného (LC by otevřený outlet do Otevřeno počítalo,
+  záložka Filiálky ne). Opraveno: otevřený outlet se do LC součtu
+  Otevřeno NEPOČÍTÁ (viz `_storeIsOutlet_` v `_storeCountByLc_`). LC
+  přehled zatím nemá vlastní sloupec Outlet, takže u LC s otevřeným
+  outletem vyjde součet Otevřeno + Budoucí o něco NIŽŠÍ než celkový počet
+  jeho filiálek — to je vědomý kompromis, ne chyba, dokud LC nedostane
+  třetí sloupec po vzoru Filiálek.
 - Barva odznaku Outlet je fialová — jediná, kterou appka u filiálek zatím
   nepoužívá pro nic jiného (červená = zavřeno, modrá = identita/číslo+LC),
   ať se nepřekrývá s žádným stávajícím významem.

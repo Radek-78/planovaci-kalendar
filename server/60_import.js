@@ -1034,10 +1034,16 @@ function apiSetStoreOutlet(payload) {
  * Otevřeno/Budoucí — jen doplňková informace v přehledu LC, appka na ní
  * jinak nezávisí.
  *
- * Stejné pravidlo jako App.isStoreFuture na klientovi (musí zůstat
- * v souladu, jinak by čísla u LC neseděla s tím, co appka ukáže po
- * rozkliknutí Filiálky → Budoucí): budoucí = `opening_date` NOVĚJŠÍ
- * než dnešek, prázdné `opening_date` vždy počítá jako Otevřeno.
+ * Stejné pravidlo jako App.storeEffectiveView na klientovi (musí zůstat
+ * v souladu, jinak by stejné slovo "Otevřeno" na dvou obrazovkách
+ * znamenalo něco jiného): budoucí = `opening_date` NOVĚJŠÍ než dnešek,
+ * prázdné `opening_date` počítá jako otevřená — ALE otevřený Outlet se
+ * do "Otevřeno" nepočítá vůbec (viz _storeIsOutlet_) — jakmile je Outlet
+ * v provozu, řídí se jinými pravidly a do běžného počtu LC nepatří, přesně
+ * jako v záložce Filiálky → Otevřeno. Nepočítá se ale nikam jinam sem
+ * (LC přehled zatím nemá vlastní sloupec Outlet) — součet Otevřeno +
+ * Budoucí proto u LC s otevřeným Outletem vyjde o něco NIŽŠÍ než celkový
+ * počet jeho filiálek, to je záměr, ne chyba.
  */
 function _storeCountByLc_() {
 	const today = todayIso_();
@@ -1047,8 +1053,11 @@ function _storeCountByLc_() {
 		if (!lc) return;
 		if (!counts[lc]) counts[lc] = { open: 0, future: 0 };
 		const opening = String(row.opening_date || '');
-		if (opening && opening > today) counts[lc].future += 1;
-		else counts[lc].open += 1;
+		if (opening && opening > today) {
+			counts[lc].future += 1;
+		} else if (!_storeIsOutlet_(row)) {
+			counts[lc].open += 1;
+		}
 	});
 	return counts;
 }
