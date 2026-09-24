@@ -201,6 +201,13 @@
 					<div class="store-view-toggle" role="group" aria-label="Zobrazené filiálky">
 						<button type="button" class="store-view-toggle-btn is-active" data-view="open">Otevřeno <span class="store-view-toggle-count" id="storeViewCountOpen"></span></button>
 						<button type="button" class="store-view-toggle-btn" data-view="future">Budoucí <span class="store-view-toggle-count" id="storeViewCountFuture"></span></button>
+						<!-- Outlet je NA ROZDÍL od Otevřeno/Budoucí nezávislá vlastnost
+								 filiálky, ne třetí hodnota téže osy — outletová filiálka může
+								 být otevřená i budoucí zároveň. Záložka proto ukáže VŠECHNY
+								 outlety bez ohledu na to, jestli mají otevřeno (viz
+								 App.storesInView) — nemá je smysl z Otevřeno/Budoucí schovávat,
+								 pořád je to filiálka jako každá jiná. -->
+						<button type="button" class="store-view-toggle-btn" data-view="outlet">Outlet <span class="store-view-toggle-count" id="storeViewCountOutlet"></span></button>
 					</div>
 					<!-- Rychlé filtry podle LC — víceklikové badge (na rozdíl od
 							 přepínače vlevo NEJDE o skupinu s jedinou aktivní volbou, dá
@@ -4120,8 +4127,7 @@
 		 * kolik by jím prošlo.
 		 */
 		storeLcBadgeCount(lcNazev) {
-			const wantFuture = this.storeView === 'future';
-			return this.storesCache.filter((s) => s.lc === lcNazev && this.isStoreFuture(s) === wantFuture).length;
+			return this.storesInView(this.storeView).filter((s) => s.lc === lcNazev).length;
 		},
 
 		/**
@@ -4149,18 +4155,48 @@
 		},
 
 		/**
-		 * Počty pro popisky Otevřeno/Budoucí v přepínači — ZÁMĚRNĚ z CELÉHO
-		 * `storesCache`, bez ohledu na textové hledání, LC badge i filtr
-		 * v hlavičce sloupců. Popisek u záložky má ukázat velikost celé
-		 * kategorie ("kolik je vůbec otevřených/budoucích"), ne kolik jich
-		 * po zúžení filtrem zbylo — to už je vidět z počtu řádků v tabulce.
+		 * Je filiálka Outlet? Appka jen ČTE hotový výsledek ze serveru
+		 * (`_storeIsOutlet_` v 60_import.js — ruční přepsání, nebo podle
+		 * názvu) — žádná vlastní detekce na klientovi, ať existuje jen JEDNO
+		 * místo, které rozhoduje (viz i isStoreFuture, kde je to ze stejného
+		 * důvodu naopak — tam se počítá tady, protože "dnešek" je vlastnost
+		 * prohlížeče, ne dat).
+		 */
+		isStoreOutlet(s) {
+			return !!s.isOutlet;
+		},
+
+		/**
+		 * Filiálky odpovídající JEDNÉ ze tří záložek (Otevřeno/Budoucí/Outlet).
+		 * Otevřeno a Budoucí jsou vzájemně vylučující (jedna a táž osa —
+		 * datum otevření), Outlet je ale NEZÁVISLÁ VLASTNOST: outletová
+		 * filiálka může být otevřená i budoucí, takže záložka Outlet ukazuje
+		 * VŠECHNY outletové filiálky bez ohledu na to, jestli už mají otevřeno
+		 * — jinak by přepnutím na Outlet zmizely z Otevřeno/Budoucí filiálky,
+		 * které tam mají být vidět úplně stejně jako kterékoli jiné (adresa,
+		 * kontakty, otevírací doba se hledají stejně bez ohledu na Outlet).
+		 *
+		 * Sdílené mezi renderStores (řádky tabulky) a storeLcBadgeCount
+		 * (počet v badge LC) — obojí musí počítat úplně stejnou množinu.
+		 */
+		storesInView(view) {
+			if (view === 'outlet') return this.storesCache.filter((s) => this.isStoreOutlet(s));
+			const wantFuture = view === 'future';
+			return this.storesCache.filter((s) => this.isStoreFuture(s) === wantFuture);
+		},
+
+		/**
+		 * Počty pro popisky Otevřeno/Budoucí/Outlet v přepínači — ZÁMĚRNĚ
+		 * z CELÉHO `storesCache`, bez ohledu na textové hledání, LC badge i
+		 * filtr v hlavičce sloupců. Popisek u záložky má ukázat velikost
+		 * celé kategorie ("kolik je vůbec otevřených/budoucích/outletů"), ne
+		 * kolik jich po zúžení filtrem zbylo — to už je vidět z počtu řádků
+		 * v tabulce.
 		 */
 		updateStoreViewCounts() {
-			let open = 0;
-			let future = 0;
-			this.storesCache.forEach((s) => { if (this.isStoreFuture(s)) future++; else open++; });
-			document.querySelector('#storeViewCountOpen').textContent = '(' + open + ')';
-			document.querySelector('#storeViewCountFuture').textContent = '(' + future + ')';
+			document.querySelector('#storeViewCountOpen').textContent = '(' + this.storesInView('open').length + ')';
+			document.querySelector('#storeViewCountFuture').textContent = '(' + this.storesInView('future').length + ')';
+			document.querySelector('#storeViewCountOutlet').textContent = '(' + this.storesInView('outlet').length + ')';
 		},
 
 		renderStores() {
@@ -4173,10 +4209,13 @@
 					)
 				: this.storesCache;
 
-			// Otevřeno/Budoucí — nezávislé na textovém hledání i na filtru
-			// v hlavičce sloupců, uplatní se navrch obou.
-			const wantFuture = this.storeView === 'future';
-			rows = rows.filter((s) => this.isStoreFuture(s) === wantFuture);
+			// Otevřeno/Budoucí/Outlet — nezávislé na textovém hledání i na
+			// filtru v hlavičce sloupců, uplatní se navrch obou. Set, ne
+			// filter+indexOf uvnitř filtru — to by storesInView přepočítávalo
+			// pro KAŽDÝ řádek zvlášť (referenční rovnost objektů z jedné
+			// a téže storesCache dovoluje Set použít přímo).
+			const viewSet = new Set(this.storesInView(this.storeView));
+			rows = rows.filter((s) => viewSet.has(s));
 
 			// Rychlé filtry podle LC (.store-lc-badges) — prázdný Set = beze
 			// filtru, jinak musí filiálka patřit pod NĚKTERÉ z vybraných LC
@@ -4190,10 +4229,14 @@
 			this.updateStoreViewCounts();
 			this.updateStoreLcBadgeCounts();
 
+			const emptyViewMessages = {
+				future: 'Žádná filiálka s budoucím datem otevření.',
+				outlet: 'Žádná filiálka označená jako Outlet.',
+			};
 			list.innerHTML = rows.length
 				? rows.map((s) => this.renderStoreRow(s)).join('')
 				: this.usersPlaceholder(this.storesCache.length
-					? (wantFuture ? 'Žádná filiálka s budoucím datem otevření.' : 'Žádná filiálka neodpovídá hledání/filtru.')
+					? (emptyViewMessages[this.storeView] || 'Žádná filiálka neodpovídá hledání/filtru.')
 					: 'Zatím žádná data — synchronizujte v Nastavení.');
 		},
 
@@ -4220,21 +4263,30 @@
 						: '') +
 					Ui.escape(s.id) +
 				'</span>' +
-				'<span class="user-cell-name">' + Ui.escape(s.nazev) + '</span>' +
+				'<span class="user-cell-name">' + Ui.escape(s.nazev) +
+					// Malý štítek vedle názvu, ne jen v Outlet záložce — outletová
+					// filiálka je pořád outlet, i když se dívám na Otevřeno/Budoucí,
+					// a je užitečné to vidět bez přepínání záložky.
+					(this.isStoreOutlet(s) ? ' <span class="store-outlet-tag">Outlet</span>' : '') +
+				'</span>' +
 				'<span class="user-cell-muted">' + Ui.escape(s.lc || '—') + '</span>' +
 				'<span class="user-cell-muted">' + Ui.escape(s.telefonProdejny || '—') + '</span>' +
 				'<span class="user-cell-muted">' + Ui.escape(s.vt || '—') + '</span>' +
 				'<span class="user-cell-muted">' + Ui.escape(s.rm || '—') + '</span>' +
-				(this.storeView === 'future' ? this.renderStoreOpeningStatus(s.openingDate) : this.renderStoreStatus(s.closure)) +
+				// Per ŘÁDEK, ne podle aktivní záložky — v Outlet záložce se
+				// otevřené a budoucí filiálky míchají dohromady, tabu-wide
+				// podmínka by tam všem ukázala stejný (často špatný) typ
+				// informace.
+				(this.isStoreFuture(s) ? this.renderStoreOpeningStatus(s.openingDate) : this.renderStoreStatus(s.closure)) +
 				'<span class="user-actions">' + actionBtn + '</span>' +
 			'</div>';
 		},
 
 		/**
-		 * Sloupec Stav v záložce Budoucí — datum otevření místo otevírací
+		 * Sloupec Stav u budoucí filiálky — datum otevření místo otevírací
 		 * doby/uzavírky. Stejná dvouřádková stavba (.store-status-line1/2)
-		 * jako renderStoreStatus, ať mají řádky obou záložek shodnou výšku
-		 * a stejný jazyk, jen prázdný druhý řádek.
+		 * jako renderStoreStatus, ať mají řádky shodnou výšku a stejný
+		 * jazyk, jen prázdný druhý řádek.
 		 */
 		renderStoreOpeningStatus(openingDate) {
 			return '<span class="store-status"><span class="store-status-line1">' +
@@ -4357,6 +4409,12 @@
 			});
 			document.querySelector('#storeDetailClose').addEventListener('click', () => Ui.closeModal(document.querySelector('#storeDetailModal')));
 			document.querySelector('#storeDetailModal').addEventListener('click', (e) => {
+				const overrideBtn = e.target.closest('.store-outlet-toggle-btn');
+				if (overrideBtn) {
+					const storeId = overrideBtn.closest('.store-outlet-toggle').dataset.storeId;
+					this.setStoreOutlet(storeId, overrideBtn.dataset.override);
+					return;
+				}
 				if (e.target === document.querySelector('#storeDetailModal')) Ui.closeModal(e.target);
 			});
 			document.querySelector('#storeDetailModal').addEventListener('cancel', (e) => {
@@ -4389,6 +4447,59 @@
 		 * by se řídká Adresa natahovala na výšku nejdelší karty (Otevírací
 		 * doba), a působila zbytečně velká (nahlášená zpětná vazba).
 		 */
+		/**
+		 * Ruční přepsání automatického rozpoznání Outletu (viz
+		 * apiSetStoreOutlet) — TŘI stavy vedle sebe (Automaticky/Ano/Ne), ne
+		 * obyčejný checkbox: appka potřebuje umět i "vrátit se k názvu", ne
+		 * jen zapnout/vypnout. Nápověda dole ukazuje, co by řeklo samotné
+		 * automatické rozpoznání (store.nameImpliesOutlet), i když je zrovna
+		 * aktivní ruční přepsání — ať je jasné, PROČ se výsledný odznak
+		 * (store.isOutlet) třeba liší od názvu.
+		 *
+		 * Vidí a mění ho jen ten, kdo smí spravovat Nastavení — appka jinak
+		 * filiálky needituje vůbec, tohle je spolu s (de)aktivací jediná
+		 * výjimka (viz i doc komentář u renderStoreDetail níže).
+		 */
+		renderStoreOutletControl(store) {
+			if (!this.canManageSettings) return '';
+			const options = [
+				{ value: '', label: 'Automaticky' },
+				{ value: 'true', label: 'Ano' },
+				{ value: 'false', label: 'Ne' },
+			];
+			const current = store.outletOverride || '';
+			return '<div class="store-detail-outlet">' +
+				'<span class="store-detail-outlet-label">Outlet</span>' +
+				'<div class="store-outlet-toggle" role="group" aria-label="Označení Outlet" data-store-id="' + Ui.escape(store.id) + '">' +
+					options.map((o) =>
+						'<button type="button" class="store-outlet-toggle-btn' + (o.value === current ? ' is-active' : '') +
+							'" data-override="' + o.value + '">' + o.label + '</button>'
+					).join('') +
+				'</div>' +
+				'<span class="store-detail-outlet-hint">Podle názvu: ' +
+					(store.nameImpliesOutlet ? 'Outlet' : 'Není Outlet') +
+				'</span>' +
+			'</div>';
+		},
+
+		/**
+		 * Uloží ruční přepsání Outletu. Na rozdíl od apiSetStoreActive (to
+		 * appka volá jen ze seznamu) tohle tlačítko žije UVNITŘ samotného
+		 * detailu — po uložení se proto musí překreslit i tělo právě
+		 * otevřeného modalu, jinak by ukazovalo starý stav, dokud by ho
+		 * uživatel nezavřel a znovu neotevřel. Tlačítko existuje jen uvnitř
+		 * vykresleného detailu, takže modal je v tuhle chvíli vždycky
+		 * otevřený právě na téhle filiálce — žádná kontrola navíc netřeba.
+		 */
+		setStoreOutlet(id, override) {
+			Ui.call('apiSetStoreOutlet', { id: id, override: override }, { silent: true })
+				.then((record) => {
+					this.applyStoreToCache(record);
+					document.querySelector('#storeDetailBody').innerHTML = this.renderStoreDetail(record);
+				})
+				.catch((error) => Ui.toast(error.message, 'error'));
+		},
+
 		renderStoreDetail(store) {
 			const contactRow = (label, name, phone) => {
 				const phoneFormatted = this.formatPhoneCz(phone);
@@ -4412,6 +4523,7 @@
 						store.closure.daysUntil + ' ' + this.dayWord(store.closure.daysUntil) + ' (' + range + ')</span>';
 			}
 			const inactiveBadge = store.active ? '' : '<span class="store-detail-badge is-closed">Deaktivovaná</span>';
+			const outletBadge = store.isOutlet ? '<span class="store-detail-badge is-outlet">Outlet</span>' : '';
 
 			const contacts = contactRow('Telefon prodejny', '', store.telefonProdejny) +
 				contactRow('VT', store.vt, store.telefonVt) +
@@ -4427,8 +4539,9 @@
 				'<div class="store-detail-badges">' +
 					'<span class="store-detail-badge is-primary">Číslo ' + Ui.escape(store.id) + '</span>' +
 					(store.lc ? '<span class="store-detail-badge is-primary">LC ' + Ui.escape(store.lc) + '</span>' : '') +
-					closedBadge + inactiveBadge +
+					closedBadge + inactiveBadge + outletBadge +
 				'</div>' +
+				this.renderStoreOutletControl(store) +
 				'<div class="store-detail-columns">' +
 					'<div class="field-group field-group-accent store-detail-col">' +
 						'<p class="kicker"><i class="ph ph-map-pin" aria-hidden="true"></i> Adresa</p>' +

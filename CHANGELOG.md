@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.17.0 - 24.09.2026 09:07
+- v0.17.0: Nová záložka Outlet u filiálek, s automatickou detekcí podle názvu i ruční opravou. Přibyla třetí záložka Outlet vedle Otevřeno a Budoucí, s počtem v závorce stejně jako ty dvě předchozí. Filiálka se považuje za Outlet automaticky, pokud její název obsahuje slovo outlet, ale appka umí i ruční opravu v obou směrech - v detailu filiálky jde přepnout na Automaticky, Ano nebo Ne, takže jde vynutit i to, že filiálka Outlet je, i to, že navzdory názvu není. Outlet je nezávislá vlastnost, ne třetí hodnota stejné osy jako Otevřeno a Budoucí - outletová filiálka může být otevřená i budoucí zároveň, takže se dál normálně zobrazuje i v obou původních záložkách, jen s malým fialovým štítkem vedle názvu. Záložka Outlet je tak rychlý způsob, jak najít všechny pohromadě, ne jejich vyřazení odjinud. Sloupec Stav se teď řídí podle jednotlivého řádku, ne podle aktivní záložky, protože v Outletu se míchají otevřené i budoucí filiálky a každá potřebuje jiný typ informace. Ruční oprava přežije i noční synchronizaci stejně jako aktivace filiálky.
+
 ## v0.16.2 - 24.09.2026 08:25
 - v0.16.2: Oprava přesahu ikony filtru u sloupců Otevřeno a Budoucí v záložce LC. Minulá verze dala oběma sloupcům osmdesát čtyři pixelů, ale hlavička v sobě nese popisek, slot řazení a slot filtru pohromadě, takže se osmiznakové Otevřeno nevešlo a ikona filtru vizuálně přetékala do sousedního sloupce. Platí tu stejné pravidlo jako všude jinde u těchto tabulek, název sloupce se nikdy nezkracuje, takže sloupec musí být sám o sobě dost široký. Oba sloupce mají nově sto šestnáct pixelů, což dává bezpečnou rezervu.
 

@@ -158,7 +158,8 @@ const DB_SCHEMA = {
               'po_otevreno','po_zavreno','ut_otevreno','ut_zavreno','st_otevreno','st_zavreno',
               'ct_otevreno','ct_zavreno','pa_otevreno','pa_zavreno','so_otevreno','so_zavreno',
               'ne_otevreno','ne_zavreno','updated_at',
-              'opening_date'], // datum otevření z listu Organizace, viz 9.6 Etapa 8
+              'opening_date',    // datum otevření z listu Organizace, viz 9.6 Etapa 8
+              'outlet_override'], // ruční přepsání automatické detekce Outletu, viz 9.6 Etapa 10
   '_logistic_centers': ['id','cislo','zkratka','nazev','active','created_at','created_by','updated_at','updated_by'],
   '_store_closures':   ['id','nazev','od','do','celkem_dni','updated_at'],
   // Trvalá historie synchronizací (Log importu) — append-only.
@@ -422,7 +423,8 @@ Všechny endpointy vrací jednotnou obálku `{ ok: true, data }` nebo
 | `apiGetLogisticCenters()` | `calendar_read` | — | seznam LC, řazený podle Čísla (bez čísla vždy na konec) — čtení smí každý přihlášený |
 | `apiSaveLogisticCenter(payload)` | `settings_manage` | `{ id, cislo, zkratka }` | uložené LC — edituje jen tato dvě pole, název je needitovatelný |
 | `apiSetLogisticCenterActive(payload)` | `settings_manage` | `{ id, active }` | uložené LC — deaktivace přežije i další synchronizaci, viz 9.6 |
-| `apiSetStoreActive(payload)` | `settings_manage` | `{ id, active }` | uložená filiálka — jediné ručně řízené pole u filiálky, přežije i další synchronizaci |
+| `apiSetStoreActive(payload)` | `settings_manage` | `{ id, active }` | uložená filiálka — ručně řízené pole, přežije i další synchronizaci |
+| `apiSetStoreOutlet(payload)` | `settings_manage` | `{ id, override }` — `'' \| 'true' \| 'false'` | uložená filiálka — ruční přepsání automatické detekce Outletu, přežije i další synchronizaci (viz 9.6 Etapa 10) |
 | `apiGetHolidays(payload)` | `calendar_read` | `{ year }` (nepovinné, výchozí aktuální rok) | `{ year, holidays }` — pole `{ id, date, name }` z `_holidays`; pro dosud nenavštívený rok appka nejdřív sama naseje výchozí sadu (viz 9.7); čtení smí každý přihlášený, ne jen SUPERADMIN |
 | `apiSaveHoliday(payload)` | `settings_manage` | `{ id?, date, name }` | uložený svátek — s `id` úprava, bez založení nového |
 | `apiDeleteHoliday(payload)` | `settings_manage` | `{ id }` | — |
@@ -465,7 +467,7 @@ mřížce chyběla. Podmínka: `start <= to && end >= from`.
 | **Kalendář** | měsíční mřížka + panel detailu dne |
 | **Požadavky** | přehled požadavků vedoucích pracovníků LC (viz 9.10), detail na klik na řádek |
 | **Uživatelé** | tabulka, přidání, změna role/oprávnění, deaktivace |
-| **Filiálky** | čtecí přehled filiálek (import dat, viz 9.6), detail na klik na řádek; právě zavřená filiálka má číslo i název červeně a u čísla ikonu zámku; přepínač Otevřeno/Budoucí (s počtem v závorce) v hlavičce odděluje filiálky s budoucím datem otevření, pod ním víceklikové badge rychlého filtru podle LC (viz 9.6 Etapa 8/9) |
+| **Filiálky** | čtecí přehled filiálek (import dat, viz 9.6), detail na klik na řádek; právě zavřená filiálka má číslo i název červeně a u čísla ikonu zámku; trojice záložek Otevřeno/Budoucí/Outlet (s počtem v závorce) v hlavičce, vedle nich víceklikové badge rychlého filtru podle LC s počtem; Outlet je nezávislá vlastnost napříč Otevřeno/Budoucí, ne třetí hodnota téže osy, detekce podle názvu s ruční opravou v detailu (viz 9.6 Etapa 8/9/10) |
 | **LC** | čtecí přehled logistických center (import dat, viz 9.6), editace čísla/zkratky, samostatné sloupce Otevřeno a Budoucí s vlastním řazením/filtrem, Budoucí = 0 se nevypisuje (viz 9.6 Etapa 9) |
 | **Nastavení** | záložky: Oddělení, Pracovní pozice, Typy událostí (viz 9.5), Šablony událostí (viz 9.9), Import dat filiálek (viz 9.6), Státní svátky ČR (viz 9.7), Požadavky (viz 9.10) |
 
@@ -1216,6 +1218,52 @@ Budoucí:
   jinde u těchhle tabulek (viz komentář u `.col-header-label`): název
   sloupce se NIKDY nezkracuje, takže sloupec musí být dost široký sám —
   116px dává bezpečnou rezervu i pro 8znakové „OTEVŘENO".
+
+**Etapa 10 (implementováno)** — třetí záložka Outlet:
+
+- **Detekce je KOMBINOVANÁ**, přesně podle zadání: automaticky podle
+  názvu filiálky (obsahuje „outlet", bez ohledu na velikost písmen,
+  `_storeNameImpliesOutlet_` v `60_import.js`), s možností ruční opravy
+  v obou směrech přes nový sloupec `_stores.outlet_override` — prázdné
+  = řídit se názvem, `'true'`/`'false'` = vynutit bez ohledu na něj
+  (`_storeIsOutlet_`, `apiSetStoreOutlet`). Nejde tedy o obyčejný
+  checkbox „označit jako Outlet" (ten by uměl jen JEDEN směr opravy),
+  ale o TŘI stavy vedle sebe v detailu filiálky — Automaticky / Ano / Ne
+  (`App.renderStoreOutletControl`), vidí a mění je jen `canManageSettings`.
+  Nápověda pod nimi ukazuje, co by řeklo samotné rozpoznání podle názvu
+  (`nameImpliesOutlet`), i když je zrovna aktivní ruční přepsání — ať je
+  jasné PROČ se výsledný odznak (`isOutlet`) od názvu případně liší.
+  `outlet_override` je nový sloupec AŽ NA KONCI `_stores` (za
+  `opening_date`, viz kritické pravidlo v 5.1) a je chráněný v
+  `TEXT_COLUMNS._stores` stejně jako zbytek tabulky — je to TEXT
+  ('true'/'false' jako řetězec), ne skutečný boolean jako `active`, takže
+  by mu bez ochrany hrozila stejná nekonečná smyčka jako `ulici` v Etapě 6.
+  Ze stejného důvodu jako u `active` ho `_storeRowChanges_` VYLUČUJE
+  z porovnávání při syncu (appka ho sama nikdy neposílá, takže by se
+  jinak hlásil jako „změna" pokaždé) a `_importSyncStores_` ho u
+  existující filiálky přenáší ze STARÉHO řádku — přežije tak další
+  synchronizaci stejně jako aktivace.
+- **Outlet je NEZÁVISLÁ VLASTNOST, ne třetí hodnota osy Otevřeno/Budoucí.**
+  Ty dvě se vzájemně vylučují (jedna a táž věc — datum otevření), Outlet
+  ale ne: outletová filiálka může být otevřená i budoucí zároveň. Záložka
+  Outlet proto ukazuje VŠECHNY outlety bez ohledu na otevření
+  (`App.storesInView('outlet')`) — schovávat je z Otevřeno/Budoucí by
+  nedávalo smysl, pořád je to filiálka jako každá jiná (adresa, kontakty,
+  otevírací doba se hledají stejně). Odznak „Outlet" je proto vidět
+  u řádku VE VŠECH třech záložkách, ne jen v Outlet.
+  Ze stejného důvodu se sloupec Stav v řádku řídí PER ŘÁDEK
+  (`App.isStoreFuture(s)`), ne podle toho, která záložka je aktivní —
+  dřív to bylo tab-wide (`this.storeView === 'future'`), což v Otevřeno/
+  Budoucí vycházelo nastejno (tam jsou všechny řádky stejného typu), ale
+  v Outlet by to všem řádkům ukázalo stejný, často špatný typ informace
+  (mix otevřených i budoucích).
+  `App.storesInView(view)` je JEDNO sdílené místo, které tuhle logiku
+  počítá — používá ho jak `renderStores` (řádky tabulky), tak
+  `storeLcBadgeCount` (počet v LC badge se tak správně přepočítá i pro
+  záložku Outlet).
+- Barva odznaku Outlet je fialová — jediná, kterou appka u filiálek zatím
+  nepoužívá pro nic jiného (červená = zavřeno, modrá = identita/číslo+LC),
+  ať se nepřekrývá s žádným stávajícím významem.
 
 ### 9.7 Státní svátky ČR
 

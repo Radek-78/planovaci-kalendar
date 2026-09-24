@@ -138,6 +138,13 @@ const DB_SCHEMA = {
 		// u filiálky, kterou list "Organizace" vůbec neobsahuje.
 		// Nový sloupec, proto AŽ NA KONCI (viz kritické pravidlo výše).
 		'opening_date',
+		// Ruční přepsání automatického rozpoznání Outletu podle názvu (viz
+		// _storeIsOutlet_ v 60_import.js, apiSetStoreOutlet) — prázdné = řídit
+		// se názvem, 'true'/'false' = vynutit bez ohledu na něj. Appka je
+		// ručně řízené a sync ho nikdy neposílá (viz _storeRowChanges_),
+		// přežívá tak další synchronizaci stejně jako "active". Další nový
+		// sloupec, proto zase AŽ NA KONCI.
+		'outlet_override',
 	],
 	// LC se odvozují ze sloupce "LC" u filiálek — "nazev" je tedy ze zdroje
 	// (needituje se), "cislo"/"zkratka"/"active" zadává ručně SUPERADMIN
@@ -252,13 +259,19 @@ const TEXT_COLUMNS = {
 	// 4) otevírací doba (např. "7:00"), updated_at a opening_date (datum ze
 	//    zdroje ve tvaru "YYYY-MM-DD", stejná ochrana jako _store_closures.od/
 	//    do níže) — převod na čas/datum, viz obecný komentář nad TEXT_COLUMNS.
+	//
+	// 5) `outlet_override` — na rozdíl od `active` NENÍ skutečný boolean,
+	//    appka do něj ukládá TEXT ('' | 'true' | 'false', viz apiSetStoreOutlet
+	//    v 60_import.js), protože potřebuje tři stavy, ne dva. Bez ochrany by
+	//    mu hrozilo přesně totéž jako `ulice` v bodě 1 — Sheets by řetězec
+	//    "true"/"false" mohla tiše převést na typ Boolean.
 	_stores: [
 		'id', 'kod', 'nazev', 'lc',
 		'telefon_prodejny', 'vt', 'telefon_vt', 'rm', 'telefon_rm', 'zastupce_rm', 'telefon_zastupce',
 		'ulice', 'mesto', 'psc',
 		'po_otevreno', 'po_zavreno', 'ut_otevreno', 'ut_zavreno', 'st_otevreno', 'st_zavreno',
 		'ct_otevreno', 'ct_zavreno', 'pa_otevreno', 'pa_zavreno', 'so_otevreno', 'so_zavreno',
-		'ne_otevreno', 'ne_zavreno', 'updated_at', 'opening_date',
+		'ne_otevreno', 'ne_zavreno', 'updated_at', 'opening_date', 'outlet_override',
 	],
 	_logistic_centers: ['created_at', 'updated_at'],
 	// id = stejné "Číslo" jako u _stores, stejný důvod ochrany. `nazev` je

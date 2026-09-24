@@ -1522,6 +1522,20 @@
 		color: var(--lidl-red);
 	}
 
+	/* Malý štítek vedle názvu — vidět ve VŠECH záložkách, ne jen v Outlet
+		 (outletová filiálka je outlet i v Otevřeno/Budoucí, viz komentář
+		 u App.storesInView). Fialová stejná jako .store-detail-badge.is-outlet
+		 v detailu, ať appka drží jednu barvu pro jeden význam. */
+	.store-outlet-tag {
+		background: #f3e8fd;
+		border-radius: 3px;
+		color: #7c3aed;
+		font-size: 10px;
+		font-weight: 700;
+		padding: 1px 5px;
+		white-space: nowrap;
+	}
+
 	/* Celý řádek filiálky je klikací (otevře detail, viz openStoreDetailModal)
 		 — na rozdíl od Uživatelé/LC, kde klik nese jen tlačítko Akce. Klik na
 		 tlačítko Akce samo se přesto zastaví dřív, viz bindStores. */
@@ -1960,6 +1974,70 @@
 		background: #e6eef8;
 		color: var(--lidl-dark-blue);
 		font-size: 13px;
+	}
+
+	/* Fialová — jediná barva, kterou appka u filiálek zatím nepoužívá pro
+		 nic jiného (červená = zavřeno, modrá = identita), ať se Outlet
+		 neplete s žádným stávajícím významem. */
+	.store-detail-badge.is-outlet {
+		background: #f3e8fd;
+		color: #7c3aed;
+	}
+
+	/* ── Ruční přepsání automatického rozpoznání Outletu (detail filiálky,
+		 viz renderStoreOutletControl) — samostatný řádek nad čtyřsloupcovým
+		 přehledem, vidí ho jen SUPERADMIN/ADMIN (canManageSettings). ── */
+
+	.store-detail-outlet {
+		align-items: center;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+	}
+
+	.store-detail-outlet-label {
+		color: var(--muted);
+		font-size: 12px;
+		font-weight: 700;
+	}
+
+	/* Stejný pilulkový jazyk jako .store-view-toggle/.column-filter-modes,
+		 ale samostatná definice (jiné místo, jiný kontext) — viz i komentář
+		 u .column-filter-modes o stejném vzoru s vlastním rulesetem. */
+	.store-outlet-toggle {
+		background: var(--page);
+		border: 1px solid var(--line-soft);
+		border-radius: var(--radius);
+		display: flex;
+		gap: 2px;
+		padding: 3px;
+	}
+
+	.store-outlet-toggle-btn {
+		background: none;
+		border: 0;
+		border-radius: 5px;
+		color: var(--muted);
+		cursor: pointer;
+		font: inherit;
+		font-size: 12px;
+		font-weight: 700;
+		padding: 5px 10px;
+	}
+
+	.store-outlet-toggle-btn:hover {
+		color: var(--text);
+	}
+
+	.store-outlet-toggle-btn.is-active {
+		background: var(--white);
+		box-shadow: 0 1px 3px rgba(0, 36, 102, 0.12);
+		color: #7c3aed;
+	}
+
+	.store-detail-outlet-hint {
+		color: var(--muted);
+		font-size: 11.5px;
 	}
 
 	/* Čtyři sloupce vedle sebe, každý vlastní karta s modrým orámováním

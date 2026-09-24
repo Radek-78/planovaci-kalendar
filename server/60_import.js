@@ -570,14 +570,17 @@ function apiSetImportTrigger(payload) {
 /**
  * Porovná uložený a nově importovaný záznam filiálky a vrátí pole změn
  * `{ field, from, to }` — jen sledovaná pole ze zdroje, ne interní
- * (id/updated_at) ani "active" (to appka řídí ručně, viz apiSetStoreActive
- * — sync ho nikdy neposílá, takže by se jako "změna" hlásilo úplně vždycky
- * a zbytečně by to zaplavovalo Log importu). Prázdné pole = beze změny.
+ * (id/updated_at) ani ručně řízená pole appky samotné, která sync vůbec
+ * neposílá — "active" (viz apiSetStoreActive) a "outlet_override" (viz
+ * apiSetStoreOutlet). Kdyby se nevyloučila, hlásila by se jako "změna"
+ * úplně vždycky (přesně ta nekonečná smyčka z Etapy 6 — sync by
+ * dohledávanou hodnotu vždycky viděl jinak, než jakou sám zapsal) a
+ * zbytečně by to zaplavovalo Log importu. Prázdné pole = beze změny.
  */
 function _storeRowChanges_(existing, incoming) {
 	const changes = [];
 	DB_SCHEMA[SHEETS.STORES].forEach((field) => {
-		if (field === 'id' || field === 'updated_at' || field === 'active') return;
+		if (field === 'id' || field === 'updated_at' || field === 'active' || field === 'outlet_override') return;
 		const from = String(existing[field] || '');
 		const to = String(incoming[field] || '');
 		if (from !== to) changes.push({ field: field, from: from, to: to });
@@ -588,8 +591,9 @@ function _storeRowChanges_(existing, incoming) {
 /**
  * Nahradí _stores daty ze zdroje, vrátí PODROBNÝ rozdíl (ne jen počty) —
  * viz _importWriteLog_/apiGetImportLog. U existující filiálky se "active"
- * přenese ze STARÉHO řádku (sync o něm nic neví, appka ho řídí ručně přes
- * apiSetStoreActive) — stejný princip jako u LC, deaktivace tak přežije
+ * i "outlet_override" přenesou ze STARÉHO řádku (sync o nich nic neví,
+ * appka je řídí ručně přes apiSetStoreActive/apiSetStoreOutlet) — stejný
+ * princip jako u LC, deaktivace i ruční označení Outletu tak přežijí
  * i tuhle synchronizaci.
  *
  * `openings` je mapa `číslo filiálky → datum otevření` z listu Organizace
@@ -616,7 +620,7 @@ function _importSyncStores_(storeRows, openings) {
 		}
 		const fields = _storeRowChanges_(existing, merged);
 		if (fields.length) changed.push({ id: row.id, nazev: row.nazev, fields: fields });
-		return Object.assign({}, merged, { active: existing.active });
+		return Object.assign({}, merged, { active: existing.active, outlet_override: existing.outlet_override });
 	});
 	const removed = before
 		.filter((row) => !afterIds[String(row.id)])
@@ -880,6 +884,24 @@ function _storeIsActive_(row) {
 	return String(row.active) !== 'false';
 }
 
+/** Naznačuje NÁZEV filiálky, že jde o Outlet? Čistě textová shoda, appka na ní staví automatické rozpoznání (viz _storeIsOutlet_). */
+function _storeNameImpliesOutlet_(nazev) {
+	return String(nazev || '').toLowerCase().indexOf('outlet') !== -1;
+}
+
+/**
+ * Je filiálka Outlet? Ruční přepsání (`outlet_override`, viz
+ * apiSetStoreOutlet) má PŘEDNOST před automatickým rozpoznáním z názvu —
+ * '' = řídit se názvem, 'true'/'false' = vynutit bez ohledu na něj (pro
+ * výjimky, kde název nesedí se skutečností).
+ */
+function _storeIsOutlet_(row) {
+	const override = String(row.outlet_override || '');
+	if (override === 'true') return true;
+	if (override === 'false') return false;
+	return _storeNameImpliesOutlet_(row.nazev);
+}
+
 /** Přemění řádek filiálky na podobu pro klienta — camelCase pole + vyhodnocená uzavírka (viz _evaluateClosure_). */
 function _publicStore_(row, closuresByStore, today) {
 	return {
@@ -888,6 +910,13 @@ function _publicStore_(row, closuresByStore, today) {
 		nazev: String(row.nazev || ''),
 		lc: String(row.lc || ''),
 		active: _storeIsActive_(row),
+		// Vyhodnocené (override, nebo podle názvu) + oba vstupy zvlášť —
+		// appka na klientovi z nich skládá tri-state ovládání v detailu
+		// (Automaticky/Ano/Ne, viz App.renderStoreOutletControl) a nápovědu
+		// "podle názvu by to bylo…", i když je zrovna aktivní ruční přepsání.
+		isOutlet: _storeIsOutlet_(row),
+		outletOverride: String(row.outlet_override || ''),
+		nameImpliesOutlet: _storeNameImpliesOutlet_(row.nazev),
 		telefonProdejny: String(row.telefon_prodejny || ''),
 		vt: String(row.vt || ''),
 		telefonVt: String(row.telefon_vt || ''),
@@ -959,6 +988,40 @@ function apiSetStoreActive(payload) {
 		dbUpdate_(SHEETS.STORES, id, { active: active });
 		audit_(active ? 'store.activate' : 'store.deactivate',
 			(active ? 'Aktivována' : 'Deaktivována') + ' filiálka „' + existing.nazev + '"');
+
+		const closuresByStore = {};
+		dbGetAll_(SHEETS.STORE_CLOSURES).forEach((row) => { closuresByStore[String(row.id)] = row; });
+		return _publicStore_(dbFindById_(SHEETS.STORES, id), closuresByStore, todayIso_());
+	});
+}
+
+/**
+ * Nastaví ruční přepsání automatického rozpoznání Outletu (viz
+ * _storeIsOutlet_) — appka jinak filiálky needituje, tohle je spolu
+ * s "active" jediné další ručně řízené pole. Přežije další synchronizaci
+ * stejně jako "active" (viz _importSyncStores_/_storeRowChanges_).
+ *
+ * @param {Object} payload  { id, override }  override: '' (řídit se názvem) | 'true' | 'false'
+ */
+function apiSetStoreOutlet(payload) {
+	return guard_(PERM_KEYS.SETTINGS_MANAGE, () => {
+		const data = payload || {};
+		const id = cleanText_(data.id, 'ID filiálky', 100, true);
+		const override = String(data.override || '');
+		if (override !== '' && override !== 'true' && override !== 'false') {
+			throw userError_('Neplatná hodnota označení Outlet.');
+		}
+
+		const existing = dbFindById_(SHEETS.STORES, id);
+		if (!existing) {
+			throw userError_('Filiálka nebyla nalezena — mohla ji mezitím smazat synchronizace.');
+		}
+
+		dbUpdate_(SHEETS.STORES, id, { outlet_override: override });
+		const changeLabel = override === 'true' ? 'ručně označena jako Outlet'
+			: override === 'false' ? 'ručně označena, že Outlet NENÍ'
+			: 'vrácena na automatické rozpoznání Outletu podle názvu';
+		audit_('store.outlet', 'Filiálka „' + existing.nazev + '" ' + changeLabel);
 
 		const closuresByStore = {};
 		dbGetAll_(SHEETS.STORE_CLOSURES).forEach((row) => { closuresByStore[String(row.id)] = row; });
