@@ -189,7 +189,20 @@
 				 Klik na řádek otevře detail (kontakty, adresa, otevírací doba). -->
 		<section class="view-panel" data-page-section="stores">
 			<div class="section-header">
-				<h2>Filiálky</h2>
+				<div class="section-header-title">
+					<h2>Filiálky</h2>
+					<!-- Otevřeno/Budoucí — appka dřív ukazovala VŠECHNY filiálky ze
+							 zdroje pohromadě, i ty, které mají datum otevření (list
+							 Organizace, viz server/60_import.js) teprve v budoucnu
+							 a oficiálně tedy ještě nejsou v provozu (nahlášeno). Přepínač
+							 obě skupiny odděluje — stejná struktura sloupců v obou, jen
+							 sloupec Stav ukazuje ve druhé záložce datum otevření místo
+							 otevírací doby/uzavírky (viz App.renderStoreRow). -->
+					<div class="store-view-toggle" role="group" aria-label="Zobrazené filiálky">
+						<button type="button" class="store-view-toggle-btn is-active" data-view="open">Otevřeno</button>
+						<button type="button" class="store-view-toggle-btn" data-view="future">Budoucí</button>
+					</div>
+				</div>
 				<input type="search" id="storesFilterInput" placeholder="Hledat podle čísla, názvu, města, LC…">
 			</div>
 			<div class="users-panel-wrap">
@@ -307,7 +320,7 @@
 						 záložky, pokud jsou pole už vyplněná (viz loadImportSettings). -->
 				<div class="settings-panel" data-settings-panel="import">
 					<div class="settings-panel-head">
-						<p class="settings-panel-desc">Synchronizace filiálek a LC ze sdíleného souboru na Disku (listy Organizace_Detail a Zavrene_Openings).</p>
+						<p class="settings-panel-desc">Synchronizace filiálek a LC ze sdíleného souboru na Disku (listy Organizace_Detail, Zavrene_Openings a Organizace).</p>
 					</div>
 					<!-- Celá záložka je poskládaná ze stejných karet (.field-group
 							 .field-group-accent + .kicker) jako sekce formuláře události —
@@ -342,8 +355,12 @@
 							<p class="kicker import-card-head"><span class="import-step">2</span> Soubor k synchronizaci</p>
 							<p class="import-results-label">Použije se vybraný soubor — přednastavený je vždy ten nejnovější:</p>
 							<div class="import-file-list" id="importResultsList"><!-- vykresleno JS --></div>
-							<!-- Ověření vybraného souboru (existence a sloupce listů
-									 Organizace_Detail/Zavrene_Openings) — viz
+							<!-- Ověření vybraného souboru — existence a sloupce listů
+									 Organizace_Detail/Zavrene_Openings, u listu Organizace jen
+									 existence (čte se podle pozice sloupce, ne podle hlavičky,
+									 viz IMPORT_OPENING_COLUMNS v server/60_import.js). Místo je
+									 pevně vyhrazené pro VŠECHNY TŘI řádky (min-height v CSS), ať
+									 se karta při načítání ani po něm nezmenšuje/nezvětšuje — viz
 									 apiValidateImportFile, validateSelectedImportFile. -->
 							<div class="import-validation" id="importValidation"><!-- vykresleno JS --></div>
 							<div class="import-actions">
@@ -1400,6 +1417,14 @@
 
 		/** Poslední načtený seznam filiálek — pro dohledání dat při kliku na řádek (openStoreDetailModal). */
 		storesCache: [],
+
+		/**
+		 * 'open' | 'future' — kterou skupinu filiálek záložka zrovna ukazuje
+		 * (viz section-header toggle). Řídí ROZDĚLENÍ podle openingDate, ne
+		 * filtr v hlavičce sloupců — to jsou dvě nezávislé věci, obě se
+		 * uplatní zároveň (viz renderStores).
+		 */
+		storeView: 'open',
 
 		/** Poslední načtený seznam LC — pro dohledání dat při kliku na tužku (openLcFormModal). */
 		lcCache: [],
@@ -4017,6 +4042,16 @@
 		},
 
 		/** Vykreslí #storesList z this.storesCache — textový filtr, pak sloupcové řazení/filtry (viz applyDataTableView), pak samotné řádky. */
+		/**
+		 * Je filiálka "budoucí" — má datum otevření (list Organizace) NOVĚJŠÍ
+		 * než dnešek? Přesně podle zadání: dnešní datum otevření už znamená
+		 * otevřeno, ne budoucí. Prázdné openingDate (filiálka v listu
+		 * Organizace vůbec není, typicky dávno otevřená) nikdy budoucí není.
+		 */
+		isStoreFuture(s) {
+			return !!s.openingDate && s.openingDate > this.todayIso();
+		},
+
 		renderStores() {
 			const list = document.querySelector('#storesList');
 			const filter = document.querySelector('#storesFilterInput').value.trim().toLowerCase();
@@ -4026,11 +4061,19 @@
 						(s.id + ' ' + s.nazev + ' ' + s.mesto + ' ' + s.lc).toLowerCase().indexOf(filter) !== -1
 					)
 				: this.storesCache;
+
+			// Otevřeno/Budoucí — nezávislé na textovém hledání i na filtru
+			// v hlavičce sloupců, uplatní se navrch obou.
+			const wantFuture = this.storeView === 'future';
+			rows = rows.filter((s) => this.isStoreFuture(s) === wantFuture);
+
 			rows = this.applyDataTableView('stores', rows);
 
 			list.innerHTML = rows.length
 				? rows.map((s) => this.renderStoreRow(s)).join('')
-				: this.usersPlaceholder(this.storesCache.length ? 'Žádná filiálka neodpovídá hledání/filtru.' : 'Zatím žádná data — synchronizujte v Nastavení.');
+				: this.usersPlaceholder(this.storesCache.length
+					? (wantFuture ? 'Žádná filiálka s budoucím datem otevření.' : 'Žádná filiálka neodpovídá hledání/filtru.')
+					: 'Zatím žádná data — synchronizujte v Nastavení.');
 		},
 
 		renderStoreRow(s) {
@@ -4061,9 +4104,20 @@
 				'<span class="user-cell-muted">' + Ui.escape(s.telefonProdejny || '—') + '</span>' +
 				'<span class="user-cell-muted">' + Ui.escape(s.vt || '—') + '</span>' +
 				'<span class="user-cell-muted">' + Ui.escape(s.rm || '—') + '</span>' +
-				this.renderStoreStatus(s.closure) +
+				(this.storeView === 'future' ? this.renderStoreOpeningStatus(s.openingDate) : this.renderStoreStatus(s.closure)) +
 				'<span class="user-actions">' + actionBtn + '</span>' +
 			'</div>';
+		},
+
+		/**
+		 * Sloupec Stav v záložce Budoucí — datum otevření místo otevírací
+		 * doby/uzavírky. Stejná dvouřádková stavba (.store-status-line1/2)
+		 * jako renderStoreStatus, ať mají řádky obou záložek shodnou výšku
+		 * a stejný jazyk, jen prázdný druhý řádek.
+		 */
+		renderStoreOpeningStatus(openingDate) {
+			return '<span class="store-status"><span class="store-status-line1">' +
+				Ui.escape(this.formatFullDate(openingDate)) + '</span><span class="store-status-line2"></span></span>';
 		},
 
 		/**
@@ -4146,6 +4200,15 @@
 			this.renderDataTableHead('stores');
 			this.bindDataTableHead('stores');
 			document.querySelector('#storesFilterInput').addEventListener('input', () => this.renderStores());
+			document.querySelectorAll('.store-view-toggle-btn').forEach((btn) => {
+				btn.addEventListener('click', () => {
+					if (btn.dataset.view === this.storeView) return;
+					this.storeView = btn.dataset.view;
+					document.querySelectorAll('.store-view-toggle-btn').forEach((b) =>
+						b.classList.toggle('is-active', b === btn));
+					this.renderStores();
+				});
+			});
 			document.querySelector('#storesList').addEventListener('click', (e) => {
 				const btn = e.target.closest('.user-action-btn');
 				if (btn) {
@@ -5484,11 +5547,35 @@
 				});
 		},
 
+		/** Kolik posledních synchronizací se ukáže rovnou; zbytek je schovaný pod rozevíracím seznamem. */
+		IMPORT_LOG_VISIBLE: 3,
+
+		/**
+		 * Poslední tři synchronizace vždycky vidět, starší schované za
+		 * rozbalovací "Starší synchronizace (N)" — Log importu byl při
+		 * pravidelném nočním běhu neúměrně dlouhý na cokoli, o co se
+		 * uživatel zajímá jen výjimečně.
+		 */
 		renderImportLog() {
 			const list = document.querySelector('#importLogList');
-			list.innerHTML = this.importLogCache.length
-				? this.importLogCache.map((e) => this.renderImportLogEntry(e)).join('')
-				: this.settingsPlaceholder('Zatím žádná synchronizace.');
+			if (!this.importLogCache.length) {
+				list.innerHTML = this.settingsPlaceholder('Zatím žádná synchronizace.');
+				return;
+			}
+
+			const recent = this.importLogCache.slice(0, this.IMPORT_LOG_VISIBLE);
+			const older = this.importLogCache.slice(this.IMPORT_LOG_VISIBLE);
+
+			list.innerHTML = recent.map((e) => this.renderImportLogEntry(e)).join('') +
+				(older.length
+					? '<details class="import-log-older">' +
+							'<summary>' +
+								'<i class="ph ph-caret-right import-log-caret" aria-hidden="true"></i>' +
+								'<span>Starší synchronizace (' + older.length + ')</span>' +
+							'</summary>' +
+							older.map((e) => this.renderImportLogEntry(e)).join('') +
+						'</details>'
+					: '');
 		},
 
 		/**

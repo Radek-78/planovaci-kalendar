@@ -5,6 +5,10 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.15.0 - 24.09.2026 07:41
+- v0.15.0: List Organizace pro datum otevření filiálek, záložka Budoucí a přehlednější import. Synchronizace teď navíc čte list Organizace ze zdrojového souboru - číslo filiálky ve sloupci B, datum oficiálního otevření ve sloupci E. Na rozdíl od ostatních listů se tyto dva sloupce hledají podle pozice, ne podle textu hlavičky, protože appka nemá žádnou spolehlivou hlavičku, o kterou by se mohla opřít
+- je to vědomá výjimka a je křehčí, přeuspořádání sloupců ve zdroji by appka nepoznala. List je nepovinný, chybí-li, zbytek synchronizace proběhne beze změny. Datum se ukládá k filiálce a řídí nový přepínač Otevřeno a Budoucí v hlavičce záložky Filiálky. Budoucí jsou filiálky s datem otevření novějším než dnešek, filiálka otevíraná přesně dnes už patří mezi otevřené. Struktura sloupců je stejná v obou záložkách, mění se jen sloupec Stav, který v Budoucí ukazuje datum otevření místo otevírací doby nebo uzavírky. V kroku Soubor k synchronizaci appka nově ověřuje tři listy místo dvou, u třetího jen existenci, protože sloupce jdou ověřit jen tam, kde se čtou podle hlavičky. Místo pro tři řádky stavu je pevně vyhrazené, ať karta při načítání ani po něm neposkakuje. Historie synchronizací ukazuje rovnou jen poslední tři záznamy, zbytek je schovaný pod rozbalovacím Starší synchronizace.
+
 ## v0.14.5 - 22.09.2026 08:32
 - v0.14.5: Výška hlavičky zůstává stejná i při zapnutém řazení. Minule jsem opravil růst hlavičky jen u filtru, ale stejnou vadu měl i odznak řazení - jeho slot neměl určenou výšku, takže se prázdný smrskl na nulu a ve chvíli, kdy se na sloupci zapnulo řazení, hlavička povyrostla. Oba sloty i odznak řazení mají nově pevných čtrnáct pixelů, takže si slot drží výšku i když je prázdný, stejně jako si vždycky držel šířku. Výška hlavičky je tím stejná ve všech kombinacích: bez ničeho, jen s filtrem, jen s řazením i s obojím.
 

@@ -37,7 +37,24 @@
 const IMPORT_SHEET_NAMES = {
 	STORES: 'Organizace_Detail',
 	CLOSURES: 'Zavrene_Openings',
+	OPENINGS: 'Organizace',
 };
+
+/**
+ * List "Organizace" (datum oficiálního otevření filiálky) se ČTE PODLE
+ * POZICE SLOUPCE — B = číslo filiálky, E = datum otevření — ne podle textu
+ * hlavičky jako všechny ostatní listy zdroje (viz komentář v hlavičce
+ * souboru výše). Byl to výslovný požadavek, protože appka žádný jiný
+ * spolehlivý sloupec s hlavičkou k dispozici nemá.
+ *
+ * KŘEHKÉ: přeuspořádání sloupců v cizím systému appka nepozná a tiše
+ * začne číst jiná data — na rozdíl od ostatních listů, kde chybějící
+ * hlavička vyhodí jasnou chybu hned při importu (_importHeaderIndex_).
+ * Pokud se to v budoucnu ukáže jako problém, řešením je přejít na
+ * header-based vyhledání jako u IMPORT_STORE_COLUMNS/IMPORT_CLOSURE_COLUMNS,
+ * jakmile bude známý spolehlivý text hlavičky.
+ */
+const IMPORT_OPENING_COLUMNS = { STORE_ID: 1, OPENING_DATE: 4 }; // B, E (0-indexed)
 
 /**
  * Mapování hlaviček listu Organizace_Detail na pole záznamu filiálky
@@ -199,6 +216,40 @@ function _importReadClosures_(spreadsheet) {
 	return records;
 }
 
+/**
+ * Přečte list "Organizace" a vrátí mapu `číslo filiálky → datum otevření`
+ * (`YYYY-MM-DD`). Na rozdíl od _importReadStores_/_importReadClosures_
+ * NEVYHAZUJE chybu, když list chybí — appka bez něj prostě neví o žádném
+ * budoucím otevření a zbytek synchronizace (filiálky, LC, uzavírky) běží
+ * dál beze změny; existenci listu appka jen HLÁSÍ ve 2. kroku záložky
+ * Import dat filiálek (viz apiValidateImportFile), nesynchronizuje se bez
+ * ohledu na to.
+ *
+ * Řádky bez čísla filiálky nebo bez data se přeskakují — prázdné řádky na
+ * konci listu, případně filiálky, které list eviduje bez data otevření.
+ */
+function _importReadOpenings_(spreadsheet) {
+	const sheet = spreadsheet.getSheetByName(IMPORT_SHEET_NAMES.OPENINGS);
+	if (!sheet) return {};
+
+	const lastRow = sheet.getLastRow();
+	if (lastRow < 2) return {};
+	// Aspoň do sloupce E, i kdyby list samotný měl (podle getLastColumn)
+	// obsah jen v dřívějších sloupcích — jinak by row[OPENING_DATE] byl
+	// mimo načtený rozsah.
+	const lastCol = Math.max(sheet.getLastColumn(), IMPORT_OPENING_COLUMNS.OPENING_DATE + 1);
+
+	const values = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+	const openings = {};
+	values.forEach((row) => {
+		const id = _importCellText_(row[IMPORT_OPENING_COLUMNS.STORE_ID]);
+		if (!id) return;
+		const date = _importCellDate_(row[IMPORT_OPENING_COLUMNS.OPENING_DATE]);
+		if (date) openings[id] = date;
+	});
+	return openings;
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
 	 VYHLEDÁNÍ SOUBORU NA DISKU
 	 ══════════════════════════════════════════════════════════════════════════ */
@@ -302,7 +353,9 @@ function _importValidateSheet_(spreadsheet, sheetName, columns) {
 /**
  * Ověří vybraný soubor PŘED synchronizací — appka na to čekala od etapy 1
  * (viz konverzace: "musí být vypsáno, jestli bylo nalezeno vše potřebné").
- * Kontroluje jen existenci listů a jejich sloupců podle hlavičky, ne celý
+ * Kontroluje existenci tří listů (Organizace_Detail, Zavrene_Openings,
+ * Organizace) a u prvních dvou i jejich sloupce podle hlavičky — u
+ * Organizace jen existenci, viz komentář u IMPORT_OPENING_COLUMNS. Ne celý
  * obsah — levná kontrola, appka ji proto může spustit hned po vyhledání,
  * ne až při skutečném kliknutí na Synchronizovat.
  */
@@ -321,6 +374,13 @@ function apiValidateImportFile(payload) {
 		const sheets = [
 			_importValidateSheet_(spreadsheet, IMPORT_SHEET_NAMES.STORES, IMPORT_STORE_COLUMNS),
 			_importValidateSheet_(spreadsheet, IMPORT_SHEET_NAMES.CLOSURES, IMPORT_CLOSURE_COLUMNS),
+			// Organizace se čte podle POZICE sloupce, ne podle hlavičky (viz
+			// IMPORT_OPENING_COLUMNS) — sloupce tedy nejde ověřit stejně jako
+			// u ostatních listů. Prázdné `columns` dá _importValidateSheet_
+			// požadovaný výsledek samo: nulový seznam chybějících sloupců
+			// vždycky projde, takže `ok` vyjde čistě z toho, jestli list
+			// existuje. Přesně to appka teď umí ověřit a víc ne.
+			_importValidateSheet_(spreadsheet, IMPORT_SHEET_NAMES.OPENINGS, []),
 		];
 		return { ok: sheets.every((s) => s.ok), sheets: sheets };
 	});
@@ -350,8 +410,9 @@ function _importPerformSync_(fileId) {
 
 	const storeRows = _importReadStores_(spreadsheet);
 	const closureRows = _importReadClosures_(spreadsheet);
+	const openings = _importReadOpenings_(spreadsheet);
 
-	const storesResult = _importSyncStores_(storeRows);
+	const storesResult = _importSyncStores_(storeRows, openings);
 	const lcResult = _importSyncLogisticCenters_(storeRows);
 	const closuresResult = _importSyncClosures_(closureRows);
 
@@ -534,8 +595,14 @@ function _storeRowChanges_(existing, incoming) {
  * přenese ze STARÉHO řádku (sync o něm nic neví, appka ho řídí ručně přes
  * apiSetStoreActive) — stejný princip jako u LC, deaktivace tak přežije
  * i tuhle synchronizaci.
+ *
+ * `openings` je mapa `číslo filiálky → datum otevření` z listu Organizace
+ * (viz _importReadOpenings_) — párovaná podle `row.id`, ne podle vlastního
+ * průchodu, protože Organizace_Detail a Organizace nemusí mít filiálky ve
+ * stejném pořadí ani rozsahu (Organizace může mít i filiálky, které
+ * Organizace_Detail ještě vůbec nezná).
  */
-function _importSyncStores_(storeRows) {
+function _importSyncStores_(storeRows, openings) {
 	const before = dbGetAll_(SHEETS.STORES);
 	const beforeMap = {};
 	before.forEach((row) => { beforeMap[String(row.id)] = row; });
@@ -545,14 +612,15 @@ function _importSyncStores_(storeRows) {
 	const changed = [];
 	const records = storeRows.map((row) => {
 		afterIds[row.id] = true;
+		const merged = Object.assign({}, row, { opening_date: openings[row.id] || '' });
 		const existing = beforeMap[row.id];
 		if (!existing) {
 			added.push({ id: row.id, nazev: row.nazev });
-			return Object.assign({}, row, { active: true });
+			return Object.assign({}, merged, { active: true });
 		}
-		const fields = _storeRowChanges_(existing, row);
+		const fields = _storeRowChanges_(existing, merged);
 		if (fields.length) changed.push({ id: row.id, nazev: row.nazev, fields: fields });
-		return Object.assign({}, row, { active: existing.active });
+		return Object.assign({}, merged, { active: existing.active });
 	});
 	const removed = before
 		.filter((row) => !afterIds[String(row.id)])
@@ -619,8 +687,17 @@ function _importSyncClosures_(closureRows) {
 	 LOG IMPORTU (_import_log) — trvalá historie synchronizací + oznámení
 	 ══════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * Popisek pole mimo IMPORT_STORE_COLUMNS — dnes jen `opening_date`, které
+ * nepřichází z Organizace_Detail (viz _importFieldLabel_ níže), ale
+ * z pozičně čteného listu Organizace, takže pro něj neexistuje žádná
+ * hlavička k odvození popisku z ní.
+ */
+const IMPORT_EXTRA_FIELD_LABELS = { opening_date: 'Datum otevření' };
+
 /** Popisek sloupce filiálky pro člověka (Log importu) — odvozený z IMPORT_STORE_COLUMNS, ať se popisky nepíšou dvakrát. */
 function _importFieldLabel_(field) {
+	if (IMPORT_EXTRA_FIELD_LABELS[field]) return IMPORT_EXTRA_FIELD_LABELS[field];
 	const col = IMPORT_STORE_COLUMNS.find((c) => c.field === field);
 	return col ? col.header : field;
 }
@@ -828,6 +905,10 @@ function _publicStore_(row, closuresByStore, today) {
 		ulice: String(row.ulice || ''),
 		mesto: String(row.mesto || ''),
 		psc: String(row.psc || ''),
+		// Datum oficiálního otevření (list Organizace) — prázdné u filiálek,
+		// které tenhle list neeviduje (typicky dávno otevřené). Řídí přepínač
+		// Otevřeno/Budoucí v záložce Filiálky, viz App.renderStores.
+		openingDate: String(row.opening_date || ''),
 		// Otevírací doba po dnech — pro detail filiálky na klientovi (App.openStoreDetailModal).
 		hours: [
 			{ label: 'Pondělí', otevreno: String(row.po_otevreno || ''), zavreno: String(row.po_zavreno || '') },

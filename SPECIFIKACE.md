@@ -157,7 +157,8 @@ const DB_SCHEMA = {
               'ulice','mesto','psc',
               'po_otevreno','po_zavreno','ut_otevreno','ut_zavreno','st_otevreno','st_zavreno',
               'ct_otevreno','ct_zavreno','pa_otevreno','pa_zavreno','so_otevreno','so_zavreno',
-              'ne_otevreno','ne_zavreno','updated_at'],
+              'ne_otevreno','ne_zavreno','updated_at',
+              'opening_date'], // datum otevření z listu Organizace, viz 9.6 Etapa 8
   '_logistic_centers': ['id','cislo','zkratka','nazev','active','created_at','created_by','updated_at','updated_by'],
   '_store_closures':   ['id','nazev','od','do','celkem_dni','updated_at'],
   // Trvalá historie synchronizací (Log importu) — append-only.
@@ -464,7 +465,7 @@ mřížce chyběla. Podmínka: `start <= to && end >= from`.
 | **Kalendář** | měsíční mřížka + panel detailu dne |
 | **Požadavky** | přehled požadavků vedoucích pracovníků LC (viz 9.10), detail na klik na řádek |
 | **Uživatelé** | tabulka, přidání, změna role/oprávnění, deaktivace |
-| **Filiálky** | čtecí přehled filiálek (import dat, viz 9.6), detail na klik na řádek; právě zavřená filiálka má číslo i název červeně a u čísla ikonu zámku |
+| **Filiálky** | čtecí přehled filiálek (import dat, viz 9.6), detail na klik na řádek; právě zavřená filiálka má číslo i název červeně a u čísla ikonu zámku; přepínač Otevřeno/Budoucí v hlavičce odděluje filiálky s budoucím datem otevření (viz 9.6 Etapa 8) |
 | **LC** | čtecí přehled logistických center (import dat, viz 9.6), editace čísla/zkratky |
 | **Nastavení** | záložky: Oddělení, Pracovní pozice, Typy událostí (viz 9.5), Šablony událostí (viz 9.9), Import dat filiálek (viz 9.6), Státní svátky ČR (viz 9.7), Požadavky (viz 9.10) |
 
@@ -765,7 +766,9 @@ si z něj bere kopii do vlastních tabulek (`_stores`, `_logistic_centers`,
    Sloupce se hledají podle PŘESNÉHO textu hlavičky v řádku 1
    (`IMPORT_STORE_COLUMNS`/`IMPORT_CLOSURE_COLUMNS` v `60_import.js`), ne
    podle pozice — cizí systém je časem může přeuspořádat. Chybějící
-   očekávaná hlavička = jasná chyba hned při importu.
+   očekávaná hlavička = jasná chyba hned při importu. Výjimka je list
+   `Organizace` (datum otevření, viz Etapa 8) — ten se čte podle POZICE
+   sloupce, ne podle hlavičky.
 4. `_stores` a `_store_closures` se KOMPLETNĚ nahradí novým obsahem
    (`dbReplaceAll_`, viz 5.1) — filiálka, která v novém importu chybí, se
    z appky smaže. `_logistic_centers` se odvodí z distinct hodnot sloupce
@@ -1099,6 +1102,55 @@ ztratila a všechny sloupce poskočily doprava (nahlášeno).
 taky šedé (`--page`), takže se šedý štítek s pozadím slil a přestal být
 čitelný (nahlášeno). Štítek umístění má proto bílý podklad s obrysem
 a osmý odstín štítku týdne je indigový, ne šedý.
+
+**Etapa 8 (implementováno)** — datum oficiálního otevření a záložka
+Budoucí:
+
+- Nahlášený příznak: v přehledu Filiálky appka ukazovala i filiálky,
+  které jsou už PŘIPRAVENÉ k otevření (mají číslo, adresu, kontakty…),
+  ale oficiálně ještě nejsou v provozu — nešlo je od skutečně otevřených
+  rozeznat.
+- Zdroj: čtvrtý list zdrojového souboru, **Organizace** (na rozdíl od
+  ostatních listů BEZ použitelné hlavičky pro spolehlivé vyhledání
+  sloupce) — sloupec **B** = číslo filiálky, sloupec **E** = datum
+  oficiálního otevření (`IMPORT_OPENING_COLUMNS`, `_importReadOpenings_`
+  v `60_import.js`). Čtení podle POZICE sloupce je tu vědomá výjimka
+  z pravidla v bodě 3 výše — je KŘEHČÍ (přeuspořádání sloupců ve zdroji
+  appka nepozná), přijato protože appka nemá žádnou spolehlivou hlavičku,
+  o kterou by se mohla opřít.
+- List je NEPOVINNÝ pro běh synchronizace — chybí-li, appka o něm mlčí
+  (na rozdíl od `Organizace_Detail`/`Zavrene_Openings`, jejichž absence
+  synchronizaci rovnou shodí) a zbytek importu proběhne beze změny.
+  Existenci ale appka HLÁSÍ v kroku 2 záložky Import dat filiálek (viz
+  níže) — existence-only kontrola, sloupce se u pozičního čtení ověřit
+  nedají.
+- Datum se ukládá do nového sloupce `_stores.opening_date` (`YYYY-MM-DD`,
+  chráněný v `TEXT_COLUMNS._stores` stejně jako zbytek tabulky — jinak by
+  hrozila přesně ta nekonečná smyčka „změny", co popisuje Etapa 6).
+  Prázdné u filiálky, kterou list `Organizace` neeviduje (typicky dávno
+  otevřená). Párování je podle `row.id` (čísla filiálky), NE podle
+  pořadí v listu — `Organizace_Detail` a `Organizace` nemusí mít
+  filiálky ve stejném pořadí ani rozsahu.
+- Sekce **Filiálky** dostala v hlavičce přepínač **Otevřeno / Budoucí**
+  (`.store-view-toggle`). Budoucí = `openingDate` NOVĚJŠÍ než dnešek
+  (`App.isStoreFuture`) — filiálka s datem otevření PŘESNĚ dnes už patří
+  do Otevřeno, ne do Budoucí. Struktura sloupců je v obou záložkách
+  stejná, mění se jen sloupec **Stav**: v Budoucí ukazuje datum otevření
+  (`App.renderStoreOpeningStatus`) místo otevírací doby/uzavírky.
+  Přepínač je nezávislý na textovém hledání i na filtru v hlavičce
+  sloupců — uplatní se navrch obou.
+- Import dat filiálek — dvě drobnější úpravy k téhle příležitosti:
+  1. Krok 2 (`Soubor k synchronizaci`) teď ověřuje TŘI listy, ne dva
+     (`apiValidateImportFile`) — existence `Organizace_Detail`/
+     `Zavrene_Openings` i jejich sloupce, u `Organizace` jen existence
+     (`_importValidateSheet_` s prázdným polem sloupců — nulový seznam
+     chybějících sloupců projde vždy, takže `ok` vyjde čistě z existence
+     listu). Místo pro tři řádky stavu je PEVNĚ vyhrazené (`min-height`
+     na `.import-validation`), ať karta při načítání/výsledku neposkakuje.
+  2. Historie synchronizací ukazuje rovnou jen **poslední 3** záznamy,
+     zbytek je za rozbalovacím „Starší synchronizace (N)" — při
+     pravidelném nočním běhu byl seznam neúměrně dlouhý na cokoli, o co
+     se uživatel zajímá jen výjimečně.
 
 ### 9.7 Státní svátky ČR
 

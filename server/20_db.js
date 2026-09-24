@@ -108,9 +108,10 @@ const DB_SCHEMA = {
 	_event_types: ['id', 'label', 'icon', 'color', 'bg_color', 'created_at', 'created_by', 'updated_at', 'updated_by'],
 
 	// ── Import dat filiálek (viz 60_import.js) ───────────────────────────
-	// Zrcadlo listů Organizace_Detail/Zavrene_Openings ve zdrojovém souboru
-	// na Disku — appka je jen ČTE a jednou denně přepisuje, needituje se nic
-	// ručně kromě "active" (viz apiSetStoreActive) a _logistic_centers.
+	// Zrcadlo listů Organizace_Detail/Zavrene_Openings/Organizace ve
+	// zdrojovém souboru na Disku — appka je jen ČTE a jednou denně přepisuje,
+	// needituje se nic ručně kromě "active" (viz apiSetStoreActive) a
+	// _logistic_centers.
 	// cislo/zkratka/active. Proto žádné created_at/created_by u _stores/
 	// _store_closures — "kdo založil" tu nedává smysl, vždycky je to import.
 	//
@@ -129,6 +130,14 @@ const DB_SCHEMA = {
 		'ct_otevreno', 'ct_zavreno', 'pa_otevreno', 'pa_zavreno', 'so_otevreno', 'so_zavreno',
 		'ne_otevreno', 'ne_zavreno',
 		'updated_at',
+		// Datum oficiálního otevření ze zdrojového listu "Organizace" (sloupec
+		// E, párováno na filiálku podle čísla ve sloupci B, viz
+		// _importReadOpenings_ v 60_import.js) — u filiálek otevřených už
+		// dávno appka toto datum nijak nevyužívá, drží se jen kvůli těm, co
+		// se teprve chystají (záložka Filiálky → přepínač Budoucí). Prázdné
+		// u filiálky, kterou list "Organizace" vůbec neobsahuje.
+		// Nový sloupec, proto AŽ NA KONCI (viz kritické pravidlo výše).
+		'opening_date',
 	],
 	// LC se odvozují ze sloupce "LC" u filiálek — "nazev" je tedy ze zdroje
 	// (needituje se), "cislo"/"zkratka"/"active" zadává ručně SUPERADMIN
@@ -240,15 +249,16 @@ const TEXT_COLUMNS = {
 	//    zapsané ještě před touhle opravou (dokud je nepřepíše další sync)
 	//    v listu samotném pořád vypadají jako číslo — vizuální kosmetika.
 	//
-	// 4) otevírací doba (např. "7:00") a updated_at — převod na čas/datum,
-	//    viz obecný komentář nad TEXT_COLUMNS.
+	// 4) otevírací doba (např. "7:00"), updated_at a opening_date (datum ze
+	//    zdroje ve tvaru "YYYY-MM-DD", stejná ochrana jako _store_closures.od/
+	//    do níže) — převod na čas/datum, viz obecný komentář nad TEXT_COLUMNS.
 	_stores: [
 		'id', 'kod', 'nazev', 'lc',
 		'telefon_prodejny', 'vt', 'telefon_vt', 'rm', 'telefon_rm', 'zastupce_rm', 'telefon_zastupce',
 		'ulice', 'mesto', 'psc',
 		'po_otevreno', 'po_zavreno', 'ut_otevreno', 'ut_zavreno', 'st_otevreno', 'st_zavreno',
 		'ct_otevreno', 'ct_zavreno', 'pa_otevreno', 'pa_zavreno', 'so_otevreno', 'so_zavreno',
-		'ne_otevreno', 'ne_zavreno', 'updated_at',
+		'ne_otevreno', 'ne_zavreno', 'updated_at', 'opening_date',
 	],
 	_logistic_centers: ['created_at', 'updated_at'],
 	// id = stejné "Číslo" jako u _stores, stejný důvod ochrany. `nazev` je

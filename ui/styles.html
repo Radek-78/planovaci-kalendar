@@ -1048,6 +1048,48 @@
 		margin: 0;
 	}
 
+	/* Titulek + přepínač pohromadě vlevo, hledací pole zůstává úplně vpravo
+		 (section-header je pořád jen dvouprvkové space-between). */
+	.section-header-title {
+		align-items: center;
+		display: flex;
+		gap: 14px;
+	}
+
+	/* Přepínač Otevřeno/Budoucí u Filiálek — stejný pilulkový jazyk jako
+		 .column-filter-modes (přepínač uvnitř okna filtru), jen o kousek
+		 větší, protože žije rovnou v hlavičce stránky, ne v malém popoveru. */
+	.store-view-toggle {
+		background: var(--page);
+		border: 1px solid var(--line-soft);
+		border-radius: var(--radius);
+		display: flex;
+		gap: 2px;
+		padding: 3px;
+	}
+
+	.store-view-toggle-btn {
+		background: none;
+		border: 0;
+		border-radius: 5px;
+		color: var(--muted);
+		cursor: pointer;
+		font: inherit;
+		font-size: 12.5px;
+		font-weight: 700;
+		padding: 6px 12px;
+	}
+
+	.store-view-toggle-btn:hover {
+		color: var(--text);
+	}
+
+	.store-view-toggle-btn.is-active {
+		background: var(--white);
+		box-shadow: 0 1px 3px rgba(0, 36, 102, 0.12);
+		color: var(--lidl-blue);
+	}
+
 	/* Karta kolem tabulky — stejný jazyk jako .cal-grid-wrap u kalendáře
 		 (rámeček, zaoblení, odsazení od okrajů), aby obsah sekcí vypadal jako
 		 jeden konzistentní vzor "vygenerované pole" napříč appkou. */
@@ -2306,6 +2348,15 @@
 
 	/* Bez vlastního margin-bottom — odsazení od tlačítka Synchronizovat
 		 řeší gap karty (.field-group), jinak by se mezery sčítaly. */
+	/* Pevná výška pro TŘI řádky stavu (Organizace_Detail/Zavrene_Openings/
+		 Organizace, viz apiValidateImportFile) — bez ní karta viditelně
+		 poskakovala mezi "nic vybráno" (0 řádků), "Ověřuji…" (1 řádek)
+		 a hotovým výsledkem (3 řádky). 3 × (12.5px text + běžný řádkový
+		 proklad) + 2 × 4px gap. */
+	.import-validation {
+		min-height: 64px;
+	}
+
 	.import-validation-box {
 		display: flex;
 		flex-direction: column;
@@ -2397,6 +2448,37 @@
 
 	.import-log-entry:last-child {
 		border-bottom: none;
+	}
+
+	/* Starší synchronizace — stejný jazyk (šipka, rozbalení) jako
+		 .import-log-entry, ale žádné počty ve shrnutí, jen text s počtem
+		 schovaných položek. Roztažené na celou šířku karty, ne omezené na
+		 sloupce jednoho řádku historie. */
+	.import-log-older {
+		border-top: 1px solid var(--line-soft);
+	}
+
+	.import-log-older summary {
+		align-items: center;
+		color: var(--muted);
+		cursor: pointer;
+		display: flex;
+		font-size: 12.5px;
+		gap: 8px;
+		list-style: none;
+		padding: 10px 12px;
+	}
+
+	.import-log-older summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.import-log-older summary:hover {
+		background: var(--page);
+	}
+
+	.import-log-older[open] .import-log-caret {
+		transform: rotate(90deg);
 	}
 
 	.import-log-entry summary {
