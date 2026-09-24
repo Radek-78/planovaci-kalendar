@@ -966,12 +966,26 @@ function apiSetStoreActive(payload) {
 	});
 }
 
-/** Spočítá počet filiálek pro každé LC (podle názvu) — jen doplňková informace v přehledu, appka na ní jinak nezávisí. */
+/**
+ * Spočítá počet filiálek pro každé LC (podle názvu), rozdělený na
+ * Otevřeno/Budoucí — jen doplňková informace v přehledu LC, appka na ní
+ * jinak nezávisí.
+ *
+ * Stejné pravidlo jako App.isStoreFuture na klientovi (musí zůstat
+ * v souladu, jinak by čísla u LC neseděla s tím, co appka ukáže po
+ * rozkliknutí Filiálky → Budoucí): budoucí = `opening_date` NOVĚJŠÍ
+ * než dnešek, prázdné `opening_date` vždy počítá jako Otevřeno.
+ */
 function _storeCountByLc_() {
+	const today = todayIso_();
 	const counts = {};
 	dbGetAll_(SHEETS.STORES).forEach((row) => {
 		const lc = String(row.lc || '');
-		if (lc) counts[lc] = (counts[lc] || 0) + 1;
+		if (!lc) return;
+		if (!counts[lc]) counts[lc] = { open: 0, future: 0 };
+		const opening = String(row.opening_date || '');
+		if (opening && opening > today) counts[lc].future += 1;
+		else counts[lc].open += 1;
 	});
 	return counts;
 }
@@ -989,13 +1003,17 @@ function _lcIsActive_(row) {
 
 /** Přemění řádek LC na podobu pro klienta. */
 function _publicLogisticCenter_(row, storeCountByLc) {
+	const counts = storeCountByLc[String(row.nazev)] || { open: 0, future: 0 };
 	return {
 		id: String(row.id),
 		cislo: String(row.cislo || ''),
 		zkratka: String(row.zkratka || ''),
 		nazev: String(row.nazev || ''),
 		active: _lcIsActive_(row),
-		storeCount: storeCountByLc[String(row.nazev)] || 0,
+		// Rozdělené na Otevřeno/Budoucí (viz _storeCountByLc_) — appka je
+		// v přehledu LC ukazuje vedle sebe jako dvě čísla, ne jeden součet.
+		storeCountOpen: counts.open,
+		storeCountFuture: counts.future,
 	};
 }
 

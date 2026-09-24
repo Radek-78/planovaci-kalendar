@@ -1090,6 +1090,59 @@
 		color: var(--lidl-blue);
 	}
 
+	/* Počet v závorce vedle popisku tlačítka — vždycky velikost CELÉ
+		 kategorie, ne aktuálního výsledku filtru (viz updateStoreViewCounts).
+		 Tlumenější než text tlačítka, ať nesoupeří o pozornost s Otevřeno/
+		 Budoucí samotným. */
+	.store-view-toggle-count {
+		font-variant-numeric: tabular-nums;
+		opacity: 0.6;
+	}
+
+	/* ── Rychlé filtry podle LC (badge, viz .store-view-toggle výše —
+		 podobný pilulkový jazyk, ale VÍCEKLIKOVÝ: aktivních badgí může být
+		 víc najednou, na rozdíl od přepínače Otevřeno/Budoucí). ── */
+
+	.store-lc-badges {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		padding: 0 20px 14px;
+	}
+
+	/* Prázdný kontejner (data se ještě nenačetla) nesmí zabírat místo —
+		 jinak by se sekce Filiálky viditelně "škubla" ve chvíli, kdy se
+		 badge objeví po doběhnutí apiGetLogisticCenters. */
+	.store-lc-badges:empty {
+		display: none;
+	}
+
+	.store-lc-badge {
+		background: var(--white);
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		color: var(--text);
+		cursor: pointer;
+		font: inherit;
+		font-size: 12px;
+		font-weight: 700;
+		padding: 5px 12px;
+		transition: background 0.12s, border-color 0.12s, color 0.12s;
+	}
+
+	.store-lc-badge:hover {
+		border-color: var(--lidl-blue);
+	}
+
+	/* Plné modré pozadí, ne jen obrys/zvýraznění textu — s víc badgemi
+		 najednou musí být na první pohled jasné, KTERÉ jsou zapnuté, ne jen
+		 mírně odlišené (viz konverzace o nevýrazné žluté ikoně filtru). */
+	.store-lc-badge.is-active {
+		background: var(--lidl-blue);
+		border-color: var(--lidl-blue);
+		color: var(--white);
+	}
+
 	/* Karta kolem tabulky — stejný jazyk jako .cal-grid-wrap u kalendáře
 		 (rámeček, zaoblení, odsazení od okrajů), aby obsah sekcí vypadal jako
 		 jeden konzistentní vzor "vygenerované pole" napříč appkou. */
@@ -1468,7 +1521,33 @@
 
 	.lc-table-head,
 	.lc-row {
-		grid-template-columns: 98px 108px 1.6fr 118px 60px;
+		grid-template-columns: 98px 108px 1.6fr 140px 60px;
+	}
+
+	/* Dvě čísla v jedné buňce (Otevřeno/Budoucí, viz renderLcRow) —
+		 sloupec proto o něco širší než dřív (118px → 140px), ať se obě
+		 čísla i oddělovač vejdou bez zalamování. */
+	.lc-store-counts {
+		align-items: baseline;
+		display: flex;
+		gap: 6px;
+	}
+
+	.lc-store-count {
+		font-variant-numeric: tabular-nums;
+		font-weight: 700;
+	}
+
+	.lc-store-count.is-open {
+		color: var(--green);
+	}
+
+	.lc-store-count.is-future {
+		color: var(--lidl-blue);
+	}
+
+	.lc-store-count-sep {
+		color: var(--line);
 	}
 
 	/* Filtr filiálek (section-header, viz #storesFilterInput) — obecné
@@ -1521,10 +1600,29 @@
 		width: 100%;
 	}
 
-	/* Bez flex/ellipsis — název se nezkracuje, viz komentář výše. */
+	/* Bez flex/ellipsis — název se nezkracuje, viz komentář výše. Sloupec
+		 (flex-direction: column) drží label + nepovinný subLabel POD sebou;
+		 bez subLabel se chová úplně stejně jako dřív (druhý řádek prostě
+		 není). */
 	.col-header-label {
+		display: flex;
+		flex-direction: column;
 		flex-shrink: 0;
+		gap: 1px;
 		white-space: nowrap;
+	}
+
+	/* Druhý řádek popisku sloupce (dnes jen LC → Filiálek: "Otevřeno · Budoucí")
+		 — menší a tlumenější, ať jasně převáží hlavní název sloupce nad ním.
+		 Tlumenost přes opacity, ne vlastní barvu: hlavička je na tmavém
+		 (moduré) podkladu, opacity funguje na bílé stejně jako na --muted
+		 jinde na světlém pozadí. */
+	.col-header-sublabel {
+		font-size: 9px;
+		font-weight: 600;
+		letter-spacing: 0.02em;
+		opacity: 0.65;
+		text-transform: none;
 	}
 
 	/* Vyhrazený prostor pro číslo úrovně řazení — pevná šířka, i prázdný

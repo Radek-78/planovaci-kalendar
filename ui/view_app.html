@@ -199,12 +199,19 @@
 							 sloupec Stav ukazuje ve druhé záložce datum otevření místo
 							 otevírací doby/uzavírky (viz App.renderStoreRow). -->
 					<div class="store-view-toggle" role="group" aria-label="Zobrazené filiálky">
-						<button type="button" class="store-view-toggle-btn is-active" data-view="open">Otevřeno</button>
-						<button type="button" class="store-view-toggle-btn" data-view="future">Budoucí</button>
+						<button type="button" class="store-view-toggle-btn is-active" data-view="open">Otevřeno <span class="store-view-toggle-count" id="storeViewCountOpen"></span></button>
+						<button type="button" class="store-view-toggle-btn" data-view="future">Budoucí <span class="store-view-toggle-count" id="storeViewCountFuture"></span></button>
 					</div>
 				</div>
 				<input type="search" id="storesFilterInput" placeholder="Hledat podle čísla, názvu, města, LC…">
 			</div>
+			<!-- Rychlé filtry podle LC — víceklikové badge (na rozdíl od
+					 přepínače výše NEJDE o skupinu s jedinou aktivní volbou, dá se
+					 zaškrtnout klidně pět LC najednou). Nezávislé na Otevřeno/Budoucí,
+					 uplatní se navrch. Vykresleno JS (viz App.renderStoreLcBadges),
+					 zdroj dat je apiGetLogisticCenters — appka ho natáhne spolu
+					 s filiálkami při každém vstupu do záložky (viz loadStores). -->
+			<div class="store-lc-badges" id="storeLcBadges" role="group" aria-label="Filtrovat podle LC"></div>
 			<div class="users-panel-wrap">
 				<div class="data-table-head stores-table-head" id="storesTableHead"><!-- vykresleno JS, viz renderDataTableHead --></div>
 				<div class="data-table-body" id="storesList"><!-- vykresleno JS --></div>
@@ -1430,6 +1437,16 @@
 		 * uplatní zároveň (viz renderStores).
 		 */
 		storeView: 'open',
+
+		/**
+		 * Vybrané zkratky LC pro rychlý filtr (viz .store-lc-badges) — Set
+		 * NÁZVŮ LC (`lc.nazev`, stejná hodnota jako `s.lc` u filiálky), ne
+		 * zkratek, protože zkratka je jen popisek na badge a filiálka sama
+		 * zkratku nezná (viz _publicStore_ v 60_import.js). Prázdný Set =
+		 * beze filtru (všechny LC). Nezávislé na storeView, přežije přepnutí
+		 * Otevřeno/Budoucí i opětovné načtení dat.
+		 */
+		storeLcFilter: new Set(),
 
 		/** Poslední načtený seznam LC — pro dohledání dat při kliku na tužku (openLcFormModal). */
 		lcCache: [],
@@ -3567,7 +3584,17 @@
 				{ key: 'cislo', label: 'Číslo', filterValue: (l) => l.cislo || '—', sortValue: (l) => l.cislo ? Number(l.cislo) : null, filterSort: 'number', sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší' },
 				{ key: 'zkratka', label: 'Zkratka', filterValue: (l) => l.zkratka || '—', sortValue: (l) => l.zkratka, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
 				{ key: 'nazev', label: 'Název', filterValue: (l) => l.nazev, sortValue: (l) => l.nazev, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
-				{ key: 'storeCount', label: 'Filiálek', filterValue: (l) => String(l.storeCount), sortValue: (l) => l.storeCount, filterSort: 'number', sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší' },
+				{
+					// Buňka nese DVĚ čísla (Otevřeno/Budoucí, viz renderLcRow) —
+					// subLabel v hlavičce říká, které je které, ať to není jen
+					// dvojice čísel bez vysvětlení. Filtr/řazení berou SOUČET —
+					// dvě samostatná čísla by se jako jeden sloupec filtrovat
+					// nedala (byl by to filtr na DVOJICI hodnot, ne na jedné).
+					key: 'storeCount', label: 'Filiálek', subLabel: 'Otevřeno · Budoucí',
+					filterValue: (l) => String(l.storeCountOpen + l.storeCountFuture),
+					sortValue: (l) => l.storeCountOpen + l.storeCountFuture,
+					filterSort: 'number', sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší',
+				},
 				{ key: 'akce', label: 'Akce', actionsOnly: true },
 			],
 			requests: [
@@ -3685,7 +3712,12 @@
 
 				return '<button type="button" class="data-col-header' +
 					'" data-col="' + col.key + '" title="Řadit nebo filtrovat podle sloupce ' + Ui.escape(col.label) + '">' +
-					'<span class="col-header-label">' + Ui.escape(col.label) + '</span>' +
+					'<span class="col-header-label">' + Ui.escape(col.label) +
+						// Nepovinný druhý řádek pod názvem sloupce — malým, tlumeným
+						// písmem vysvětlí, co která hodnota v buňce znamená (dnes jen
+						// u LC → Filiálek, kde jedna buňka nese DVĚ čísla vedle sebe).
+						(col.subLabel ? '<span class="col-header-sublabel">' + Ui.escape(col.subLabel) + '</span>' : '') +
+					'</span>' +
 					'<span class="col-rank-slot">' + rankBadge + '</span>' +
 					'<span class="col-filter-slot' + (hasFilter ? ' is-active' : '') + '"><i class="ph ph-funnel" aria-hidden="true"></i></span>' +
 				'</button>';
@@ -4031,19 +4063,56 @@
 			});
 		},
 
+		/**
+		 * Natáhne filiálky I seznam LC najednou (LC je zdroj zkratek pro
+		 * rychlé filtry — .store-lc-badges, viz renderStoreLcBadges). Stejné
+		 * `this.lcCache`, jaké používá i sekce LC — při 6 uživatelích je
+		 * znovunačtení při každém vstupu do záložky levné (stejný princip
+		 * jako u ostatních sekcí, viz showSection), takže se nijak neřeší,
+		 * jestli už LC náhodou nejsou načtené odjinud.
+		 */
 		loadStores() {
 			const list = document.querySelector('#storesList');
 			list.innerHTML = this.usersPlaceholder('Načítám filiálky…');
 
-			Ui.call('apiGetStores', null, { silent: true })
-				.then((stores) => {
+			Promise.all([
+				Ui.call('apiGetStores', null, { silent: true }),
+				Ui.call('apiGetLogisticCenters', null, { silent: true }),
+			])
+				.then(([stores, lcs]) => {
 					this.storesCache = stores;
+					this.lcCache = lcs;
+					this.renderStoreLcBadges();
 					this.renderStores();
 				})
 				.catch((error) => {
 					list.innerHTML = this.usersPlaceholder('Filiálky se nepodařilo načíst.');
 					Ui.toast(error.message, 'error');
 				});
+		},
+
+		/**
+		 * Vykreslí badge rychlého filtru podle LC — jedna dlaždice na
+		 * aktivní LC se zkratkou, v pořadí podle Čísla (stejné pořadí, jaké
+		 * appka používá i jinde, LC bez čísla by šlo na konec). LC bez
+		 * zkratky appka nenabízí — badge by neměl žádný text.
+		 *
+		 * Vykresluje se JEDNOU po načtení (badge samy o sobě se nemění),
+		 * přepínání aktivního stavu řeší bindStores přímo na tlačítku —
+		 * kompletní překreslení by při každém kliknutí zbytečně rušilo
+		 * animace/pozici scrollu v liště badgí.
+		 */
+		renderStoreLcBadges() {
+			const box = document.querySelector('#storeLcBadges');
+			const options = this.lcCache.filter((lc) => lc.active && lc.zkratka);
+
+			box.innerHTML = options.map((lc) =>
+				'<button type="button" class="store-lc-badge' +
+					(this.storeLcFilter.has(lc.nazev) ? ' is-active' : '') +
+					'" data-lc="' + Ui.escape(lc.nazev) + '" title="' + Ui.escape(lc.nazev) + '">' +
+					Ui.escape(lc.zkratka) +
+				'</button>'
+			).join('');
 		},
 
 		/** Vykreslí #storesList z this.storesCache — textový filtr, pak sloupcové řazení/filtry (viz applyDataTableView), pak samotné řádky. */
@@ -4055,6 +4124,21 @@
 		 */
 		isStoreFuture(s) {
 			return !!s.openingDate && s.openingDate > this.todayIso();
+		},
+
+		/**
+		 * Počty pro popisky Otevřeno/Budoucí v přepínači — ZÁMĚRNĚ z CELÉHO
+		 * `storesCache`, bez ohledu na textové hledání, LC badge i filtr
+		 * v hlavičce sloupců. Popisek u záložky má ukázat velikost celé
+		 * kategorie ("kolik je vůbec otevřených/budoucích"), ne kolik jich
+		 * po zúžení filtrem zbylo — to už je vidět z počtu řádků v tabulce.
+		 */
+		updateStoreViewCounts() {
+			let open = 0;
+			let future = 0;
+			this.storesCache.forEach((s) => { if (this.isStoreFuture(s)) future++; else open++; });
+			document.querySelector('#storeViewCountOpen').textContent = '(' + open + ')';
+			document.querySelector('#storeViewCountFuture').textContent = '(' + future + ')';
 		},
 
 		renderStores() {
@@ -4072,7 +4156,16 @@
 			const wantFuture = this.storeView === 'future';
 			rows = rows.filter((s) => this.isStoreFuture(s) === wantFuture);
 
+			// Rychlé filtry podle LC (.store-lc-badges) — prázdný Set = beze
+			// filtru, jinak musí filiálka patřit pod NĚKTERÉ z vybraných LC
+			// (víceklikové = sjednocení, ne průnik — "ukaž mi LC1 NEBO LC2").
+			if (this.storeLcFilter.size) {
+				rows = rows.filter((s) => this.storeLcFilter.has(s.lc));
+			}
+
 			rows = this.applyDataTableView('stores', rows);
+
+			this.updateStoreViewCounts();
 
 			list.innerHTML = rows.length
 				? rows.map((s) => this.renderStoreRow(s)).join('')
@@ -4213,6 +4306,17 @@
 						b.classList.toggle('is-active', b === btn));
 					this.renderStores();
 				});
+			});
+			// Delegovaně, ne per-tlačítko — renderStoreLcBadges přepisuje celý
+			// obsah kontejneru při každém načtení dat (viz loadStores).
+			document.querySelector('#storeLcBadges').addEventListener('click', (e) => {
+				const btn = e.target.closest('.store-lc-badge');
+				if (!btn) return;
+				// Víceklikové: klik jen přepíná TENHLE badge, ostatní nechává být.
+				if (this.storeLcFilter.has(btn.dataset.lc)) this.storeLcFilter.delete(btn.dataset.lc);
+				else this.storeLcFilter.add(btn.dataset.lc);
+				btn.classList.toggle('is-active');
+				this.renderStores();
 			});
 			document.querySelector('#storesList').addEventListener('click', (e) => {
 				const btn = e.target.closest('.user-action-btn');
@@ -4415,7 +4519,11 @@
 				'<span class="user-cell-muted">' + Ui.escape(lc.cislo || '—') + '</span>' +
 				'<span class="user-cell-muted">' + Ui.escape(lc.zkratka || '—') + '</span>' +
 				'<span class="user-cell-name">' + Ui.escape(lc.nazev) + '</span>' +
-				'<span class="user-cell-muted">' + lc.storeCount + '</span>' +
+				'<span class="lc-store-counts">' +
+					'<span class="lc-store-count is-open" title="Otevřeno">' + lc.storeCountOpen + '</span>' +
+					'<span class="lc-store-count-sep" aria-hidden="true">·</span>' +
+					'<span class="lc-store-count is-future" title="Budoucí">' + lc.storeCountFuture + '</span>' +
+				'</span>' +
 				'<span class="user-actions">' + actions + '</span>' +
 			'</div>';
 		},

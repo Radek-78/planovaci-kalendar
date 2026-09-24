@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.16.0 - 24.09.2026 08:04
+- v0.16.0: Počty u přepínače Otevřeno a Budoucí, rychlé filtry podle LC a rozdělené počty filiálek u LC. Přepínač Otevřeno a Budoucí v hlavičce záložky Filiálky teď ukazuje v závorce počet, a to vždycky za celou kategorii bez ohledu na hledání nebo filtry, ne jen za to, co zrovna zbylo po zúžení. Pod hlavičkou přibyla řada badge se zkratkami logistických center jako rychlý filtr. Badge jsou víceklikové, jde jich zapnout klidně pět najednou, a aktivní badge má plné modré pozadí, ne jen jemné zvýraznění, ať je na první pohled jasné, které jsou zapnuté. Filtr podle LC je nezávislý na přepínači Otevřeno a Budoucí i na hledání, uplatní se navrch obou. V záložce LC ukazuje sloupec Filiálek nově dvě čísla vedle sebe místo jednoho součtu, zeleně otevřené a modře budoucí, a hlavička sloupce dostala malý druhý řádek s popiskem, které číslo je které.
+
 ## v0.15.1 - 24.09.2026 07:47
 - v0.15.1: List Organizace se čte podle hlavičky, ne podle pozice sloupce, a oprava zbytečně zablokované synchronizace. Sloupce Číslo a Datum Otevření na listu Organizace appka nově hledá podle textu hlavičky, stejně jako u ostatních dvou listů - v minulé verzi to bylo čtení podle pozice sloupce B a E, protože ještě nebyl znám spolehlivý text hlavičky. U toho jsem si všiml a opravil skutečnou chybu: appka od minulé verze zamykala tlačítko Synchronizovat, i když list Organizace ve zdrojovém souboru chyběl úplně, přestože takový list je nepovinný a zbytek synchronizace bez něj proběhne normálně. Nově tlačítko zamkne jen tehdy, když list existuje, ale chybí mu očekávaný sloupec - to je jediný případ, kdy by pokus o synchronizaci opravdu spadl, a to i v části s filiálkami a logistickými centry, ne jen v datu otevření.
 

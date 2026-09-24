@@ -465,8 +465,8 @@ mřížce chyběla. Podmínka: `start <= to && end >= from`.
 | **Kalendář** | měsíční mřížka + panel detailu dne |
 | **Požadavky** | přehled požadavků vedoucích pracovníků LC (viz 9.10), detail na klik na řádek |
 | **Uživatelé** | tabulka, přidání, změna role/oprávnění, deaktivace |
-| **Filiálky** | čtecí přehled filiálek (import dat, viz 9.6), detail na klik na řádek; právě zavřená filiálka má číslo i název červeně a u čísla ikonu zámku; přepínač Otevřeno/Budoucí v hlavičce odděluje filiálky s budoucím datem otevření (viz 9.6 Etapa 8) |
-| **LC** | čtecí přehled logistických center (import dat, viz 9.6), editace čísla/zkratky |
+| **Filiálky** | čtecí přehled filiálek (import dat, viz 9.6), detail na klik na řádek; právě zavřená filiálka má číslo i název červeně a u čísla ikonu zámku; přepínač Otevřeno/Budoucí (s počtem v závorce) v hlavičce odděluje filiálky s budoucím datem otevření, pod ním víceklikové badge rychlého filtru podle LC (viz 9.6 Etapa 8/9) |
+| **LC** | čtecí přehled logistických center (import dat, viz 9.6), editace čísla/zkratky, sloupec Filiálek ukazuje počet Otevřeno/Budoucí vedle sebe (viz 9.6 Etapa 9) |
 | **Nastavení** | záložky: Oddělení, Pracovní pozice, Typy událostí (viz 9.5), Šablony událostí (viz 9.9), Import dat filiálek (viz 9.6), Státní svátky ČR (viz 9.7), Požadavky (viz 9.10) |
 
 **Verze appky v sidebaru** — `#sidebarVersion`, tichý řádek pod kartou
@@ -1156,6 +1156,42 @@ Budoucí:
      zbytek je za rozbalovacím „Starší synchronizace (N)" — při
      pravidelném nočním běhu byl seznam neúměrně dlouhý na cokoli, o co
      se uživatel zajímá jen výjimečně.
+
+**Etapa 9 (implementováno)** — počty a rychlé filtry podle LC:
+
+- Přepínač **Otevřeno / Budoucí** dostal do popisku počet v závorce
+  (`App.updateStoreViewCounts`) — ZÁMĚRNĚ počítaný z CELÉHO
+  `storesCache`, bez ohledu na textové hledání, LC badge (viz níže) i na
+  filtr v hlavičce sloupců. Popisek má ukázat velikost celé kategorie
+  („kolik je vůbec otevřených/budoucích"), ne kolik jich po zúžení
+  filtrem zrovna zbylo — to je vidět přímo z počtu řádků tabulky.
+- Sekce Filiálky dostala pod hlavičkou řadu **badge s zkratkami LC**
+  (`.store-lc-badges`) jako rychlý filtr — VÍCEKLIKOVÝ (`App.
+  storeLcFilter`, `Set` názvů LC), na rozdíl od přepínače Otevřeno/Budoucí
+  výše, kde jde vybrat jen jedna možnost. Aktivní badge má plné modré
+  pozadí, ne jen jemné zvýraznění — s víc badgemi zapnutými najednou musí
+  být na první pohled jasné, které to jsou (stejný důvod jako u opravy
+  nevýrazné žluté ikony filtru v tabulkách, viz výše). Nezávislé na
+  Otevřeno/Budoucí i na textovém hledání, uplatní se navrch obou; badge
+  se filtrují sjednocením (vybráno víc LC = „ukaž kteroukoli z nich"), ne
+  průnikem.
+  Zdroj badgí je `apiGetLogisticCenters` (jen aktivní LC se zkratkou,
+  stejná podmínka jako `fillLocationSelect` u uživatele) — appka ho
+  natáhne SPOLU s filiálkami při každém vstupu do záložky (`Promise.all`
+  v `App.loadStores`), ne až při návštěvě samotné sekce LC. Filtruje se
+  podle `s.lc` (plný název LC uložený u filiálky), badge samotný ale
+  ukazuje `zkratku` — mapování mezi nimi existuje jen v `_logistic_
+  centers`, filiálka svou zkratku nezná.
+- Sekce **LC**, sloupec **Filiálek**: místo jednoho součtu appka ukazuje
+  DVĚ čísla vedle sebe — Otevřeno (zeleně) a Budoucí (modře),
+  `_storeCountByLc_` v `60_import.js` je teď počítá odděleně (stejné
+  pravidlo jako `App.isStoreFuture`, musí zůstat v souladu). Hlavička
+  sloupce dostala malý druhý řádek „Otevřeno · Budoucí"
+  (`col.subLabel` — nová, nepovinná vlastnost sloupce v `DATA_TABLE_
+  COLUMNS`, obecně dostupná i pro jiné sloupce, dnes ji využívá jen
+  tenhle). Řazení/filtr sloupce berou SOUČET obou čísel — filtrovat na
+  DVOJICI hodnot by vyžadovalo vlastní `filterModes` a nedávalo by smysl
+  („chci vidět LC, kde je 5", ale 5 čeho?).
 
 ### 9.7 Státní svátky ČR
 
