@@ -5,6 +5,9 @@ Historie vydání. Nejnovější verze je nahoře.
 Záznamy zapisuje výhradně skript `tools/release.ps1` — needituj ručně,
 jinak se rozejde s verzí v `AAA_VERZE.html` a v `server/00_config.js`.
 
+## v0.16.2 - 24.09.2026 08:25
+- v0.16.2: Oprava přesahu ikony filtru u sloupců Otevřeno a Budoucí v záložce LC. Minulá verze dala oběma sloupcům osmdesát čtyři pixelů, ale hlavička v sobě nese popisek, slot řazení a slot filtru pohromadě, takže se osmiznakové Otevřeno nevešlo a ikona filtru vizuálně přetékala do sousedního sloupce. Platí tu stejné pravidlo jako všude jinde u těchto tabulek, název sloupce se nikdy nezkracuje, takže sloupec musí být sám o sobě dost široký. Oba sloupce mají nově sto šestnáct pixelů, což dává bezpečnou rezervu.
+
 ## v0.16.1 - 24.09.2026 08:14
 - v0.16.1: LC badge přesunuty do hlavičky, dostaly počet filiálek, a sloupec Filiálek u LC se rozdělil na dva pojmenované sloupce. Rychlé filtry podle LC jsou nově přímo v hlavičce záložky Filiálky vedle přepínače Otevřeno a Budoucí, ne v samostatném řádku pod ní. Tvar badge je jen lehce zaoblený, ne pilulka jako přepínač vedle nich, ať jsou od sebe i vizuálně odlišené. Každý badge navíc ukazuje počet filiálek daného LC, a to vždycky za aktuálně zobrazenou kategorii - přepnutím na Budoucí se čísla ve všech badgích přepočítají. Pro číslo je vyhrazené místo na dvě číslice, ať badge neposkakuje šířkou podle toho, jestli má jednu cifru, nebo dvě. V záložce LC se sloupec Filiálek se dvěma čísly a vysvětlivkou v hlavičce, kvůli které byla hlavička dvouřádková, rozdělil na dva samostatné, pojmenované sloupce Otevřeno a Budoucí. Každý má teď i vlastní řazení a filtr, takže jde seřadit podle počtu budoucích otevření zvlášť, což jeden sloupec se součtem neuměl. Sloupec Budoucí navíc hodnotu nula vůbec nevypisuje, zobrazí se jen tehdy, když je opravdu co hlásit.
 

@@ -1209,6 +1209,14 @@ Budoucí:
   buňka) — u drtivé většiny LC bude nula běžný stav, vypisovat ji všude
   by byl jen šum; zobrazí se, jen když je opravdu co hlásit.
 
+  **Šířka sloupců (opraveno).** První verze dala Otevřeno/Budoucí 84px —
+  míň, než hlavička skutečně potřebuje (popisek + slot řazení 22px + slot
+  filtru 14px + mezery), takže ikona filtru vizuálně přetékala do
+  sousedního sloupce (nahlášeno). Platí tu stejné pravidlo jako všude
+  jinde u těchhle tabulek (viz komentář u `.col-header-label`): název
+  sloupce se NIKDY nezkracuje, takže sloupec musí být dost široký sám —
+  116px dává bezpečnou rezervu i pro 8znakové „OTEVŘENO".
+
 ### 9.7 Státní svátky ČR
 
 Svátky jsou **plně editovatelná tabulka** `_holidays` (id/date/name +

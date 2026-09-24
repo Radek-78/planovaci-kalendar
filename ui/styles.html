@@ -1555,11 +1555,17 @@
 	}
 
 	/* Číslo, Zkratka, Název, Otevřeno, Budoucí, Akce — o sloupec víc než
-		 dřív (Otevřeno/Budoucí byl jeden sloupec se dvěma čísly), proto dva
-		 užší sloupce místo jednoho širokého (140px → 2 × 84px). */
+		 dřív (Otevřeno/Budoucí byl jeden sloupec se dvěma čísly).
+		 84px u Otevřeno/Budoucí byl PŘESNĚ ten omyl, co pravidlo o šířce
+		 sloupce (viz komentář u .col-header-label — název se nikdy
+		 nezkracuje, sloupec MUSÍ být dost široký) popisuje: hlavička
+		 sloupce v sobě nese popisek + slot řazení (22px) + slot filtru
+		 (14px) + dvě mezery (5px), u 8znakového "OTEVŘENO" to je zhruba
+		 106px, ne 84 — ikona filtru pak vizuálně přetékala do sousedního
+		 sloupce (nahlášeno). 116px dává rozumnou rezervu i pro "BUDOUCÍ". */
 	.lc-table-head,
 	.lc-row {
-		grid-template-columns: 98px 108px 1.5fr 84px 84px 60px;
+		grid-template-columns: 98px 108px 1.3fr 116px 116px 60px;
 	}
 
 	.lc-store-count {
