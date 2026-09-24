@@ -762,13 +762,12 @@ si z něj bere kopii do vlastních tabulek (`_stores`, `_logistic_centers`,
    ověření vyšlo v pořádku (žádná synchronizace souboru, o kterém appka
    předem ví, že v něm něco chybí).
 3. Po potvrzení `apiSyncImportFile` otevře vybraný soubor a přečte listy
-   `Organizace_Detail` (→ `_stores`) a `Zavrene_Openings` (→ `_store_closures`).
-   Sloupce se hledají podle PŘESNÉHO textu hlavičky v řádku 1
-   (`IMPORT_STORE_COLUMNS`/`IMPORT_CLOSURE_COLUMNS` v `60_import.js`), ne
+   `Organizace_Detail` (→ `_stores`), `Zavrene_Openings` (→ `_store_closures`)
+   a `Organizace` (→ `_stores.opening_date`, viz Etapa 8). Sloupce se
+   hledají podle PŘESNÉHO textu hlavičky v řádku 1 (`IMPORT_STORE_COLUMNS`/
+   `IMPORT_CLOSURE_COLUMNS`/`IMPORT_OPENING_COLUMNS` v `60_import.js`), ne
    podle pozice — cizí systém je časem může přeuspořádat. Chybějící
-   očekávaná hlavička = jasná chyba hned při importu. Výjimka je list
-   `Organizace` (datum otevření, viz Etapa 8) — ten se čte podle POZICE
-   sloupce, ne podle hlavičky.
+   očekávaná hlavička = jasná chyba hned při importu.
 4. `_stores` a `_store_closures` se KOMPLETNĚ nahradí novým obsahem
    (`dbReplaceAll_`, viz 5.1) — filiálka, která v novém importu chybí, se
    z appky smaže. `_logistic_centers` se odvodí z distinct hodnot sloupce
@@ -1110,20 +1109,26 @@ Budoucí:
   které jsou už PŘIPRAVENÉ k otevření (mají číslo, adresu, kontakty…),
   ale oficiálně ještě nejsou v provozu — nešlo je od skutečně otevřených
   rozeznat.
-- Zdroj: čtvrtý list zdrojového souboru, **Organizace** (na rozdíl od
-  ostatních listů BEZ použitelné hlavičky pro spolehlivé vyhledání
-  sloupce) — sloupec **B** = číslo filiálky, sloupec **E** = datum
-  oficiálního otevření (`IMPORT_OPENING_COLUMNS`, `_importReadOpenings_`
-  v `60_import.js`). Čtení podle POZICE sloupce je tu vědomá výjimka
-  z pravidla v bodě 3 výše — je KŘEHČÍ (přeuspořádání sloupců ve zdroji
-  appka nepozná), přijato protože appka nemá žádnou spolehlivou hlavičku,
-  o kterou by se mohla opřít.
-- List je NEPOVINNÝ pro běh synchronizace — chybí-li, appka o něm mlčí
-  (na rozdíl od `Organizace_Detail`/`Zavrene_Openings`, jejichž absence
-  synchronizaci rovnou shodí) a zbytek importu proběhne beze změny.
-  Existenci ale appka HLÁSÍ v kroku 2 záložky Import dat filiálek (viz
-  níže) — existence-only kontrola, sloupce se u pozičního čtení ověřit
-  nedají.
+- Zdroj: čtvrtý list zdrojového souboru, **Organizace** — sloupec
+  „Číslo" = číslo filiálky, sloupec „Datum Otevření" = datum oficiálního
+  otevření (`IMPORT_OPENING_COLUMNS`, `_importReadOpenings_`
+  v `60_import.js`). Sloupce se hledají podle textu hlavičky, stejně jako
+  u ostatních dvou listů — v první verzi appka čtvrtý list výjimečně
+  četla podle POZICE sloupce (B/E), protože ještě nezněl spolehlivý text
+  hlavičky; jakmile ho uživatel upřesnil, appka přešla na header-based
+  vyhledání a výjimka z pravidla v bodě 3 odpadla.
+- List je NEPOVINNÝ pro běh synchronizace, ale JEN CELÝ — chybí-li,
+  appka o něm mlčí (na rozdíl od `Organizace_Detail`/`Zavrene_Openings`,
+  jejichž absence synchronizaci rovnou shodí) a zbytek importu proběhne
+  beze změny. Existuje-li ale list a chybí mu očekávaný sloupec, chová se
+  STEJNĚ jako ostatní dva listy — jasná chyba hned při importu
+  (`_importHeaderIndex_`), protože `_importReadOpenings_` se volá PŘED
+  zápisem filiálek/LC/uzavírek a taková chyba by jinak shodila celou
+  synchronizaci, ne jen datum otevření. Krok 2 (viz níže) proto Organizace
+  do celkového „lze synchronizovat" započítává právě jen v tomhle druhém
+  případě (nalezen, ale neúplný) — **oprava** oproti první verzi, kde
+  `ok` počítalo Organizace vždycky, takže chybějící (tedy zcela BĚŽNÝ,
+  ne chybový) list tlačítko Synchronizovat zbytečně zamykal.
 - Datum se ukládá do nového sloupce `_stores.opening_date` (`YYYY-MM-DD`,
   chráněný v `TEXT_COLUMNS._stores` stejně jako zbytek tabulky — jinak by
   hrozila přesně ta nekonečná smyčka „změny", co popisuje Etapa 6).
@@ -1141,12 +1146,12 @@ Budoucí:
   sloupců — uplatní se navrch obou.
 - Import dat filiálek — dvě drobnější úpravy k téhle příležitosti:
   1. Krok 2 (`Soubor k synchronizaci`) teď ověřuje TŘI listy, ne dva
-     (`apiValidateImportFile`) — existence `Organizace_Detail`/
-     `Zavrene_Openings` i jejich sloupce, u `Organizace` jen existence
-     (`_importValidateSheet_` s prázdným polem sloupců — nulový seznam
-     chybějících sloupců projde vždy, takže `ok` vyjde čistě z existence
-     listu). Místo pro tři řádky stavu je PEVNĚ vyhrazené (`min-height`
-     na `.import-validation`), ať karta při načítání/výsledku neposkakuje.
+     (`apiValidateImportFile`) — existenci i sloupce podle hlavičky
+     u všech tří. Celkové „lze synchronizovat" (`ok`) ale Organizace
+     ovlivní, jen když list EXISTUJE a chybí mu sloupec — úplná absence
+     listu appku nezastaví (viz výše). Místo pro tři řádky stavu je PEVNĚ
+     vyhrazené (`min-height` na `.import-validation`), ať karta při
+     načítání/výsledku neposkakuje.
   2. Historie synchronizací ukazuje rovnou jen **poslední 3** záznamy,
      zbytek je za rozbalovacím „Starší synchronizace (N)" — při
      pravidelném nočním běhu byl seznam neúměrně dlouhý na cokoli, o co

@@ -355,13 +355,18 @@
 							<p class="kicker import-card-head"><span class="import-step">2</span> Soubor k synchronizaci</p>
 							<p class="import-results-label">Použije se vybraný soubor — přednastavený je vždy ten nejnovější:</p>
 							<div class="import-file-list" id="importResultsList"><!-- vykresleno JS --></div>
-							<!-- Ověření vybraného souboru — existence a sloupce listů
-									 Organizace_Detail/Zavrene_Openings, u listu Organizace jen
-									 existence (čte se podle pozice sloupce, ne podle hlavičky,
-									 viz IMPORT_OPENING_COLUMNS v server/60_import.js). Místo je
-									 pevně vyhrazené pro VŠECHNY TŘI řádky (min-height v CSS), ať
-									 se karta při načítání ani po něm nezmenšuje/nezvětšuje — viz
-									 apiValidateImportFile, validateSelectedImportFile. -->
+							<!-- Ověření vybraného souboru — existence a sloupce podle
+									 hlavičky u všech tří listů (Organizace_Detail,
+									 Zavrene_Openings, Organizace). Organizace je jediný
+									 NEPOVINNÝ list (appka bez něj jen neví o budoucím otevření,
+									 viz _importReadOpenings_ v server/60_import.js) — chybí-li
+									 celý, appka to řádkem ✗ oznámí, ale tlačítko Synchronizovat
+									 kvůli tomu nezakáže; chybí-li mu ale očekávaný sloupec,
+									 zakáže ho stejně jako u ostatních dvou listů (taková chyba
+									 by jinak shodila celou synchronizaci, ne jen datum otevření).
+									 Místo je pevně vyhrazené pro VŠECHNY TŘI řádky (min-height
+									 v CSS), ať se karta při načítání ani po něm nezmenšuje/
+									 nezvětšuje — viz apiValidateImportFile, validateSelectedImportFile. -->
 							<div class="import-validation" id="importValidation"><!-- vykresleno JS --></div>
 							<div class="import-actions">
 								<button class="button button-primary" type="button" id="importSyncBtn" disabled>
