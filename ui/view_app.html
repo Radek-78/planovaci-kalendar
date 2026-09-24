@@ -202,16 +202,18 @@
 						<button type="button" class="store-view-toggle-btn is-active" data-view="open">Otevřeno <span class="store-view-toggle-count" id="storeViewCountOpen"></span></button>
 						<button type="button" class="store-view-toggle-btn" data-view="future">Budoucí <span class="store-view-toggle-count" id="storeViewCountFuture"></span></button>
 					</div>
+					<!-- Rychlé filtry podle LC — víceklikové badge (na rozdíl od
+							 přepínače vlevo NEJDE o skupinu s jedinou aktivní volbou, dá
+							 se zaškrtnout klidně pět LC najednou). Nezávislé na Otevřeno/
+							 Budoucí, uplatní se navrch; počet ve štítku SE ALE podle
+							 přepínače mění (viz storeLcBadgeCount). Vykresleno JS (viz
+							 App.renderStoreLcBadges), zdroj dat je apiGetLogisticCenters —
+							 appka ho natáhne spolu s filiálkami při každém vstupu do
+							 záložky (viz loadStores). -->
+					<div class="store-lc-badges" id="storeLcBadges" role="group" aria-label="Filtrovat podle LC"></div>
 				</div>
 				<input type="search" id="storesFilterInput" placeholder="Hledat podle čísla, názvu, města, LC…">
 			</div>
-			<!-- Rychlé filtry podle LC — víceklikové badge (na rozdíl od
-					 přepínače výše NEJDE o skupinu s jedinou aktivní volbou, dá se
-					 zaškrtnout klidně pět LC najednou). Nezávislé na Otevřeno/Budoucí,
-					 uplatní se navrch. Vykresleno JS (viz App.renderStoreLcBadges),
-					 zdroj dat je apiGetLogisticCenters — appka ho natáhne spolu
-					 s filiálkami při každém vstupu do záložky (viz loadStores). -->
-			<div class="store-lc-badges" id="storeLcBadges" role="group" aria-label="Filtrovat podle LC"></div>
 			<div class="users-panel-wrap">
 				<div class="data-table-head stores-table-head" id="storesTableHead"><!-- vykresleno JS, viz renderDataTableHead --></div>
 				<div class="data-table-body" id="storesList"><!-- vykresleno JS --></div>
@@ -3584,17 +3586,14 @@
 				{ key: 'cislo', label: 'Číslo', filterValue: (l) => l.cislo || '—', sortValue: (l) => l.cislo ? Number(l.cislo) : null, filterSort: 'number', sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší' },
 				{ key: 'zkratka', label: 'Zkratka', filterValue: (l) => l.zkratka || '—', sortValue: (l) => l.zkratka, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
 				{ key: 'nazev', label: 'Název', filterValue: (l) => l.nazev, sortValue: (l) => l.nazev, filterSort: 'text', sortAsc: 'A → Z', sortDesc: 'Z → A' },
-				{
-					// Buňka nese DVĚ čísla (Otevřeno/Budoucí, viz renderLcRow) —
-					// subLabel v hlavičce říká, které je které, ať to není jen
-					// dvojice čísel bez vysvětlení. Filtr/řazení berou SOUČET —
-					// dvě samostatná čísla by se jako jeden sloupec filtrovat
-					// nedala (byl by to filtr na DVOJICI hodnot, ne na jedné).
-					key: 'storeCount', label: 'Filiálek', subLabel: 'Otevřeno · Budoucí',
-					filterValue: (l) => String(l.storeCountOpen + l.storeCountFuture),
-					sortValue: (l) => l.storeCountOpen + l.storeCountFuture,
-					filterSort: 'number', sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší',
-				},
+				// Otevřeno/Budoucí jako DVA samostatné, pojmenované sloupce —
+				// ne jeden sloupec se dvěma čísly a vysvětlivkou v hlavičce
+				// (ta dělala hlavičku dvouřádkovou, zpětná vazba). Každý má
+				// navíc vlastní filtr/řazení, což jeden sloupec se součtem
+				// neuměl — teď jde LC seřadit i podle toho, kolik jich má
+				// rozjednaných otevření, ne jen podle celkového počtu.
+				{ key: 'storeCountOpen', label: 'Otevřeno', filterValue: (l) => String(l.storeCountOpen), sortValue: (l) => l.storeCountOpen, filterSort: 'number', sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší' },
+				{ key: 'storeCountFuture', label: 'Budoucí', filterValue: (l) => String(l.storeCountFuture), sortValue: (l) => l.storeCountFuture, filterSort: 'number', sortAsc: 'Nejmenší → největší', sortDesc: 'Největší → nejmenší' },
 				{ key: 'akce', label: 'Akce', actionsOnly: true },
 			],
 			requests: [
@@ -3712,12 +3711,7 @@
 
 				return '<button type="button" class="data-col-header' +
 					'" data-col="' + col.key + '" title="Řadit nebo filtrovat podle sloupce ' + Ui.escape(col.label) + '">' +
-					'<span class="col-header-label">' + Ui.escape(col.label) +
-						// Nepovinný druhý řádek pod názvem sloupce — malým, tlumeným
-						// písmem vysvětlí, co která hodnota v buňce znamená (dnes jen
-						// u LC → Filiálek, kde jedna buňka nese DVĚ čísla vedle sebe).
-						(col.subLabel ? '<span class="col-header-sublabel">' + Ui.escape(col.subLabel) + '</span>' : '') +
-					'</span>' +
+					'<span class="col-header-label">' + Ui.escape(col.label) + '</span>' +
 					'<span class="col-rank-slot">' + rankBadge + '</span>' +
 					'<span class="col-filter-slot' + (hasFilter ? ' is-active' : '') + '"><i class="ph ph-funnel" aria-hidden="true"></i></span>' +
 				'</button>';
@@ -4110,9 +4104,37 @@
 				'<button type="button" class="store-lc-badge' +
 					(this.storeLcFilter.has(lc.nazev) ? ' is-active' : '') +
 					'" data-lc="' + Ui.escape(lc.nazev) + '" title="' + Ui.escape(lc.nazev) + '">' +
-					Ui.escape(lc.zkratka) +
+					'<span class="store-lc-badge-abbr">' + Ui.escape(lc.zkratka) + '</span>' +
+					'<span class="store-lc-badge-count" data-lc-count="' + Ui.escape(lc.nazev) + '">' +
+						this.storeLcBadgeCount(lc.nazev) +
+					'</span>' +
 				'</button>'
 			).join('');
+		},
+
+		/**
+		 * Kolik filiálek daného LC padne do PRÁVĚ zobrazené kategorie
+		 * (Otevřeno/Budoucí) — na rozdíl od počtu v přepínači (ten je za
+		 * celou appku) je tohle číslo záměrně vázané na aktuální záložku,
+		 * badge je koneckonců filtr NAD touhle kategorií, má tedy ukázat,
+		 * kolik by jím prošlo.
+		 */
+		storeLcBadgeCount(lcNazev) {
+			const wantFuture = this.storeView === 'future';
+			return this.storesCache.filter((s) => s.lc === lcNazev && this.isStoreFuture(s) === wantFuture).length;
+		},
+
+		/**
+		 * Přepíše jen ČÍSLA uvnitř už vykreslených badgí — volá se z
+		 * renderStores() při každé změně (přepnutí záložky, hledání, další
+		 * badge…), zatímco renderStoreLcBadges() staví celé badge znovu jen
+		 * jednou po načtení dat. Kompletní překreslení při každém kliknutí
+		 * by zbytečně rušilo (viz komentář u renderStoreLcBadges).
+		 */
+		updateStoreLcBadgeCounts() {
+			document.querySelectorAll('.store-lc-badge-count').forEach((span) => {
+				span.textContent = this.storeLcBadgeCount(span.dataset.lcCount);
+			});
 		},
 
 		/** Vykreslí #storesList z this.storesCache — textový filtr, pak sloupcové řazení/filtry (viz applyDataTableView), pak samotné řádky. */
@@ -4166,6 +4188,7 @@
 			rows = this.applyDataTableView('stores', rows);
 
 			this.updateStoreViewCounts();
+			this.updateStoreLcBadgeCounts();
 
 			list.innerHTML = rows.length
 				? rows.map((s) => this.renderStoreRow(s)).join('')
@@ -4519,11 +4542,11 @@
 				'<span class="user-cell-muted">' + Ui.escape(lc.cislo || '—') + '</span>' +
 				'<span class="user-cell-muted">' + Ui.escape(lc.zkratka || '—') + '</span>' +
 				'<span class="user-cell-name">' + Ui.escape(lc.nazev) + '</span>' +
-				'<span class="lc-store-counts">' +
-					'<span class="lc-store-count is-open" title="Otevřeno">' + lc.storeCountOpen + '</span>' +
-					'<span class="lc-store-count-sep" aria-hidden="true">·</span>' +
-					'<span class="lc-store-count is-future" title="Budoucí">' + lc.storeCountFuture + '</span>' +
-				'</span>' +
+				'<span class="lc-store-count is-open">' + lc.storeCountOpen + '</span>' +
+				// Budoucí = 0 se NEZOBRAZUJE (zpětná vazba: "zobrazíme pouze
+				// hodnoty větší než 0") — u drtivé většiny LC nula bude
+				// běžný stav, vypisovat ji všude by jen dělalo šum.
+				'<span class="lc-store-count is-future">' + (lc.storeCountFuture > 0 ? lc.storeCountFuture : '') + '</span>' +
 				'<span class="user-actions">' + actions + '</span>' +
 			'</div>';
 		},

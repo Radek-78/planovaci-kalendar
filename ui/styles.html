@@ -1048,12 +1048,18 @@
 		margin: 0;
 	}
 
-	/* Titulek + přepínač pohromadě vlevo, hledací pole zůstává úplně vpravo
-		 (section-header je pořád jen dvouprvkové space-between). */
+	/* Titulek + přepínač + LC badge pohromadě vlevo, hledací pole zůstává
+		 úplně vpravo (section-header je pořád jen dvouprvkové space-between).
+		 flex-wrap — při hodně LC se badge nemají kam vejít do jednoho řádku
+		 vedle přepínače, radši ať sjedou na další řádek (hlavička smí
+		 povyrůst, viz min-height na .section-header), než aby přetekly přes
+		 hledací pole vpravo. */
 	.section-header-title {
 		align-items: center;
 		display: flex;
-		gap: 14px;
+		flex-wrap: wrap;
+		gap: 10px 14px;
+		padding: 10px 0;
 	}
 
 	/* Přepínač Otevřeno/Budoucí u Filiálek — stejný pilulkový jazyk jako
@@ -1099,39 +1105,49 @@
 		opacity: 0.6;
 	}
 
-	/* ── Rychlé filtry podle LC (badge, viz .store-view-toggle výše —
-		 podobný pilulkový jazyk, ale VÍCEKLIKOVÝ: aktivních badgí může být
-		 víc najednou, na rozdíl od přepínače Otevřeno/Budoucí). ── */
+	/* ── Rychlé filtry podle LC — badge vedle přepínače Otevřeno/Budoucí
+		 v hlavičce (ne pilulky jako přepínač, jen LEHCE zaoblené rohy, viz
+		 border-radius níže). VÍCEKLIKOVÉ: aktivních badgí může být víc
+		 najednou, na rozdíl od přepínače Otevřeno/Budoucí vedle nich. ── */
 
 	.store-lc-badges {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 6px;
-		padding: 0 20px 14px;
 	}
 
 	/* Prázdný kontejner (data se ještě nenačetla) nesmí zabírat místo —
-		 jinak by se sekce Filiálky viditelně "škubla" ve chvíli, kdy se
-		 badge objeví po doběhnutí apiGetLogisticCenters. */
+		 jinak by hlavička sekce Filiálky viditelně "škubla" ve chvíli, kdy
+		 se badge objeví po doběhnutí apiGetLogisticCenters. */
 	.store-lc-badges:empty {
 		display: none;
 	}
 
 	.store-lc-badge {
+		align-items: center;
 		background: var(--white);
 		border: 1px solid var(--line);
-		border-radius: 999px;
+		border-radius: 4px;
 		color: var(--text);
 		cursor: pointer;
+		display: flex;
 		font: inherit;
 		font-size: 12px;
 		font-weight: 700;
-		padding: 5px 12px;
+		gap: 6px;
+		padding: 5px 8px;
 		transition: background 0.12s, border-color 0.12s, color 0.12s;
 	}
 
 	.store-lc-badge:hover {
 		border-color: var(--lidl-blue);
+	}
+
+	/* Zkratka se nikdy nezalomí ani nezmáčkne — badge je krátký text,
+		 žádný důvod pro flex zmenšování jako u delších popisků jinde. */
+	.store-lc-badge-abbr {
+		flex-shrink: 0;
+		white-space: nowrap;
 	}
 
 	/* Plné modré pozadí, ne jen obrys/zvýraznění textu — s víc badgemi
@@ -1141,6 +1157,25 @@
 		background: var(--lidl-blue);
 		border-color: var(--lidl-blue);
 		color: var(--white);
+	}
+
+	/* Počet filiálek LC v PRÁVĚ zobrazené kategorii (viz storeLcBadgeCount)
+		 — vlastní odznak uvnitř badge, ať je vizuálně odlišený od zkratky.
+		 min-width: 2ch REZERVUJE místo pro dvouciferné číslo bez ohledu na
+		 to, kolik číslic má aktuální hodnota — přepnutím Otevřeno/Budoucí se
+		 tak badge nezužuje/nerozšiřuje podle počtu číslic. */
+	.store-lc-badge-count {
+		background: rgba(0, 0, 0, 0.08);
+		border-radius: 3px;
+		font-size: 10.5px;
+		font-variant-numeric: tabular-nums;
+		min-width: 2ch;
+		padding: 1px 4px;
+		text-align: center;
+	}
+
+	.store-lc-badge.is-active .store-lc-badge-count {
+		background: rgba(255, 255, 255, 0.25);
 	}
 
 	/* Karta kolem tabulky — stejný jazyk jako .cal-grid-wrap u kalendáře
@@ -1519,18 +1554,12 @@
 		color: var(--lidl-red);
 	}
 
+	/* Číslo, Zkratka, Název, Otevřeno, Budoucí, Akce — o sloupec víc než
+		 dřív (Otevřeno/Budoucí byl jeden sloupec se dvěma čísly), proto dva
+		 užší sloupce místo jednoho širokého (140px → 2 × 84px). */
 	.lc-table-head,
 	.lc-row {
-		grid-template-columns: 98px 108px 1.6fr 140px 60px;
-	}
-
-	/* Dvě čísla v jedné buňce (Otevřeno/Budoucí, viz renderLcRow) —
-		 sloupec proto o něco širší než dřív (118px → 140px), ať se obě
-		 čísla i oddělovač vejdou bez zalamování. */
-	.lc-store-counts {
-		align-items: baseline;
-		display: flex;
-		gap: 6px;
+		grid-template-columns: 98px 108px 1.5fr 84px 84px 60px;
 	}
 
 	.lc-store-count {
@@ -1542,12 +1571,10 @@
 		color: var(--green);
 	}
 
+	/* Prázdná buňka u nuly (viz renderLcRow) dědí barvu i tak — je to
+		 jen kosmetika pro tu chvíli, kdy Budoucí přece jen něco ukáže. */
 	.lc-store-count.is-future {
 		color: var(--lidl-blue);
-	}
-
-	.lc-store-count-sep {
-		color: var(--line);
 	}
 
 	/* Filtr filiálek (section-header, viz #storesFilterInput) — obecné
@@ -1600,29 +1627,10 @@
 		width: 100%;
 	}
 
-	/* Bez flex/ellipsis — název se nezkracuje, viz komentář výše. Sloupec
-		 (flex-direction: column) drží label + nepovinný subLabel POD sebou;
-		 bez subLabel se chová úplně stejně jako dřív (druhý řádek prostě
-		 není). */
+	/* Bez flex/ellipsis — název se nezkracuje, viz komentář výše. */
 	.col-header-label {
-		display: flex;
-		flex-direction: column;
 		flex-shrink: 0;
-		gap: 1px;
 		white-space: nowrap;
-	}
-
-	/* Druhý řádek popisku sloupce (dnes jen LC → Filiálek: "Otevřeno · Budoucí")
-		 — menší a tlumenější, ať jasně převáží hlavní název sloupce nad ním.
-		 Tlumenost přes opacity, ne vlastní barvu: hlavička je na tmavém
-		 (moduré) podkladu, opacity funguje na bílé stejně jako na --muted
-		 jinde na světlém pozadí. */
-	.col-header-sublabel {
-		font-size: 9px;
-		font-weight: 600;
-		letter-spacing: 0.02em;
-		opacity: 0.65;
-		text-transform: none;
 	}
 
 	/* Vyhrazený prostor pro číslo úrovně řazení — pevná šířka, i prázdný
